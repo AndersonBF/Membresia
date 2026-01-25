@@ -1,0 +1,44 @@
+services:
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: anderson
+      POSTGRES_PASSWORD: anderson123456
+      POSTGRES_DB: church
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U anderson -d church"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    image: node:20
+    container_name: membresia-app
+    working_dir: /app
+    volumes:
+      - .:/app
+    environment:
+      DATABASE_URL: postgresql://anderson:anderson123456@postgres:5432/church
+    ports:
+      - "5555:5555"  # ← ADICIONE ESTA LINHA
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app-network
+    command: tail -f /dev/null
+
+volumes:
+  postgres_data:
+
+networks:
+  app-network:
+    driver: bridge

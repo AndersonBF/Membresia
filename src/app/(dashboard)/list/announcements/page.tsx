@@ -8,7 +8,7 @@ import Image from "next/image";
 
 
 
-export const announcementsData = [
+ const announcementsData = [
   {
     id: 1,
     title: "Bem-vindo!",
@@ -23,7 +23,6 @@ export const announcementsData = [
     date: "2024-01-25",
     class: "Importante",
   },
-  // Adicione mais anúncios conforme necessário
 ];
 
 

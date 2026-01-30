@@ -1,6 +1,6 @@
 // TEMPORARY DATA BASED ON PRISMA SCHEMA
 
-export let role = "position";
+export let role = "admin";
 
 export const adminsData = [
   {
@@ -70,3 +70,66 @@ export const membrosData = [
     createdAt: "2025-01-05T16:00:00Z",
   },
 ];
+
+// TEMPORARY DATA BASED ON PRISMA SCHEMA
+
+
+export const positionData = [
+  {
+    id: 1,
+    positionId: "POS-001",
+    name: "João Silva",
+    email: "joao@igreja.com",
+    phone: "11999999999",
+    photo:
+      "https://images.pexels.com/photos/2888150/pexels-photo-2888150.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    
+  },
+  {
+    id: 2,
+    positionId: "POS-002",
+    name: "Maria Santos",
+    email: "maria@igreja.com",
+    phone: "11888888888",
+     photo:
+      "https://images.pexels.com/photos/936126/pexels-photo-936126.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    
+  },
+  {
+    id: 3,
+    positionId: "POS-003",
+    name: "Paulo Costa",
+    email: "paulo@igreja.com",
+    phone: "11777777777",
+     photo:
+      "https://images.pexels.com/photos/428328/pexels-photo-428328.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  },
+  {
+    id: 4,
+    positionId: "POS-004",
+    name: "Ana Rocha",
+    email: "ana@igreja.com",
+    phone: "11666666666",
+     photo:
+      "https://images.pexels.com/photos/428328/pexels-photo-428328.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  },
+  {
+    id: 5,
+    positionId: "POS-005",
+    name: "Lucas Pereira",
+    email: "lucas@igreja.com",
+    phone: "11555555555",
+     photo:
+      "https://images.pexels.com/photos/428328/pexels-photo-428328.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  },
+];
+
+export const subjectData = [
+  {
+  id: 1,
+  name: "Ministério Infantil",
+  members: ["João Silva", "Maria Santos"], // ✅ Array de nomes dos membros
+}
+]
+
+

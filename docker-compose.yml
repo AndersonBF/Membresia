@@ -10,7 +10,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql
+      - postgres_data:/var/lib/postgresql  # ← ÚNICA MUDANÇA AQUI
     networks:
       - app-network
     healthcheck:
@@ -25,16 +25,21 @@ services:
     working_dir: /app
     volumes:
       - .:/app
+      - /app/node_modules
     environment:
-      DATABASE_URL: postgresql://anderson:anderson123456@postgres:5432/church
+      - DATABASE_URL=postgresql://anderson:anderson123456@postgres:5432/church
+      - WATCHPACK_POLLING=true
+      - CHOKIDAR_USEPOLLING=true
     ports:
-      - "5555:5555"  # ← ADICIONE ESTA LINHA
+      - "5555:3000"
+      - "5556:3001"
+      - "5557:5556"
     depends_on:
       postgres:
         condition: service_healthy
     networks:
       - app-network
-    command: tail -f /dev/null
+    command: sh -c "npm install && npx prisma db push && npx prisma generate && CHOKIDAR_USEPOLLING=true NEXT_WEBPACK_USEPOLLING=1 npm run dev"
 
 volumes:
   postgres_data:

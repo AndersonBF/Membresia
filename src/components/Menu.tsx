@@ -1,4 +1,5 @@
 import { role } from "@/lib/data";
+import { currentUser } from "@clerk/nextjs/server";
 import Link from "next/dist/client/link";
 import Image from "next/image";
 
@@ -14,13 +15,13 @@ const menuItems = [
       },
       {
         icon: "/teacher.png",
-        label: "positions",
-        href: "/list/positions",
+        label: "position",
+        href: "/list/position",
         visible: ["admin", "position"],
       },
       {
-        icon: "/student.png",
-        label: "Members",
+        icon: "/parent.png",
+        label: "Membros",
         href: "/list/members",
         visible: ["admin", "position"],
       },
@@ -86,7 +87,7 @@ const menuItems = [
       },
       {
         icon: "/announcement.png",
-        label: "Announcements",
+        label: "Anúncios",
         href: "/list/announcements",
         visible: ["admin", "position", "member", "parent"],
       },
@@ -117,7 +118,10 @@ const menuItems = [
   },
 ];
 
-const Menu = () => {
+const Menu = async () => {
+
+  const user = await currentUser();
+  const role = user?.publicMetadata.role as string;
   return (
     <div className="mt-4 text-sm">
       {menuItems.map((i) => (

@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  binaryTargets = ["native", "windows"]
 }
 
 datasource db {
@@ -22,4 +23,12 @@ model Membro {
   ativo     Boolean  @default(true)
   sexo      String
   createdAt DateTime @default(now())
+  subjects Subject[]
+}
+
+model Subject {
+  id       Int       @id @default(autoincrement())
+  name     String    @unique
+  membros Membro[]
+  
 }

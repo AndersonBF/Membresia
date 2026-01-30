@@ -13,7 +13,7 @@ const schema = z.object({
   .string()
   .min(3, { message: "username precis ter 3 caracteres"})
   .max(20, { message: "username precis ter no maximo 20 caracteres"}),
-  email: z.email({message:"Email invalido"}),
+  email: z.string().email("Email invalido"),
   
   nome: z.string().min(1 ,{message: "Primerio nome precisa ser"}),
   sobrenome: z.string().min(1 ,{message: "Sobrenome nome precisa ser"}),

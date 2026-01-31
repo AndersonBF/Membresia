@@ -4,14 +4,15 @@
   "private": true,
   "scripts": {
     "dev": "next dev ",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "prisma:migrate": "docker exec membresia-app npx prisma migrate dev",
     "prisma:studio": "docker exec membresia-app npx prisma studio",
     "prisma:generate": "docker exec membresia-app npx prisma generate",
     "docker:up": "docker compose up -d",
-    "docker:down": "docker compose down"
+    "docker:down": "docker compose down",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@clerk/elements": "^0.24.6",

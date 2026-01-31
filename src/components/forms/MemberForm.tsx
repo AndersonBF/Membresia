@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import Image from "next/image";
 import InputField from "../InputField";
+import { Dispatch, SetStateAction } from 'react';
 
 
 export const dynamic = "force-dynamic";
@@ -30,6 +31,8 @@ const MemberForm = ({
 }: {
   type: "create" | "update";
   data?: any;
+    setOpen: Dispatch<SetStateAction<boolean>>;
+  relatedData?: any;
 }) => {
     const {
     register,

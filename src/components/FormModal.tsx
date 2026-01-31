@@ -39,7 +39,7 @@ const forms: {
 ) => JSX.Element;
 } = {
   member: (setOpen, type, data, relatedData ) => <MemberForm type={type} data={data} setOpen={setOpen} relatedData={relatedData}/>,
-  student: (setOpen, type, data, relatedData ) => <MemberForm type={type} data={data}  setOpen={setOpen} relatedData={relatedData}/>,
+  
   subject: (setOpen, type, data, relatedData ) => <SubjectForm type={type} data={data}  setOpen={setOpen} relatedData={relatedData}/>
 };
 

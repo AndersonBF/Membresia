@@ -27,6 +27,7 @@ services:
       - .:/app
       - /app/node_modules
     environment:
+    
       - DATABASE_URL=postgresql://anderson:anderson123456@postgres:5432/church
       - WATCHPACK_POLLING=true
       - CHOKIDAR_USEPOLLING=true

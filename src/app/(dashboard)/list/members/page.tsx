@@ -9,6 +9,9 @@ import {Membro} from "@prisma/client"
 import { PrismaClient } from "@prisma/client";
 import FormModal from "@/components/FormModal";
 
+export const dynamic = "force-dynamic";
+
+
 type Member = {
   id: number;
   memberId: string;

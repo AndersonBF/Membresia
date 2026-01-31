@@ -7,6 +7,9 @@ import Image from "next/image";
 import prisma from "@/lib/prisma";
 import FormContainer from "@/components/FormContainer";
 
+export const dynamic = "force-dynamic";
+
+
 type Subject = {
   id: number;
   name: string;

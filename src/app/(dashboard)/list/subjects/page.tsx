@@ -30,11 +30,11 @@ const columns = [
 ];
 
 const SubjectListPage = async () => {
-    const subjects = await prisma.subject.findMany({
+  const subjects = (await (prisma as any).subject.findMany({
     include: { membros: true },
-  });
+  })) as Subject[];
 
-   const members = await prisma.membro.findMany({
+  const members = await (prisma as any).membro.findMany({
     select: {
       id: true,
       nome: true,

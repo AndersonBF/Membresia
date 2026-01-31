@@ -6,6 +6,8 @@ import { positionData } from "@/lib/data";
 import Link from "next/link";
 import { role } from "@/lib/data";
 
+export const dynamic = "force-dynamic";
+
 type Position = {
   id: number;
   positionId: string;

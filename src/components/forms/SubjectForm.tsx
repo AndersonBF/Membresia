@@ -9,6 +9,8 @@ import { Dispatch, SetStateAction, useEffect } from "react";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 
+export const dynamic = "force-dynamic";
+
 const SubjectForm = ({
   type,
   data,

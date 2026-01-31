@@ -7,6 +7,7 @@ import Image from "next/image";
 import InputField from "../InputField";
 
 
+export const dynamic = "force-dynamic";
 
 const schema = z.object({
   username: z

@@ -1,6 +1,6 @@
 "use client";
 
-import { deleteSubject } from "@/lib/actions";
+
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -9,7 +9,7 @@ import { useFormState } from "react-dom";
 import { toast } from "react-toastify";
 import FormContainer, { FormContainerProps } from "./FormContainer";
 
-const deleteActionMap = {
+{/*const deleteActionMap = {
   subject: deleteSubject,
   member: deleteSubject,      // placeholder
   student: deleteSubject,
@@ -22,15 +22,13 @@ const deleteActionMap = {
   attendance: deleteSubject,
   event: deleteSubject,
   announcement: deleteSubject,
-};
+};/*}
 
 const MemberForm = dynamic(() => import("./forms/MemberForm"), {
   loading: () => <h1>Loading...</h1>,
 });
 
-const SubjectForm = dynamic(() => import("./forms/SubjectForm"), {
-  loading: () => <h1>Loading...</h1>,
-});
+
 
 const forms: {
   [key: string]: (setOpen: Dispatch<SetStateAction<boolean>>, type: "create" | "update", 
@@ -40,8 +38,9 @@ const forms: {
 } = {
   member: (setOpen, type, data, relatedData ) => <MemberForm type={type} data={data} setOpen={setOpen} relatedData={relatedData}/>,
   
-  subject: (setOpen, type, data, relatedData ) => <SubjectForm type={type} data={data}  setOpen={setOpen} relatedData={relatedData}/>
+  
 };
+{/*subject: (setOpen, type, data, relatedData ) => <SubjectForm type={type} data={data}  setOpen={setOpen} relatedData={relatedData}/>*/}
 
 const FormModal = ({
   table,
@@ -60,7 +59,7 @@ const FormModal = ({
 
   const [open, setOpen] = useState(false);
 
-  const Form = ()=>{
+ {/*} const Form = ()=>{
      const [state, formAction] = useFormState(deleteActionMap[table], {
       success: false,
       error: false,
@@ -86,7 +85,7 @@ const FormModal = ({
     ) : (
       "Form not found!"
     );
-  };
+  };*/}
   return (
      <>
        <button
@@ -98,7 +97,7 @@ const FormModal = ({
       {open && (
         <div className="w-screen h-screen absolute left-0 top-0 bg-black bg-opacity-60 z-50 flex items-center justify-center">
           <div className="bg-white p-4 rounded-md relative w-[90%] md:w-[70%] lg:w-[60%] xl:w-[50%] 2xl:w-[40%]">
-            <Form/>
+            {/*<Form/> */}
             <div
               className="absolute top-4 right-4 cursor-pointer"
               onClick={() => setOpen(false)}

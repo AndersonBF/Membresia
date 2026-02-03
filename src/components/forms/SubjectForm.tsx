@@ -3,7 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import InputField from "../InputField";
 import { memberSchema, subjectSchema, SubjectSchema } from "@/lib/formValidationSchemas";
-import { createSubject, updateSubject } from "@/lib/actions";
+
 import { useFormState } from "react-dom";
 import { Dispatch, SetStateAction, useEffect } from "react";
 import { toast } from "react-toastify";
@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-const SubjectForm = ({
+{/*const SubjectForm = ({
   type,
   data,
   setOpen,
@@ -120,6 +120,6 @@ const SubjectForm = ({
   
 
 }  ;
-export default SubjectForm;
+export default SubjectForm;*/}
 
 

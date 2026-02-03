@@ -1,3 +1,4 @@
+import { truncate } from "node:fs/promises";
 import FormModal from "./FormModal";
 import prisma from "@/lib/prisma";
 
@@ -29,8 +30,8 @@ const FormContainer = async ({table, type,  data,  id,} : FormContainerProps) =>
 if(type != "delete") {
   switch(table) {
   case "subject":
-    const subjectMembers = await prisma.membro.findMany({
-      select:{ id:true, nome:true, sobrenome: true},
+    const subjectMembers = await prisma.member.findMany({
+      select:{ id:true, name:true},
     });
     relatedData = {members: subjectMembers};
     break;

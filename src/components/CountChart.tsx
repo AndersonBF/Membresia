@@ -2,36 +2,29 @@
 import { RadialBarChart, RadialBar, ResponsiveContainer, Tooltip } from 'recharts';
 import Image from 'next/image';
 
+const CountChart = ({masculino, feminino}:{masculino: number; feminino:number}) => {
 const data = [
   {
     name: 'Total',
-    count: 106,
+    count: masculino+feminino,
     fill: 'white',
   },
   {
-    name: 'Girls',
-    count: 53,
-    fill: '#FAE27C', // lamaYellow
+    name: 'Mulheres',
+    count: feminino,
+    fill: '#86efac', // verde claro (green-300)
   },
   {
-    name: 'Boys',
-    count: 53,
-    fill: '#C3EBFA', // lamaSky
+    name: 'Homens',
+    count: masculino,
+    fill: '#065f46', // verde escuro (emerald-900)
   },
 ];
 
-const CountChart = () => {
-  return (
-    <div className='bg-white rounded-xl w-full h-full p-4'>
-      {/* TITULO */}
-      <div className='flex justify-between items-center'>
-        <h1 className='text-lg font-semibold'>Students</h1>
-        <Image src="/moreDark.png" alt="" width={20} height={20} />
-      </div>
 
-      {/* CHART */}
-      {/* ✅ CORREÇÃO 1: Adicionei relative e altura fixa */}
-      <div className='relative w-full h-[75%]'>
+  return (
+    <div className='relative w-full h-[75%]'>
+    
         <ResponsiveContainer width="100%" height="100%">
           <RadialBarChart
             cx="50%"
@@ -54,22 +47,8 @@ const CountChart = () => {
           height={50}
           className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'
         />
-      </div>
-
-      {/* BOTTOM */}
-      <div className='flex justify-center gap-16'>
-        <div className='flex flex-col gap-1'>
-          <div className='w-5 h-5 bg-lamaSky rounded-full' />
-          <h1 className='font-bold'>1,234</h1>
-          <h2 className='text-xs text-gray-300'>Boys (55%)</h2>
         </div>
-        <div className='flex flex-col gap-1'>
-          <div className='w-5 h-5 bg-lamaYellow rounded-full' />
-          <h1 className='font-bold'>1,234</h1>
-          <h2 className='text-xs text-gray-300'>Girls (45%)</h2>
-        </div>
-      </div>
-    </div>
+     
   );
 };
 

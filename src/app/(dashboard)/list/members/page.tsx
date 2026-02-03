@@ -5,21 +5,14 @@ import Table from "@/components/Table"
 import { membrosData } from "@/lib/data";
 import Link from "next/link";
 import { role } from "@/lib/data";
-import {Membro} from "@prisma/client"
+import {Member} from "@prisma/client"
 import { PrismaClient } from "@prisma/client";
 import FormModal from "@/components/FormModal";
 
 export const dynamic = "force-dynamic";
 
 
-type Member = {
-  id: number;
-  memberId: string;
-  name: string;
-  email?: string;
-  phone: string;
-  photo: string;
-}
+
 
 
 const columns = [
@@ -60,21 +53,21 @@ const columns = [
 
 const prisma = new PrismaClient();
 
-const renderRow = (item: Membro  ) => (
+const renderRow = (item: Member  ) => (
   <tr key={item.id} className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-lamaPurPleLight">
     <td className="flex items-center gap-4 p-4 ">
       <Image src={"/profile.png"} alt="" width={40} height={40} className=" xl:block w-10 h-10
     rounded-full object-cover"/>
       <div className="flex flex-col">
-        <h3 className="font-semibold">{item.nome}</h3>
+        <h3 className="font-semibold">{item.name}</h3>
         <p className="text-xs text-gray-500">{item?.email}</p>
       </div>
     </td>
     <td className="hidden md:table-cell">{item.id}</td>
-    <td className="hidden md:table-cell">{item.nome}</td>
-    <td className="hidden md:table-cell">{item.sobrenome}</td>
+    <td className="hidden md:table-cell">{item.name}</td>
+    
     <td className="hidden md:table-cell">{item.email}</td>
-    <td className="hidden md:table-cell">{item.telefone}</td>
+    <td className="hidden md:table-cell">{item.phone}</td>
     <td>
       <div className="flex items-center gap-2">
         <Link href={`/list/members/${item.id}`}>
@@ -95,15 +88,15 @@ const renderRow = (item: Membro  ) => (
 );
 const MemberListPage = async () => {
 
-    const members = await prisma.membro.findMany();
+    const members = await prisma.member.findMany();
 
-    console.log(members)
+    
 
   return (
     <div className="bg-white p-4 rounded flex-1 m-4 mt-0">
       {/* top */}
       <div className="flex items-center justify-between">
-        <h1 className=" hidden md:block text-lg  font-semibold">All members</h1>
+        <h1 className=" hidden md:block text-lg  font-semibold">Todos os membros</h1>
         <div className="flex flex-col md:flex-row items-center gap-4 w-faull md:w-auto">
           <TableSearch />
           <div className="flex items-center gap-4 self-end">

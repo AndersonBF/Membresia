@@ -28,7 +28,7 @@ services:
       - /app/node_modules
     environment:
     
-      - DATABASE_URL=postgresql://anderson:anderson123456@postgres:5432/church
+      - DATABASE_URL=postgresql://neondb_owner:npg_JEZLB87fSdgC@ep-bitter-mouse-acuggz1r-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
       - WATCHPACK_POLLING=true
       - CHOKIDAR_USEPOLLING=true
     ports:
@@ -40,7 +40,7 @@ services:
         condition: service_healthy
     networks:
       - app-network
-    command: sh -c "npm install && npx prisma db push && npx prisma generate && CHOKIDAR_USEPOLLING=true NEXT_WEBPACK_USEPOLLING=1 npm run dev"
+    command: sh -c "npm install && npx prisma db push --accept-data-loss && npx prisma generate && CHOKIDAR_USEPOLLING=true NEXT_WEBPACK_USEPOLLING=1 npm run dev"
 
 volumes:
   postgres_data:

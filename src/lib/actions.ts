@@ -6,7 +6,7 @@ import prisma from "./prisma";
 
 type CurrentState = { success: boolean; error: boolean };
 
-export const createSubject = async (
+{/*export const createSubject = async (
     currentState : CurrentState,
     data:SubjectSchema
     )=>{
@@ -76,5 +76,5 @@ export const deleteSubject = async (
     console.log(err);
     return { success: false, error: true };
   }
-};
+};*/}
     

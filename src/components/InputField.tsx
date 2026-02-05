@@ -5,10 +5,10 @@ type InputFieldProps = {
   type?: string;
   register: any;
   name: string;
-  defaultValue?: string;
+  defaultValue?: string | number;
   error?: FieldError;
   inputProps?: React.InputHTMLAttributes<HTMLInputElement>;
-  hidden?:boolean;
+  hidden?: boolean;
 };
 
 const InputField = ({
@@ -19,18 +19,25 @@ const InputField = ({
   defaultValue,
   error,
   inputProps,
-  hidden
+  hidden,
 }: InputFieldProps) => {
   return (
     <div className={hidden ? "hidden" : "flex flex-col gap-2 w-full md:w-1/4"}>
-      <label className="text-xs text-gray-500">{label}</label>
+      <label htmlFor={name} className="text-xs text-gray-500">
+        {label}
+      </label>
+
       <input
+        id={name}
+        name={name}
         type={type}
-        {...register(name)}
-        className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
-        {...inputProps}
         defaultValue={defaultValue}
+        autoComplete={name}
+        className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
+        {...register(name)}
+        {...inputProps}
       />
+
       {error?.message && (
         <p className="text-xs text-red-400">{error.message.toString()}</p>
       )}

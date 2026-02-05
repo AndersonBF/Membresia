@@ -2,13 +2,12 @@ import FormModal from "@/components/FormModal";
 import Pagination from "@/components/Pagination";
 import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
-import {  role } from "@/lib/data";
+import { role } from "@/lib/data";
 import Image from "next/image";
-
 
 export const dynamic = "force-dynamic";
 
- const announcementsData = [
+const announcementsData = [
   {
     id: 1,
     title: "Bem-vindo!",
@@ -24,7 +23,6 @@ export const dynamic = "force-dynamic";
     class: "Importante",
   },
 ];
-
 
 type Announcement = {
   id: number;
@@ -53,7 +51,22 @@ const columns = [
   },
 ];
 
-const AnnouncementListPage = () => {
+// 1. Recebemos searchParams como prop
+const AnnouncementListPage = ({
+  searchParams,
+}: {
+  searchParams: { [key: string]: string | undefined };
+}) => {
+  
+  // 2. Extraímos a página da URL (padrão é 1 se não existir)
+  const { page } = searchParams;
+  const p = page ? parseInt(page) : 1;
+
+  // 3. Definimos o total (count). 
+  // Como seus dados são estáticos por enquanto, usamos o length do array.
+  // Quando conectar no Prisma, isso virá de "prisma.notice.count()"
+  const count = announcementsData.length;
+
   const renderRow = (item: Announcement) => (
     <tr
       key={item.id}
@@ -99,8 +112,9 @@ const AnnouncementListPage = () => {
       </div>
       {/* LIST */}
       <Table columns={columns} renderRow={renderRow} data={announcementsData} />
-      {/* PAGINATION */}
-      <Pagination />
+      
+      {/* PAGINATION - Agora com as variáveis definidas */}
+      <Pagination page={p} count={count} />
     </div>
   );
 };

@@ -6,6 +6,7 @@ import { role, subjectData } from "@/lib/data";
 import Image from "next/image";
 import prisma from "@/lib/prisma";
 import FormContainer from "@/components/FormContainer";
+import { Count } from "@prisma/client/runtime/library";
 
 export const dynamic = "force-dynamic";
 
@@ -95,7 +96,7 @@ const SubjectListPage = async () => {
       {/* LIST */}
       <Table columns={columns} renderRow={renderRow} data={subjects} />
       {/* PAGINATION */}
-      <Pagination />
+       <Pagination page={p} count={count}/>
     </div>
   );
 };

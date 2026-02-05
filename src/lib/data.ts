@@ -132,4 +132,138 @@ export const subjectData = [
 }
 ]
 
+export const eventsData = [
+  {
+    id: 1,
+    title: "Annual General Meeting",
+    description: "Yearly meeting to discuss society goals and elect new board members",
+    date: new Date("2024-03-15"),
+    startTime: new Date("2024-03-15T14:00:00"),
+    endTime: new Date("2024-03-15T16:00:00"),
+    isPublic: false,
+    societyId: 1,
+    society: {
+      id: 1,
+      name: "Computer Science Society"
+    }
+  },
+  {
+    id: 2,
+    title: "Tech Workshop: Introduction to React",
+    description: "Learn the basics of React and build your first component",
+    date: new Date("2024-03-20"),
+    startTime: new Date("2024-03-20T18:00:00"),
+    endTime: new Date("2024-03-20T20:00:00"),
+    isPublic: true,
+    societyId: 1,
+    society: {
+      id: 1,
+      name: "Computer Science Society"
+    }
+  },
+  {
+    id: 3,
+    title: "Spring Festival",
+    description: null,
+    date: new Date("2024-04-05"),
+    startTime: new Date("2024-04-05T10:00:00"),
+    endTime: new Date("2024-04-05T22:00:00"),
+    isPublic: true,
+    societyId: null,
+    society: null
+  },
+  {
+    id: 4,
+    title: "Networking Night",
+    description: "Connect with alumni and industry professionals",
+    date: new Date("2024-03-25"),
+    startTime: new Date("2024-03-25T19:00:00"),
+    endTime: new Date("2024-03-25T21:30:00"),
+    isPublic: false,
+    societyId: 2,
+    society: {
+      id: 2,
+      name: "Business Club"
+    }
+  },
+  {
+    id: 5,
+    title: "Hackathon 2024",
+    description: "24-hour coding challenge with amazing prizes and free food",
+    date: new Date("2024-04-12"),
+    startTime: new Date("2024-04-12T09:00:00"),
+    endTime: new Date("2024-04-13T09:00:00"),
+    isPublic: true,
+    societyId: 1,
+    society: {
+      id: 1,
+      name: "Computer Science Society"
+    }
+  },
+  {
+    id: 6,
+    title: "Career Fair",
+    description: "Meet with top employers and explore internship opportunities",
+    date: new Date("2024-03-28"),
+    startTime: new Date("2024-03-28T11:00:00"),
+    endTime: new Date("2024-03-28T16:00:00"),
+    isPublic: true,
+    societyId: null,
+    society: null
+  },
+  {
+    id: 7,
+    title: "Photography Exhibition",
+    description: "Showcase of student photography work from the past semester",
+    date: new Date("2024-04-08"),
+    startTime: null,
+    endTime: null,
+    isPublic: true,
+    societyId: 3,
+    society: {
+      id: 3,
+      name: "Arts Society"
+    }
+  },
+  {
+    id: 8,
+    title: "Study Group Session",
+    description: "Collaborative study session for upcoming exams",
+    date: new Date("2024-03-18"),
+    startTime: new Date("2024-03-18T15:00:00"),
+    endTime: new Date("2024-03-18T18:00:00"),
+    isPublic: false,
+    societyId: 1,
+    society: {
+      id: 1,
+      name: "Computer Science Society"
+    }
+  },
+  {
+    id: 9,
+    title: "Guest Lecture: AI in Healthcare",
+    description: "Dr. Sarah Johnson discusses the future of artificial intelligence in medicine",
+    date: new Date("2024-04-02"),
+    startTime: new Date("2024-04-02T17:00:00"),
+    endTime: new Date("2024-04-02T18:30:00"),
+    isPublic: true,
+    societyId: 4,
+    society: {
+      id: 4,
+      name: "Medical Society"
+    }
+  },
+  {
+    id: 10,
+    title: "Movie Night",
+    description: null,
+    date: new Date("2024-03-22"),
+    startTime: new Date("2024-03-22T20:00:00"),
+    endTime: new Date("2024-03-22T23:00:00"),
+    isPublic: true,
+    societyId: null,
+    society: null
+  }
+];
+
 

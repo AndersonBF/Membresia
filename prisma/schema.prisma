@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-    url      = env("DATABASE_URL")
+  url      = env("DATABASE_URL")
 }
 
 // ===============================================
@@ -17,30 +17,30 @@ enum Gender {
 
 // ===============================================
 // MEMBRO (Member)
-// Contém informações básicas e de autenticação do membro.
 // ===============================================
 model Member {
-  id             Int       @id @default(autoincrement())
-  name           String    // Nome completo do membro
-  email          String?   @unique // E-mail (opcional, mas único)
-  username       String?   @unique // Nome de usuário para login
-  password       String?   // Senha (o hash da senha deve ser armazenado aqui)
-  phone          String?   // Telefone
-  birthDate      DateTime? // Data de nascimento
-  gender         Gender?   // Gênero do membro
-  isActive       Boolean   @default(true) // Indica se o membro está ativo
-  createdAt      DateTime  @default(now()) // Data de cadastro
+  id        Int       @id @default(autoincrement())
+  name      String
+  email     String?   @unique
+  username  String?   @unique
+  password  String?
+  phone     String?
+  birthDate DateTime?
+  gender    Gender?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
 
   // Relacionamentos
-  ministries        MemberMinistry[]
-  societies         MemberSociety[]
+  ministries    MemberMinistry[]
+  societies     MemberSociety[]
+  
   bibleSchoolClassId Int?
-  bibleSchoolClass BibleSchoolClass? @relation(fields: [bibleSchoolClassId], references: [id])
+  bibleSchoolClass   BibleSchoolClass? @relation(fields: [bibleSchoolClassId], references: [id])
 
-  council           MemberCouncil?
-  diaconate         MemberDiaconate?
+  council   MemberCouncil?
+  diaconate MemberDiaconate?
 
-  attendances       Attendance[]
+  attendances         Attendance[]
   teachingAssignments ClassTeacher[] @relation(name: "TeachingAssignments")
 }
 
@@ -48,62 +48,68 @@ model Member {
 // CONSELHO (Council)
 // ===============================================
 model Council {
-  id            Int @id @default(1)
-  members       MemberCouncil[]
-  finances      Finance[] // Relação com o registro financeiro
+  id       Int             @id @default(1)
+  members  MemberCouncil[]
+  finances Finance[]
+  
+  // ✅ NOVO: Documentos do Conselho (Atas, Regimentos)
+  documents Document[]
 }
 
 // ===============================================
 // DIACONIA (Diaconate)
 // ===============================================
 model Diaconate {
-  id            Int @id @default(1)
-  members       MemberDiaconate[]
+  id      Int               @id @default(1)
+  members MemberDiaconate[]
+
+  // ✅ NOVO: Documentos da Diaconia (Relatórios de visitas, etc)
+  documents Document[]
 }
 
 // ===============================================
-// RELAÇÃO MEMBRO ↔ CONSELHO (MemberCouncil)
-// Tabela de junção para membros do Conselho.
+// RELAÇÃO MEMBRO ↔ CONSELHO
 // ===============================================
 model MemberCouncil {
-  id         Int @id @default(autoincrement())
-  memberId   Int @unique
-  councilId  Int
+  id        Int @id @default(autoincrement())
+  memberId  Int @unique
+  councilId Int
 
-  member     Member  @relation(fields: [memberId], references: [id])
-  council    Council @relation(fields: [councilId], references: [id])
+  member  Member  @relation(fields: [memberId], references: [id])
+  council Council @relation(fields: [councilId], references: [id])
 }
 
 // ===============================================
-// RELAÇÃO MEMBRO ↔ DIACONIA (MemberDiaconate)
-// Tabela de junção para membros da Diaconia.
+// RELAÇÃO MEMBRO ↔ DIACONIA
 // ===============================================
 model MemberDiaconate {
   id          Int @id @default(autoincrement())
   memberId    Int @unique
   diaconateId Int
 
-  member      Member    @relation(fields: [memberId], references: [id])
-  diaconate   Diaconate @relation(fields: [diaconateId], references: [id])
+  member    Member    @relation(fields: [memberId], references: [id])
+  diaconate Diaconate @relation(fields: [diaconateId], references: [id])
 }
 
 // ===============================================
 // MINISTÉRIOS (Ministry)
 // ===============================================
 model Ministry {
-  id        Int    @id @default(autoincrement())
-  name      String // Nome do ministério
-  members   MemberMinistry[]
+  id      Int              @id @default(autoincrement())
+  name    String
+  members MemberMinistry[]
+
+  // ✅ NOVO: Documentos do Ministério (Escalas, Músicas)
+  documents Document[]
 }
 
-// Tabela de junção para membros de ministérios.
 model MemberMinistry {
-  id           Int @id @default(autoincrement())
-  memberId     Int
-  ministryId   Int
+  id         Int @id @default(autoincrement())
+  memberId   Int
+  ministryId Int
 
-  member       Member   @relation(fields: [memberId], references: [id])
-  ministry     Ministry @relation(fields: [ministryId], references: [id])
+  member   Member   @relation(fields: [memberId], references: [id])
+  ministry Ministry @relation(fields: [ministryId], references: [id])
 
   @@unique([memberId, ministryId])
 }
@@ -112,21 +118,23 @@ model MemberMinistry {
 // SOCIEDADES INTERNAS (InternalSociety)
 // ===============================================
 model InternalSociety {
-  id            Int    @id @default(autoincrement())
-  name          String // Nome da sociedade
-  members       MemberSociety[]
-  finances      Finance[] // Relação com o registro financeiro
-  events        Event[]
+  id       Int             @id @default(autoincrement())
+  name     String
+  members  MemberSociety[]
+  finances Finance[]
+  events   Event[]
+
+  // ✅ NOVO: Documentos da Sociedade (Manuais, Atas)
+  documents Document[]
 }
 
-// Tabela de junção para membros de sociedades.
 model MemberSociety {
-  id          Int @id @default(autoincrement())
-  memberId    Int
-  societyId   Int
+  id        Int @id @default(autoincrement())
+  memberId  Int
+  societyId Int
 
-  member      Member        @relation(fields: [memberId], references: [id])
-  society     InternalSociety @relation(fields: [societyId], references: [id])
+  member  Member          @relation(fields: [memberId], references: [id])
+  society InternalSociety @relation(fields: [societyId], references: [id])
 
   @@unique([memberId, societyId])
 }
@@ -135,8 +143,7 @@ model MemberSociety {
 // ESCOLA BÍBLICA (BibleSchool)
 // ===============================================
 model BibleSchool {
-  id      Int @id @default(1)
-  // CORREÇÃO 2: Adicionado nome da relação
+  id      Int                @id @default(1)
   classes BibleSchoolClass[] @relation(name: "BibleSchoolClasses")
 }
 
@@ -144,95 +151,119 @@ model BibleSchool {
 // CLASSES DA ESCOLA BÍBLICA (BibleSchoolClass)
 // ===============================================
 model BibleSchoolClass {
-  id        Int    @id @default(autoincrement())
-  name      String // Nome da classe
+  id   Int    @id @default(autoincrement())
+  name String
 
-  members   Member[]
-  teachers  ClassTeacher[]
+  members  Member[]
+  teachers ClassTeacher[]
 
-  // CORREÇÃO 3: Relação inversa para BibleSchool
   bibleSchoolId Int?
-  bibleSchool BibleSchool? @relation(name: "BibleSchoolClasses", fields: [bibleSchoolId], references: [id])
+  bibleSchool   BibleSchool? @relation(name: "BibleSchoolClasses", fields: [bibleSchoolId], references: [id])
+
+  // ✅ NOVO: Documentos da Classe (Revistas, Lições)
+  documents Document[]
 }
 
 // ===============================================
-// PROFESSORES DA CLASSE (ClassTeacher)
-// Tabela de junção para professores de classes.
+// PROFESSORES DA CLASSE
 // ===============================================
 model ClassTeacher {
-  id        Int @id @default(autoincrement())
-  memberId  Int
-  classId   Int
+  id       Int @id @default(autoincrement())
+  memberId Int
+  classId  Int
 
-  // CORREÇÃO 4: Adicionado nome da relação
-  member    Member            @relation(fields: [memberId], references: [id], name: "TeachingAssignments")
-  class     BibleSchoolClass @relation(fields: [classId], references: [id])
+  member Member           @relation(fields: [memberId], references: [id], name: "TeachingAssignments")
+  class  BibleSchoolClass @relation(fields: [classId], references: [id])
 
   @@unique([memberId, classId])
 }
 
 // ===============================================
-// EVENTOS / PROGRAMAÇÕES (Event)
+// EVENTOS / PROGRAMAÇÕES
 // ===============================================
 model Event {
-  id          Int      @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   title       String
   description String?
   date        DateTime
   startTime   DateTime?
   endTime     DateTime?
-  isPublic    Boolean  @default(false)
+  isPublic    Boolean   @default(false)
 
-  societyId   Int?
-  society     InternalSociety? @relation(fields: [societyId], references: [id])
+  societyId Int?
+  society   InternalSociety? @relation(fields: [societyId], references: [id])
 
   attendances Attendance[]
 }
+
 // ===============================================
 // PRESENÇA (Attendance)
-// Registro de presença em eventos e classes.
 // ===============================================
 model Attendance {
-  id        Int @id @default(autoincrement())
-  memberId  Int // Membro presente
-  eventId   Int? // Evento em que o membro esteve presente
+  id       Int  @id @default(autoincrement())
+  memberId Int
+  eventId  Int?
 
-  member    Member  @relation(fields: [memberId], references: [id])
-  event     Event?  @relation(fields: [eventId], references: [id])
+  member Member @relation(fields: [memberId], references: [id])
+  event  Event? @relation(fields: [eventId], references: [id])
 
-  isPresent Boolean @default(true) // Se o membro estava presente (pode ser usado para faltas)
+  isPresent Boolean @default(true)
 }
 
 // ===============================================
 // AVISOS (Notice)
-// Avisos gerais para todos os membros.
 // ===============================================
 model Notice {
   id        Int      @id @default(autoincrement())
-  title     String   // Título do aviso
-  message   String   // Conteúdo do aviso
-  createdAt DateTime @default(now()) // Data de criação
+  title     String
+  message   String
+  createdAt DateTime @default(now())
 }
 
 // ===============================================
 // FINANCEIRO (Finance)
-// Registro de valores financeiros (caixa, balanço, etc.) para Sociedades e Conselho.
 // ===============================================
 model Finance {
+  id    Int   @id @default(autoincrement())
+  month Int
+  year  Int
+  value Float
+
+  councilId Int?
+  council   Council? @relation(fields: [councilId], references: [id])
+
+  societyId Int?
+  society   InternalSociety? @relation(fields: [societyId], references: [id])
+
+  @@unique([month, year, councilId])
+  @@unique([month, year, societyId])
+}
+
+// ===============================================
+// DOCUMENTOS (Document) - ✅ NOVO MODELO
+// Centraliza arquivos de todas as áreas
+// ===============================================
+model Document {
   id          Int      @id @default(autoincrement())
-  month       Int      // Mês (1 a 12)
-  year        Int      // Ano
-  value       Float    // O valor financeiro registrado (ex: caixa mensal)
+  title       String
+  description String?
+  fileUrl     String   // Caminho do arquivo
+  createdAt   DateTime @default(now())
 
-  // Relação com Council (opcional)
-  councilId   Int?
-  council     Council? @relation(fields: [councilId], references: [id])
-
-  // Relação com InternalSociety (opcional)
+  // Relações Opcionais (Um documento pertence a APENAS UM destes grupos por vez)
+  
   societyId   Int?
   society     InternalSociety? @relation(fields: [societyId], references: [id])
 
-  // Garante que só haja um registro financeiro por mês/ano para cada entidade
-  @@unique([month, year, councilId])
-  @@unique([month, year, societyId])
+  councilId   Int?
+  council     Council?         @relation(fields: [councilId], references: [id])
+
+  diaconateId Int?
+  diaconate   Diaconate?       @relation(fields: [diaconateId], references: [id])
+
+  ministryId  Int?
+  ministry    Ministry?        @relation(fields: [ministryId], references: [id])
+
+  bibleSchoolClassId Int?
+  bibleSchoolClass   BibleSchoolClass? @relation(fields: [bibleSchoolClassId], references: [id])
 }

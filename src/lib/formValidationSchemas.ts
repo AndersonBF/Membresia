@@ -64,11 +64,17 @@ export const documentSchema = z.object({
   ministryId: z.coerce.number().optional(),
   bibleSchoolClassId: z.coerce.number().optional(),
 
-  // IMPORTANTE: Deixamos o file como any() ou optional() aqui.
-  // Motivo: O input file retorna um FileList no navegador, o que é chato de validar com Zod puro.
-  // Nós já garantimos que o arquivo existe manualmente lá no `onSubmit` do formulário.
+ 
   file: z.any().optional(),
 });
 
-// 👇 AQUI ESTÁ A LINHA QUE FALTOU:
 export type DocumentSchema = z.infer<typeof documentSchema>;
+
+export const attendanceSchema = z.object({
+  id: z.coerce.number().optional(),
+  eventId: z.coerce.number({ message: "Event is required!" }),
+  memberId: z.coerce.number({ message: "Member is required!" }),
+  isPresent: z.boolean(),
+});
+
+export type AttendanceSchema = z.infer<typeof attendanceSchema>;

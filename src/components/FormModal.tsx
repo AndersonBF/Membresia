@@ -15,13 +15,13 @@ const DocumentForm = dynamic(() => import("./forms/DocumentForm"), {
   loading: () => <p>Carregando...</p>,
 });
 
-type TableType = "member" | "announcement" | "document";
+type TableType = "member" | "assignment" | "result" | "attendance" | "event" | "announcement" | "document";
 
 type FormModalProps = {
   table: TableType;
   type: "create" | "update" | "delete";
   data?: any;
-  id?: number;
+  id?: number | string;
   relatedData?: any; // ✅ AGORA EXISTE
 };
 

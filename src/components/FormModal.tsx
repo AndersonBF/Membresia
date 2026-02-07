@@ -1,124 +1,117 @@
 "use client";
 
+import { useState, useTransition } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { Dispatch, SetStateAction, useEffect, useState } from "react";
-import { useFormState } from "react-dom";
+import dynamic from "next/dynamic";
+import { deleteMember } from "@/lib/actions";
 import { toast } from "react-toastify";
-import { deleteMember, deleteEvent } from "@/lib/actions";
-import FormContainer, { FormContainerProps } from "./FormContainer";
-import MemberForm from "./forms/MemberForm";
-import EventForm from "./forms/EventForm";
-import DocumentForm from "./forms/DocumentForm";
-import { deleteDocument } from "@/lib/actions";
+import { useRouter } from "next/navigation";
 
-const deleteActionMap = {
-  member: deleteMember,
-  assignment: deleteMember,
-  attendance: deleteMember,
-  event: deleteEvent,
-  announcement: deleteMember,
-  result: deleteMember,
-  document: deleteDocument,
+const MemberForm = dynamic(() => import("./forms/MemberForm"), {
+  loading: () => <p>Carregando...</p>,
+});
+
+type FormModalProps = {
+  table: "member";
+  type: "create" | "update" | "delete";
+  data?: any;
+  id?: number;
 };
 
-const forms: {
-  [key: string]: (
-    setOpen: Dispatch<SetStateAction<boolean>>, 
-    type: "create" | "update", 
-    data?: any,
-    relatedData?: any
-  ) => JSX.Element;
-} = {
-  member: (setOpen, type, data, relatedData) => (
-    <MemberForm 
-      type={type} 
-      data={data} 
-      setOpen={setOpen} 
-      relatedData={relatedData}
-    />
-  ),
-  event: (setOpen, type, data, relatedData) => (
-    <EventForm 
-      type={type} 
-      data={data} 
-      setOpen={setOpen} 
-      relatedData={relatedData}
-    />
-  ),
-  document: (setOpen, type, data, relatedData) => (
-    <DocumentForm setOpen={setOpen} relatedData={relatedData} />
-  ),
-};
-
-const FormModal = ({
-  table,
-  type,
-  data,
-  id,
-  relatedData
-}: FormContainerProps & {relatedData?: any}) => {
-  const size = type === "create" ? "w-8 h-8" : "w-7 h-7";
-  const bgColor =
-    type === "create"
-      ? "bg-lamaYellow"
-      : type === "update"
-      ? "bg-lamaSky"
-      : "bg-lamaPurple";
-
+const FormModal = ({ table, type, data, id }: FormModalProps) => {
   const [open, setOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
 
-  const Form = () => {
-    const [state, formAction] = useFormState(deleteActionMap[table], {
-      success: false,
-      error: false,
-    });
+  const handleDelete = () => {
+    const formData = new FormData();
+    formData.append("id", String(id));
 
-    const router = useRouter();
+    startTransition(async () => {
+      const result = await deleteMember(
+        { success: false, error: false },
+        formData
+      );
 
-    useEffect(() => {
-      if (state.success) {
-        toast(`${table} has been deleted!`);
+      if (result.success) {
+        toast.success("Registro excluído!");
         setOpen(false);
         router.refresh();
+      } else {
+        toast.error("Erro ao excluir!");
       }
-    }, [state, router]);
+    });
+  };
 
-    return type === "delete" && id ? (
-      <form action={formAction} className="p-4 flex flex-col gap-4">
-        <input type="text" name="id" value={id} hidden />
-        <span className="text-center font-medium">
-          All data will be lost. Tem certeza que deseja deletar este {table}?
-        </span>
-        <button className="bg-red-700 text-white py-2 px-4 rounded-md border-none w-max self-center">
-          Delete
-        </button>
-      </form>
-    ) : type === "create" || type === "update" ? (
-      forms[table](setOpen, type, data, relatedData)
-    ) : (
-      "Form not found!"
-    );
+  const renderForm = () => {
+    if (type === "delete") {
+      return (
+        <div className="flex flex-col gap-4">
+          <p className="text-center">
+            Tem certeza que deseja excluir?
+          </p>
+
+          <button
+            onClick={handleDelete}
+            disabled={isPending}
+            className="bg-red-600 text-white py-2 rounded-md disabled:opacity-50"
+          >
+            {isPending ? "Excluindo..." : "Excluir"}
+          </button>
+        </div>
+      );
+    }
+
+    if (table === "member") {
+      return (
+        <MemberForm
+          type={type}
+          data={data}
+          setOpen={setOpen}
+        />
+      );
+    }
+
+    return null;
   };
 
   return (
     <>
       <button
-        className={`${size} flex items-center justify-center rounded-full ${bgColor}`}
         onClick={() => setOpen(true)}
+        className={`w-7 h-7 flex items-center justify-center rounded-full ${
+          type === "delete"
+            ? "bg-red-200"
+            : type === "update"
+            ? "bg-lamaSky"
+            : "bg-lamaYellow"
+        }`}
       >
-        <Image src={`/${type}.png`} alt="" width={16} height={16} />
+        <Image
+          src={
+            type === "delete"
+              ? "/delete.png"
+              : type === "update"
+              ? "/edit.png"
+              : "/create.png"
+          }
+          alt={type}
+          width={16}
+          height={16}
+        />
       </button>
+
       {open && (
-        <div className="w-screen h-screen absolute left-0 top-0 bg-black bg-opacity-60 z-50 flex items-center justify-center">
-          <div className="bg-white p-4 rounded-md relative w-[90%] md:w-[70%] lg:w-[60%] xl:w-[50%] 2xl:w-[40%]">
-            <Form/>
-            <div
-              className="absolute top-4 right-4 cursor-pointer"
+        <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-md relative w-[90%] max-w-lg">
+            <button
               onClick={() => setOpen(false)}
+              className="absolute top-3 right-3"
             >
-              <Image src="/close.png" alt="" width={20} height={20} />
-            </div>
+              ✕
+            </button>
+
+            {renderForm()}
           </div>
         </div>
       )}

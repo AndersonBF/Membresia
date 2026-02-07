@@ -1,14 +1,42 @@
 import {z} from "zod";
 
 
+
 export const memberSchema = z.object({
   id: z.coerce.number().optional(),
-  name: z.string().min(1, { message: "Nome é obrigatório!" }),
-  email: z.string().email({ message: "Email inválido!" }).or(z.literal("")).optional(),
+
+  name: z
+    .string()
+    .min(1, { message: "Nome é obrigatório!" }),
+
+  username: z
+    .string()
+    .min(3, { message: "Usuário deve ter no mínimo 3 caracteres!" }),
+
+  password: z
+    .string()
+    .min(6, { message: "Senha deve ter no mínimo 6 caracteres!" })
+    .optional(),
+
+  email: z
+    .string()
+    .email({ message: "Email inválido!" })
+    .or(z.literal(""))
+    .optional(),
+
   phone: z.string().optional(),
+
+  birthDate: z.string().optional(),
+
+  gender: z.enum(["M", "F"], {
+    message: "Gênero é obrigatório!",
+  }),
+
+  isActive: z.coerce.boolean().default(true),
 });
 
 export type MemberSchema = z.infer<typeof memberSchema>;
+
 
 export const subjectSchema = z.object({
   id: z.coerce.number().optional(),

@@ -162,7 +162,7 @@ const EventListPage = async ({
       take: ITEM_PER_PAGE,
       skip: ITEM_PER_PAGE * (p - 1),
       orderBy: {
-        date: "desc",
+        date: "asc", // ✅ Mudado de "desc" para "asc" - do mais próximo ao mais distante
       },
     }),
     prisma.event.count({ where: query }),

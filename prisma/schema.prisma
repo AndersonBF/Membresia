@@ -35,7 +35,7 @@ model Member {
   societies     MemberSociety[]
   
   bibleSchoolClassId Int?
-  bibleSchoolClass   BibleSchoolClass? @relation(fields: [bibleSchoolClassId], references: [id])
+  bibleSchoolClass   BibleSchoolClass? @relation(fields: [bibleSchoolClassId], references: [id], onDelete: SetNull)
 
   council   MemberCouncil?
   diaconate MemberDiaconate?
@@ -52,7 +52,6 @@ model Council {
   members  MemberCouncil[]
   finances Finance[]
   
-  // ✅ NOVO: Documentos do Conselho (Atas, Regimentos)
   documents Document[]
 }
 
@@ -63,7 +62,6 @@ model Diaconate {
   id      Int               @id @default(1)
   members MemberDiaconate[]
 
-  // ✅ NOVO: Documentos da Diaconia (Relatórios de visitas, etc)
   documents Document[]
 }
 
@@ -75,8 +73,8 @@ model MemberCouncil {
   memberId  Int @unique
   councilId Int
 
-  member  Member  @relation(fields: [memberId], references: [id])
-  council Council @relation(fields: [councilId], references: [id])
+  member  Member  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  council Council @relation(fields: [councilId], references: [id], onDelete: Cascade)
 }
 
 // ===============================================
@@ -87,8 +85,8 @@ model MemberDiaconate {
   memberId    Int @unique
   diaconateId Int
 
-  member    Member    @relation(fields: [memberId], references: [id])
-  diaconate Diaconate @relation(fields: [diaconateId], references: [id])
+  member    Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  diaconate Diaconate @relation(fields: [diaconateId], references: [id], onDelete: Cascade)
 }
 
 // ===============================================
@@ -99,7 +97,6 @@ model Ministry {
   name    String
   members MemberMinistry[]
 
-  // ✅ NOVO: Documentos do Ministério (Escalas, Músicas)
   documents Document[]
 }
 
@@ -108,8 +105,8 @@ model MemberMinistry {
   memberId   Int
   ministryId Int
 
-  member   Member   @relation(fields: [memberId], references: [id])
-  ministry Ministry @relation(fields: [ministryId], references: [id])
+  member   Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  ministry Ministry @relation(fields: [ministryId], references: [id], onDelete: Cascade)
 
   @@unique([memberId, ministryId])
 }
@@ -124,7 +121,6 @@ model InternalSociety {
   finances Finance[]
   events   Event[]
 
-  // ✅ NOVO: Documentos da Sociedade (Manuais, Atas)
   documents Document[]
 }
 
@@ -133,8 +129,8 @@ model MemberSociety {
   memberId  Int
   societyId Int
 
-  member  Member          @relation(fields: [memberId], references: [id])
-  society InternalSociety @relation(fields: [societyId], references: [id])
+  member  Member          @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  society InternalSociety @relation(fields: [societyId], references: [id], onDelete: Cascade)
 
   @@unique([memberId, societyId])
 }
@@ -158,9 +154,8 @@ model BibleSchoolClass {
   teachers ClassTeacher[]
 
   bibleSchoolId Int?
-  bibleSchool   BibleSchool? @relation(name: "BibleSchoolClasses", fields: [bibleSchoolId], references: [id])
+  bibleSchool   BibleSchool? @relation(name: "BibleSchoolClasses", fields: [bibleSchoolId], references: [id], onDelete: SetNull)
 
-  // ✅ NOVO: Documentos da Classe (Revistas, Lições)
   documents Document[]
 }
 
@@ -172,8 +167,8 @@ model ClassTeacher {
   memberId Int
   classId  Int
 
-  member Member           @relation(fields: [memberId], references: [id], name: "TeachingAssignments")
-  class  BibleSchoolClass @relation(fields: [classId], references: [id])
+  member Member           @relation(fields: [memberId], references: [id], name: "TeachingAssignments", onDelete: Cascade)
+  class  BibleSchoolClass @relation(fields: [classId], references: [id], onDelete: Cascade)
 
   @@unique([memberId, classId])
 }
@@ -191,7 +186,7 @@ model Event {
   isPublic    Boolean   @default(false)
 
   societyId Int?
-  society   InternalSociety? @relation(fields: [societyId], references: [id])
+  society   InternalSociety? @relation(fields: [societyId], references: [id], onDelete: SetNull)
 
   attendances Attendance[]
 }
@@ -204,8 +199,8 @@ model Attendance {
   memberId Int
   eventId  Int?
 
-  member Member @relation(fields: [memberId], references: [id])
-  event  Event? @relation(fields: [eventId], references: [id])
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  event  Event? @relation(fields: [eventId], references: [id], onDelete: SetNull)
 
   isPresent Boolean @default(true)
 }
@@ -230,40 +225,38 @@ model Finance {
   value Float
 
   councilId Int?
-  council   Council? @relation(fields: [councilId], references: [id])
+  council   Council? @relation(fields: [councilId], references: [id], onDelete: SetNull)
 
   societyId Int?
-  society   InternalSociety? @relation(fields: [societyId], references: [id])
+  society   InternalSociety? @relation(fields: [societyId], references: [id], onDelete: SetNull)
 
   @@unique([month, year, councilId])
   @@unique([month, year, societyId])
 }
 
 // ===============================================
-// DOCUMENTOS (Document) - ✅ NOVO MODELO
+// DOCUMENTOS (Document)
 // Centraliza arquivos de todas as áreas
 // ===============================================
 model Document {
   id          Int      @id @default(autoincrement())
   title       String
   description String?
-  fileUrl     String   // Caminho do arquivo
+  fileUrl     String
   createdAt   DateTime @default(now())
 
-  // Relações Opcionais (Um documento pertence a APENAS UM destes grupos por vez)
-  
   societyId   Int?
-  society     InternalSociety? @relation(fields: [societyId], references: [id])
+  society     InternalSociety? @relation(fields: [societyId], references: [id], onDelete: Cascade)
 
   councilId   Int?
-  council     Council?         @relation(fields: [councilId], references: [id])
+  council     Council?         @relation(fields: [councilId], references: [id], onDelete: Cascade)
 
   diaconateId Int?
-  diaconate   Diaconate?       @relation(fields: [diaconateId], references: [id])
+  diaconate   Diaconate?       @relation(fields: [diaconateId], references: [id], onDelete: Cascade)
 
   ministryId  Int?
-  ministry    Ministry?        @relation(fields: [ministryId], references: [id])
+  ministry    Ministry?        @relation(fields: [ministryId], references: [id], onDelete: Cascade)
 
   bibleSchoolClassId Int?
-  bibleSchoolClass   BibleSchoolClass? @relation(fields: [bibleSchoolClassId], references: [id])
+  bibleSchoolClass   BibleSchoolClass? @relation(fields: [bibleSchoolClassId], references: [id], onDelete: Cascade)
 }

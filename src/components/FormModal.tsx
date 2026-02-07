@@ -11,16 +11,27 @@ const MemberForm = dynamic(() => import("./forms/MemberForm"), {
   loading: () => <p>Carregando...</p>,
 });
 
-type TableType = "member" | "announcement";
+const DocumentForm = dynamic(() => import("./forms/DocumentForm"), {
+  loading: () => <p>Carregando...</p>,
+});
+
+type TableType = "member" | "announcement" | "document";
 
 type FormModalProps = {
   table: TableType;
   type: "create" | "update" | "delete";
   data?: any;
   id?: number;
+  relatedData?: any; // ✅ AGORA EXISTE
 };
 
-const FormModal = ({ table, type, data, id }: FormModalProps) => {
+const FormModal = ({
+  table,
+  type,
+  data,
+  id,
+  relatedData,
+}: FormModalProps) => {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
@@ -56,7 +67,7 @@ const FormModal = ({ table, type, data, id }: FormModalProps) => {
           <button
             onClick={handleDelete}
             disabled={isPending}
-            className="bg-red-600 hover:bg-red-700 text-white py-2 rounded-md disabled:opacity-50 transition"
+            className="bg-red-600 hover:bg-red-700 text-white py-2 rounded-md transition disabled:opacity-50"
           >
             {isPending ? "Excluindo..." : "Excluir"}
           </button>
@@ -65,10 +76,15 @@ const FormModal = ({ table, type, data, id }: FormModalProps) => {
     }
 
     if (table === "member") {
+      return <MemberForm type={type} data={data} setOpen={setOpen} />;
+    }
+
+    if (table === "document") {
       return (
-        <MemberForm
+        <DocumentForm
           type={type}
           data={data}
+          relatedData={relatedData}
           setOpen={setOpen}
         />
       );
@@ -77,7 +93,9 @@ const FormModal = ({ table, type, data, id }: FormModalProps) => {
     return null;
   };
 
-  /** 🎨 Estilo igual ao menu */
+  const Icon =
+    type === "delete" ? Trash2 : type === "update" ? Pencil : Plus;
+
   const buttonStyle =
     type === "delete"
       ? "bg-red-600 hover:bg-red-700 text-white"
@@ -85,18 +103,10 @@ const FormModal = ({ table, type, data, id }: FormModalProps) => {
       ? "bg-blue-600 hover:bg-blue-700 text-white"
       : "bg-yellow-400 hover:bg-yellow-500 text-black";
 
-  const Icon =
-    type === "delete"
-      ? Trash2
-      : type === "update"
-      ? Pencil
-      : Plus;
-
   return (
     <>
       <button
         onClick={() => setOpen(true)}
-        title={type}
         className={`w-8 h-8 flex items-center justify-center rounded-full transition ${buttonStyle}`}
       >
         <Icon size={16} />
@@ -107,7 +117,7 @@ const FormModal = ({ table, type, data, id }: FormModalProps) => {
           <div className="bg-white p-6 rounded-md relative w-[90%] max-w-lg">
             <button
               onClick={() => setOpen(false)}
-              className="absolute top-3 right-3 text-gray-600 hover:text-black transition"
+              className="absolute top-3 right-3 text-gray-600 hover:text-black"
             >
               <X size={18} />
             </button>

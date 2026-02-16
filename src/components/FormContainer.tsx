@@ -11,9 +11,9 @@ export type FormContainerProps = {
   relatedData?: any;
 }
 
-const FormContainer = async ({table, type, data, id}: FormContainerProps) => {
+const FormContainer = async ({table, type, data, id, relatedData: passedRelatedData}: FormContainerProps) => {
 
-  let relatedData = {}
+  let relatedData = passedRelatedData || {}; // ✅ Usa o relatedData passado como prop
   
   if(type !== "delete") {
     switch(table) {
@@ -24,9 +24,24 @@ const FormContainer = async ({table, type, data, id}: FormContainerProps) => {
         // relatedData = {roles};
         break;
 
+      case "event":
+        // ✅ Se não veio relatedData passado, busca aqui como fallback
+        if (!passedRelatedData?.societies) {
+          const societies = await prisma.internalSociety.findMany({
+            select: {
+              id: true,
+              name: true,
+            },
+            orderBy: {
+              name: 'asc',
+            },
+          });
+          relatedData = { ...relatedData, societies };
+        }
+        break;
+
       // Adicione outros cases conforme necessário
     
-
       default:
         break;
     }

@@ -29,12 +29,10 @@ const InputField = ({
 
       <input
         id={name}
-        name={name}
         type={type}
-        defaultValue={defaultValue}
-        autoComplete={name}
         className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
         {...register(name)}
+        defaultValue={defaultValue}
         {...inputProps}
       />
 

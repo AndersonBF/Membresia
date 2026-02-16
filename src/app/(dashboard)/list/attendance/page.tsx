@@ -2,6 +2,7 @@ import prisma from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
 import Image from "next/image";
+import AttendanceExcelButton from "@/components/AttendanceExcelButton";
 
 // 🔥 FORÇA A PÁGINA A NÃO USAR CACHE
 export const dynamic = "force-dynamic";
@@ -30,6 +31,9 @@ const AttendanceListPage = async () => {
       {/* TOP */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-semibold">Attendance</h1>
+        
+        {/* ✅ BOTÃO DE EXPORTAR EXCEL */}
+        <AttendanceExcelButton events={events} />
       </div>
 
       {/* Events List */}

@@ -19,6 +19,17 @@ const EventListPage = async ({
   const role = (sessionClaims?.metadata as { role?: string })?.role;
   const currentUserId = userId;
 
+  // ✅ BUSCAR SOCIEDADES PARA O FORMULÁRIO
+  const societies = await prisma.internalSociety.findMany({
+    select: {
+      id: true,
+      name: true,
+    },
+    orderBy: {
+      name: 'asc',
+    },
+  });
+
   const columns = [
     {
       header: "Title",
@@ -116,7 +127,13 @@ const EventListPage = async ({
         <div className="flex items-center gap-2">
           {role === "admin" && (
             <>
-              <FormContainer table="event" type="update" data={item} />
+              {/* ✅ PASSAR relatedData COM AS SOCIEDADES */}
+              <FormContainer 
+                table="event" 
+                type="update" 
+                data={item}
+                relatedData={{ societies }}
+              />
               <FormContainer table="event" type="delete" id={item.id} />
             </>
           )}
@@ -162,7 +179,7 @@ const EventListPage = async ({
       take: ITEM_PER_PAGE,
       skip: ITEM_PER_PAGE * (p - 1),
       orderBy: {
-        date: "asc", // ✅ Mudado de "desc" para "asc" - do mais próximo ao mais distante
+        date: "asc",
       },
     }),
     prisma.event.count({ where: query }),
@@ -182,7 +199,14 @@ const EventListPage = async ({
             <button className="w-8 h-8 flex items-center justify-center rounded-full bg-lamaYellow">
               <Image src="/sort.png" alt="" width={14} height={14} />
             </button>
-            {role === "admin" && <FormContainer table="event" type="create" />}
+            {/* ✅ PASSAR relatedData TAMBÉM NO CREATE */}
+            {role === "admin" && (
+              <FormContainer 
+                table="event" 
+                type="create"
+                relatedData={{ societies }}
+              />
+            )}
           </div>
         </div>
       </div>

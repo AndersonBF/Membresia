@@ -20,6 +20,8 @@ const AttendanceTaker = ({
 }: AttendanceTakerProps) => {
   const router = useRouter();
   const [attendance, setAttendance] = useState<{ [key: number]: boolean }>({});
+  const [excludedMembers, setExcludedMembers] = useState<Set<number>>(new Set()); // ✅ Membros excluídos
+  const [visitors, setVisitors] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
 
@@ -41,6 +43,19 @@ const AttendanceTaker = ({
     }
   }, [existingAttendance, members]);
 
+  // ✅ Toggle exclusão de membro
+  const toggleMemberExclusion = (memberId: number) => {
+    setExcludedMembers((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(memberId)) {
+        newSet.delete(memberId);
+      } else {
+        newSet.add(memberId);
+      }
+      return newSet;
+    });
+  };
+
   const toggleAttendance = (memberId: number) => {
     setAttendance((prev) => ({
       ...prev,
@@ -51,7 +66,9 @@ const AttendanceTaker = ({
   const markAllPresent = () => {
     const newAttendance: { [key: number]: boolean } = {};
     members.forEach((member) => {
-      newAttendance[member.id] = true;
+      if (!excludedMembers.has(member.id)) {
+        newAttendance[member.id] = true;
+      }
     });
     setAttendance(newAttendance);
   };
@@ -59,7 +76,9 @@ const AttendanceTaker = ({
   const markAllAbsent = () => {
     const newAttendance: { [key: number]: boolean } = {};
     members.forEach((member) => {
-      newAttendance[member.id] = false;
+      if (!excludedMembers.has(member.id)) {
+        newAttendance[member.id] = false;
+      }
     });
     setAttendance(newAttendance);
   };
@@ -71,11 +90,15 @@ const AttendanceTaker = ({
 
     const formData = new FormData();
     formData.append("eventId", event.id.toString());
+    formData.append("visitors", visitors.toString());
 
-    const attendanceData = members.map((member) => ({
-      memberId: member.id,
-      isPresent: attendance[member.id] || false,
-    }));
+    // ✅ Filtrar apenas membros não excluídos
+    const attendanceData = members
+      .filter((member) => !excludedMembers.has(member.id))
+      .map((member) => ({
+        memberId: member.id,
+        isPresent: attendance[member.id] || false,
+      }));
 
     formData.append("attendanceData", JSON.stringify(attendanceData));
 
@@ -88,33 +111,37 @@ const AttendanceTaker = ({
 
     if (result.success) {
       toast.success("Presença salva com sucesso!");
-      router.push("/list/attendance"); // ✅ Volta para a tela de presença
+      router.push("/list/attendance");
       router.refresh();
     } else {
       toast.error("Erro ao salvar presença");
     }
   };
 
-  const presentCount = Object.values(attendance).filter((v) => v).length;
-  const absentCount = members.length - presentCount;
-  const attendancePercentage = members.length > 0 
-    ? ((presentCount / members.length) * 100).toFixed(1) 
+  // ✅ Filtrar membros ativos (não excluídos)
+  const activeMembers = members.filter((m) => !excludedMembers.has(m.id));
+  const excludedMembersList = members.filter((m) => excludedMembers.has(m.id));
+
+  const presentCount = activeMembers.filter((m) => attendance[m.id]).length;
+  const absentCount = activeMembers.length - presentCount;
+  const attendancePercentage = activeMembers.length > 0 
+    ? ((presentCount / activeMembers.length) * 100).toFixed(1) 
     : 0;
+  const totalParticipants = presentCount + visitors;
 
   // ✅ Função para exportar para Word
   const exportToWord = async () => {
     setExporting(true);
 
     try {
-      const presentMembers = members.filter((m) => attendance[m.id]);
-      const absentMembers = members.filter((m) => !attendance[m.id]);
+      const presentMembers = activeMembers.filter((m) => attendance[m.id]);
+      const absentMembers = activeMembers.filter((m) => !attendance[m.id]);
 
       const doc = new Document({
         sections: [
           {
             properties: {},
             children: [
-              // Título
               new Paragraph({
                 text: "RELATÓRIO DE PRESENÇA",
                 heading: "Heading1",
@@ -122,10 +149,7 @@ const AttendanceTaker = ({
                 spacing: { after: 300 },
               }),
 
-              // Informações do Evento
               new Paragraph({
-                text: `Evento: ${event.title}`,
-                spacing: { after: 200 },
                 children: [
                   new TextRun({
                     text: `Evento: `,
@@ -135,6 +159,7 @@ const AttendanceTaker = ({
                     text: event.title,
                   }),
                 ],
+                spacing: { after: 200 },
               }),
 
               new Paragraph({
@@ -150,44 +175,6 @@ const AttendanceTaker = ({
                 spacing: { after: 200 },
               }),
 
-              ...(event.startTime
-                ? [
-                    new Paragraph({
-                      children: [
-                        new TextRun({
-                          text: "Horário: ",
-                          bold: true,
-                        }),
-                        new TextRun({
-                          text: new Date(event.startTime).toLocaleTimeString("pt-BR", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          }),
-                        }),
-                      ],
-                      spacing: { after: 200 },
-                    }),
-                  ]
-                : []),
-
-              ...(event.society
-                ? [
-                    new Paragraph({
-                      children: [
-                        new TextRun({
-                          text: "Sociedade: ",
-                          bold: true,
-                        }),
-                        new TextRun({
-                          text: event.society.name,
-                        }),
-                      ],
-                      spacing: { after: 200 },
-                    }),
-                  ]
-                : []),
-
-              // Estatísticas
               new Paragraph({
                 text: "ESTATÍSTICAS",
                 heading: "Heading2",
@@ -197,15 +184,32 @@ const AttendanceTaker = ({
               new Paragraph({
                 children: [
                   new TextRun({
-                    text: `Total de Membros: `,
+                    text: `Total de Membros Ativos: `,
                     bold: true,
                   }),
                   new TextRun({
-                    text: `${members.length}`,
+                    text: `${activeMembers.length}`,
                   }),
                 ],
                 spacing: { after: 100 },
               }),
+
+              ...(excludedMembersList.length > 0 ? [
+                new Paragraph({
+                  children: [
+                    new TextRun({
+                      text: `Membros Excluídos (não eram membros): `,
+                      bold: true,
+                      color: "999999",
+                    }),
+                    new TextRun({
+                      text: `${excludedMembersList.length}`,
+                      color: "999999",
+                    }),
+                  ],
+                  spacing: { after: 100 },
+                }),
+              ] : []),
 
               new Paragraph({
                 children: [
@@ -240,7 +244,35 @@ const AttendanceTaker = ({
               new Paragraph({
                 children: [
                   new TextRun({
-                    text: `Percentual de Presença: `,
+                    text: `Visitas: `,
+                    bold: true,
+                    color: "0000FF",
+                  }),
+                  new TextRun({
+                    text: `${visitors}`,
+                    color: "0000FF",
+                  }),
+                ],
+                spacing: { after: 100 },
+              }),
+
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: `Total de Participantes: `,
+                    bold: true,
+                  }),
+                  new TextRun({
+                    text: `${totalParticipants}`,
+                  }),
+                ],
+                spacing: { after: 100 },
+              }),
+
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: `Percentual de Presença (Membros Ativos): `,
                     bold: true,
                   }),
                   new TextRun({
@@ -250,7 +282,6 @@ const AttendanceTaker = ({
                 spacing: { after: 400 },
               }),
 
-              // Tabela de Presentes
               new Paragraph({
                 text: "MEMBROS PRESENTES",
                 heading: "Heading2",
@@ -291,7 +322,6 @@ const AttendanceTaker = ({
                 ],
               }),
 
-              // Tabela de Ausentes
               new Paragraph({
                 text: "MEMBROS AUSENTES",
                 heading: "Heading2",
@@ -331,6 +361,48 @@ const AttendanceTaker = ({
                   ),
                 ],
               }),
+
+              ...(excludedMembersList.length > 0 ? [
+                new Paragraph({
+                  text: "MEMBROS EXCLUÍDOS (NÃO ERAM MEMBROS NESTA DATA)",
+                  heading: "Heading2",
+                  spacing: { before: 400, after: 200 },
+                }),
+
+                new Table({
+                  width: {
+                    size: 100,
+                    type: WidthType.PERCENTAGE,
+                  },
+                  rows: [
+                    new TableRow({
+                      children: [
+                        new TableCell({
+                          children: [new Paragraph({ text: "Nome" })],
+                          shading: { fill: "D3D3D3" },
+                        }),
+                        new TableCell({
+                          children: [new Paragraph({ text: "Email" })],
+                          shading: { fill: "D3D3D3" },
+                        }),
+                      ],
+                    }),
+                    ...excludedMembersList.map(
+                      (member) =>
+                        new TableRow({
+                          children: [
+                            new TableCell({
+                              children: [new Paragraph(member.name)],
+                            }),
+                            new TableCell({
+                              children: [new Paragraph(member.email || "-")],
+                            }),
+                          ],
+                        })
+                    ),
+                  ],
+                }),
+              ] : []),
             ],
           },
         ],
@@ -374,7 +446,6 @@ const AttendanceTaker = ({
             )}
           </div>
 
-          {/* ✅ Botão de Exportar */}
           <button
             type="button"
             onClick={exportToWord}
@@ -405,7 +476,22 @@ const AttendanceTaker = ({
               ✗ Marcar Todos Ausentes
             </button>
 
-            {/* ✅ Estatísticas com Porcentagem */}
+            {/* Campo de Visitas */}
+            <div className="flex items-center gap-2 ml-4">
+              <label htmlFor="visitors" className="text-sm font-semibold text-gray-700">
+                👤 Visitas:
+              </label>
+              <input
+                id="visitors"
+                type="number"
+                min="0"
+                value={visitors}
+                onChange={(e) => setVisitors(Math.max(0, parseInt(e.target.value) || 0))}
+                className="w-20 px-3 py-2 border border-gray-300 rounded-md text-center font-semibold focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+
+            {/* Estatísticas */}
             <div className="ml-auto flex gap-6 items-center">
               <div className="text-right">
                 <div className="text-2xl font-bold text-blue-600">
@@ -418,46 +504,84 @@ const AttendanceTaker = ({
                 {" | "}
                 <span className="text-red-600">Ausentes: {absentCount}</span>
                 {" | "}
-                <span className="text-gray-600">Total: {members.length}</span>
+                <span className="text-blue-600">Visitas: {visitors}</span>
+                {" | "}
+                <span className="text-gray-600">Total: {totalParticipants}</span>
               </div>
             </div>
           </div>
 
+          {/* ✅ Mostrar membros excluídos se houver */}
+          {excludedMembersList.length > 0 && (
+            <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-md">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-yellow-700 font-semibold">
+                  ⚠️ {excludedMembersList.length} membro(s) excluído(s) (não eram membros nesta data)
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {excludedMembersList.map((member) => (
+                  <span
+                    key={member.id}
+                    onClick={() => toggleMemberExclusion(member.id)}
+                    className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm cursor-pointer hover:bg-yellow-200"
+                  >
+                    {member.name} ✕
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Members List */}
           <div className="border rounded-md">
             <div className="bg-gray-50 p-3 border-b">
-              <h2 className="font-semibold">Lista de Membros</h2>
+              <h2 className="font-semibold">
+                Lista de Membros ({activeMembers.length} ativos)
+              </h2>
             </div>
             <div className="max-h-[500px] overflow-y-auto">
-              {members.map((member) => (
+              {activeMembers.map((member) => (
                 <div
                   key={member.id}
-                  onClick={() => toggleAttendance(member.id)}
-                  className="flex items-center justify-between p-4 border-b hover:bg-gray-50 cursor-pointer transition-colors"
+                  className="flex items-center justify-between p-4 border-b hover:bg-gray-50"
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4 flex-1">
                     <input
                       type="checkbox"
                       checked={attendance[member.id] || false}
                       onChange={() => toggleAttendance(member.id)}
                       className="w-6 h-6 cursor-pointer accent-green-500"
                     />
-                    <div>
+                    <div className="flex-1">
                       <div className="font-medium text-base">{member.name}</div>
                       {member.email && (
                         <div className="text-xs text-gray-500">{member.email}</div>
                       )}
                     </div>
                   </div>
-                  <span
-                    className={`px-4 py-2 rounded-full text-sm font-semibold ${
-                      attendance[member.id]
-                        ? "bg-green-100 text-green-800"
-                        : "bg-red-100 text-red-800"
-                    }`}
-                  >
-                    {attendance[member.id] ? "✓ Presente" : "✗ Ausente"}
-                  </span>
+
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`px-4 py-2 rounded-full text-sm font-semibold ${
+                        attendance[member.id]
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {attendance[member.id] ? "✓ Presente" : "✗ Ausente"}
+                    </span>
+
+                    {/* ✅ Botão para excluir membro */}
+                    <button
+                      type="button"
+                      onClick={() => toggleMemberExclusion(member.id)}
+                      className="px-3 py-2 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300"
+                      title="Não era membro nesta data"
+                    >
+                      🚫
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

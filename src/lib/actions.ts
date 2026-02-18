@@ -16,6 +16,10 @@ type CurrentState = {
   error: boolean;
 };
 
+const societyMap: Record<string, number> = {
+  saf: 3, uph: 4, ump: 5, upa: 6, ucp: 7,
+}
+
 // ===================== MEMBERS =====================
 
 export const createMember = async (
@@ -41,7 +45,7 @@ export const createMember = async (
 
 export const updateMember = async (
   _: CurrentState,
-  data: MemberSchema
+  data: MemberSchema & { roles?: string[] }
 ): Promise<CurrentState> => {
   if (!data.id) return { success: false, error: true };
 
@@ -52,8 +56,65 @@ export const updateMember = async (
         name: data.name,
         email: data.email || null,
         phone: data.phone || null,
+        gender: data.gender === "M" ? "MASCULINO" : data.gender === "F" ? "FEMININO" : undefined,
       },
     });
+
+    if (data.roles !== undefined) {
+      // Atualiza sociedades
+      await prisma.memberSociety.deleteMany({ where: { memberId: data.id } })
+      const societyRoles = data.roles.filter((r) => societyMap[r])
+      if (societyRoles.length > 0) {
+        await prisma.memberSociety.createMany({
+          data: societyRoles.map((r) => ({
+            memberId: data.id!,
+            societyId: societyMap[r],
+          })),
+        })
+      }
+
+      // Atualiza conselho
+      await prisma.memberCouncil.deleteMany({ where: { memberId: data.id } })
+      if (data.roles.includes("conselho")) {
+        await prisma.memberCouncil.create({
+          data: { memberId: data.id, councilId: 1 }
+        })
+      }
+
+      // Atualiza diaconia
+      await prisma.memberDiaconate.deleteMany({ where: { memberId: data.id } })
+      if (data.roles.includes("diaconia")) {
+        await prisma.memberDiaconate.create({
+          data: { memberId: data.id, diaconateId: 1 }
+        })
+      }
+
+      // Atualiza ministério
+      await prisma.memberMinistry.deleteMany({ where: { memberId: data.id } })
+      if (data.roles.includes("ministerio")) {
+        const ministry = await prisma.ministry.findFirst()
+        if (ministry) {
+          await prisma.memberMinistry.create({
+            data: { memberId: data.id, ministryId: ministry.id }
+          })
+        }
+      }
+
+      // Atualiza roles no Clerk
+      try {
+        const { clerkClient } = await import('@clerk/nextjs/server')
+        const client = await clerkClient()
+        const clerkUsers = await client.users.getUserList({ username: [data.username ?? ""] })
+        if (clerkUsers.data.length > 0) {
+          const clerkRoles = ["member", ...data.roles]
+          await client.users.updateUserMetadata(clerkUsers.data[0].id, {
+            publicMetadata: { roles: clerkRoles }
+          })
+        }
+      } catch (e) {
+        console.error("Erro ao atualizar Clerk:", e)
+      }
+    }
 
     revalidatePath("/list/members");
     return { success: true, error: false };
@@ -281,12 +342,8 @@ export const bulkUpdateAttendance = async (
       isPresent: boolean;
     }[] = JSON.parse(data.get("attendanceData") as string);
 
-    // Apaga tudo do evento
-    await prisma.attendance.deleteMany({
-      where: { eventId },
-    });
+    await prisma.attendance.deleteMany({ where: { eventId } });
 
-    // Cria novamente
     await prisma.attendance.createMany({
       data: attendanceData.map((item) => ({
         eventId,

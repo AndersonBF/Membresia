@@ -1,10 +1,23 @@
 import prisma from "@/lib/prisma";
-import DocumentListClient from "@/components/DocumentListClient"; // Importe o arquivo novo
+import DocumentListClient from "@/components/DocumentListClient";
 
-export default async function DocumentListPage() {
-  
-  // 1. Buscar dados no Servidor (Server Side)
+export default async function DocumentListPage({
+  searchParams,
+}: {
+  searchParams?: { [key: string]: string | undefined };
+}) {
+  const societyId = searchParams?.societyId ? parseInt(searchParams.societyId) : null
+  const role = searchParams?.role
+
+  const whereClause: any = {}
+  if (societyId) whereClause.societyId = societyId
+  else if (role === "conselho") whereClause.councilId = 1
+  else if (role === "diaconia") whereClause.diaconateId = 1
+  else if (role === "ministerio") whereClause.ministryId = { not: null }
+  else if (role === "ebd") whereClause.bibleSchoolClassId = { not: null }
+
   const documents = await prisma.document.findMany({
+    where: whereClause,
     include: {
       society: true,
       ministry: true,
@@ -23,10 +36,9 @@ export default async function DocumentListPage() {
 
   const relatedData = { societies, ministries, classes, councils, diaconates };
 
-  // 2. Renderizar o Componente Cliente passando os dados
   return (
     <div className="bg-white p-4 rounded-md flex-1 m-4 mt-0">
-       <DocumentListClient documents={documents} relatedData={relatedData} />
+      <DocumentListClient documents={documents} relatedData={relatedData} />
     </div>
   );
 }

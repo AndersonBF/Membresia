@@ -5,10 +5,16 @@ type RouteAccessMap = {
 };
 
 export const routeAccessMap: RouteAccessMap = {
-  "/admin(.*)": ["admin"],
-  "/teacher(.*)": ["teacher"],
-  "/student(.*)": ["student"],
-  "/parent(.*)": ["parent"],
-  "/list/members": ["admin", "teacher"],
-  "/list/position": ["admin", "teacher"],
+  "/admin(.*)":      ["admin", "superadmin"],
+  "/ump(.*)":        ["ump", "admin", "superadmin"],
+  "/upa(.*)":        ["upa", "admin", "superadmin"],
+  "/uph(.*)":        ["uph", "admin", "superadmin"],
+  "/saf(.*)":        ["saf", "admin", "superadmin"],
+  "/ucp(.*)":        ["ucp", "admin", "superadmin"],
+  "/diaconia(.*)":   ["diaconia", "admin", "superadmin"],
+  "/conselho(.*)":   ["conselho", "admin", "superadmin"],
+  "/ministerio(.*)": ["ministerio", "admin", "superadmin"],
+  "/ebd(.*)":        ["ebd", "admin", "superadmin"],
+  "/list/members":   ["admin", "superadmin"],
+  "/list/position":  ["admin", "superadmin"],
 };

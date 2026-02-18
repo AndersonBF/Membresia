@@ -15,18 +15,18 @@ const LoginPage = () => {
   const router = useRouter();
 
       useEffect(() => {
-    if (isSignedIn && isLoaded && user) {
-      const role = user?.publicMetadata.role as string | undefined;
-      
-      if (role) {
-        router.push(`/${role}`);
-      }
-    }
-  }, [user, router, isLoaded, isSignedIn]);
+  if (isSignedIn && isLoaded && user) {
+    router.push("/admin")
+  }
+}, [user, router, isLoaded, isSignedIn])
       
   return (
     <div className='h-screen flex items-center justify-center bg-green-800'>
         <SignIn.Root>
+          <p className='text-xs text-center text-gray-600'>
+  Não tem conta?{' '}
+  <a href="/sign-up" className='text-green-700 font-semibold'>Cadastre-se</a>
+</p>
           <SignIn.Step 
           name='start' className='bg-green-200 p-12 rounded-md shadow-2xl flex flex-col gap-2'>
             <h1 className='text-3xl font-bold flex items-center '>

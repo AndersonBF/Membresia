@@ -11,7 +11,8 @@ export const memberSchema = z.object({
 
   username: z
     .string()
-    .min(3, { message: "Usuário deve ter no mínimo 3 caracteres!" }),
+    .min(3, { message: "Usuário deve ter no mínimo 3 caracteres!" })
+    .optional(),
 
   password: z
     .string()

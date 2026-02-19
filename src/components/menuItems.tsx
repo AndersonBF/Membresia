@@ -1,12 +1,13 @@
 import {
   Home, Users, Church, Shield, HandHelping,
-  Layers, CheckSquare, Calendar,
-  Megaphone, DollarSign, FileText, User, Settings, LogOut,
-  Key,
+  Layers, Calendar, Megaphone, DollarSign,
+  FileText, User, Settings, LogOut, Key,
+  Heart, Info, Image, Youtube, CalendarDays,
 } from "lucide-react";
 
+const adminRoles = ["admin", "superadmin"];
 const allRoles = ["admin", "superadmin", "ump", "upa", "uph", "saf", "ucp", "diaconia", "conselho", "ministerio", "ebd", "member"];
-const sociedades = ["ump", "upa", "uph", "saf", "ucp"];
+const staffRoles = ["admin", "superadmin", "ump", "upa", "uph", "saf", "ucp", "diaconia", "conselho", "ministerio", "ebd"];
 
 export const menuItems = [
   {
@@ -14,8 +15,22 @@ export const menuItems = [
     items: [
       {
         icon: Home,
-        label: "Home",
-        href: "/admin",
+        label: "Início",
+        href: "/member",
+        visible: allRoles,
+        hiddenForSociedades: false,
+      },
+      {
+        icon: Info,
+        label: "Saiba Mais",
+        href: "/about",
+        visible: allRoles,
+        hiddenForSociedades: false,
+      },
+      {
+        icon: CalendarDays,
+        label: "Agenda Semanal",
+        href: "/agenda",
         visible: allRoles,
         hiddenForSociedades: false,
       },
@@ -23,47 +38,40 @@ export const menuItems = [
         icon: Users,
         label: "Membros",
         href: "/list/members",
-        visible: ["admin", "superadmin"],
+        visible: adminRoles,
         hiddenForSociedades: false,
       },
       {
         icon: Church,
         label: "Sociedades Internas",
         href: "/list/internalsociety",
-        visible: ["admin", "superadmin"],
+        visible: allRoles,
         hiddenForSociedades: true,
       },
       {
         icon: Shield,
         label: "Conselho",
         href: "/list/council",
-        visible: ["admin", "superadmin", "conselho"],
+        visible: allRoles,
         hiddenForSociedades: true,
       },
       {
         icon: HandHelping,
         label: "Diaconia",
         href: "/list/diaconate",
-        visible: ["admin", "superadmin", "diaconia"],
+        visible: allRoles,
         hiddenForSociedades: true,
       },
       {
         icon: Layers,
         label: "Ministérios",
         href: "/list/ministry",
-        visible: ["admin", "superadmin", "ministerio"],
+        visible: allRoles,
         hiddenForSociedades: true,
       },
       {
-        icon: CheckSquare,
-        label: "Presença",
-        href: "/list/attendance",
-        visible: allRoles,
-        hiddenForSociedades: false,
-      },
-      {
         icon: Calendar,
-        label: "Eventos",
+        label: "Eventos da Igreja",
         href: "/list/events",
         visible: allRoles,
         hiddenForSociedades: false,
@@ -76,24 +84,45 @@ export const menuItems = [
         hiddenForSociedades: false,
       },
       {
+        icon: Youtube,
+        label: "Sermões",
+        href: "/sermons",
+        visible: allRoles,
+        hiddenForSociedades: false,
+      },
+      {
+        icon: Image,
+        label: "Galeria",
+        href: "/gallery",
+        visible: allRoles,
+        hiddenForSociedades: false,
+      },
+      {
+        icon: Heart,
+        label: "Dízimos e Ofertas",
+        href: "/tithes",
+        visible: allRoles,
+        hiddenForSociedades: false,
+      },
+      {
         icon: DollarSign,
         label: "Financeiro",
         href: "/list/finance",
-        visible: ["admin", "superadmin", "conselho"],
+        visible: adminRoles,
         hiddenForSociedades: true,
       },
       {
         icon: FileText,
         label: "Documentos",
         href: "/list/documents",
-        visible: allRoles,
+        visible: staffRoles,
         hiddenForSociedades: false,
       },
       {
         icon: Key,
         label: "Credenciais",
         href: "/admin/credenciais",
-        visible: ["admin", "superadmin"],
+        visible: adminRoles,
         hiddenForSociedades: true,
       },
     ],
@@ -112,7 +141,7 @@ export const menuItems = [
         icon: Settings,
         label: "Configurações",
         href: "/settings",
-        visible: ["admin", "superadmin"],
+        visible: adminRoles,
         hiddenForSociedades: false,
       },
       {

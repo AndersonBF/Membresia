@@ -60,19 +60,26 @@ const MenuContent = () => {
   const currentRoleConfig = roleConfig[currentRole];
 
   const resolveHref = (href: string) => {
-    if (!isRolePage) return href
+  if (!isRolePage) return href
 
-    if (href === "/admin") return `/${currentRole}`
-    if (href === "/list/members") return `/${currentRole}/membros`
+  // Início sempre vai para /member
+  if (href === "/member") return "/member"
 
-    if (roleRouteMap[href] !== undefined) {
-      const societyId = societyMap[currentRole]
-      if (societyId) return `${roleRouteMap[href]}?societyId=${societyId}&roleContext=${currentRole}`
-      return `${roleRouteMap[href]}?role=${currentRole}&roleContext=${currentRole}`
-    }
+  // Home do grupo
+  if (href === "/admin") return `/${currentRole}`
 
-    return href
+  // Membros do grupo
+  if (href === "/list/members") return `/${currentRole}/membros`
+
+  // Outros com roleContext
+  if (roleRouteMap[href] !== undefined) {
+    const societyId = societyMap[currentRole]
+    if (societyId) return `${roleRouteMap[href]}?societyId=${societyId}&roleContext=${currentRole}`
+    return `${roleRouteMap[href]}?role=${currentRole}&roleContext=${currentRole}`
   }
+
+  return href
+}
 
   return (
     <div className="mt-4 text-sm">

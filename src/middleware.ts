@@ -20,7 +20,16 @@ export default clerkMiddleware(async (auth, req) => {
 
   for (const { matcher, allowedRoles } of matchers) {
     if (matcher(req) && !allowedRoles.some((r) => roles.includes(r))) {
-      return NextResponse.redirect(new URL(`/dashboard`, req.url));
+      // Redireciona para a página correta baseado no role
+      if (roles.includes("admin") || roles.includes("superadmin")) {
+        return NextResponse.redirect(new URL("/admin", req.url));
+      }
+      const groupRoles = ["ump", "upa", "uph", "saf", "ucp", "diaconia", "conselho", "ministerio", "ebd"]
+      const firstGroup = roles.find((r) => groupRoles.includes(r))
+      if (firstGroup) {
+        return NextResponse.redirect(new URL(`/${firstGroup}`, req.url));
+      }
+      return NextResponse.redirect(new URL("/member", req.url));
     }
   }
 });
@@ -28,7 +37,7 @@ export default clerkMiddleware(async (auth, req) => {
 export const config = {
   matcher: [
     "/",
-     "/dashboard(.*)",  // ← adiciona isso
+    "/member(.*)",
     "/admin(.*)",
     "/ump(.*)",
     "/upa(.*)",
@@ -40,6 +49,7 @@ export const config = {
     "/ministerio(.*)",
     "/ebd(.*)",
     "/list(.*)",
+      "/agenda(.*)",
     "/(api|trpc)(.*)",
   ],
 };

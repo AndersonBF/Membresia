@@ -5,12 +5,17 @@ import Announcements from "@/components/Announcements"
 import EventCalendarContainer from "@/components/EventCalendarContainer"
 import CountChartContainer from "@/components/CountChartContainer"
 import { currentUser } from "@clerk/nextjs/server"
+import { cache } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { 
   Users, Shield, HandHelping, Music, Baby, UserCircle, GraduationCap
 } from "lucide-react"
 import Aniversariantes from "@/components/Aniversariantes"
+
+const getCachedUser = cache(async () => {
+  return await currentUser()
+})
 
 const UMPIcon = ({ size }: { size?: number }) => (
   <Image src="/UMP.png" alt="UMP" width={(size ?? 32) + 16} height={(size ?? 32) + 16} className="object-contain" />
@@ -40,7 +45,7 @@ const AdminPage = async ({
 }: {
   searchParams: { [keys: string]: string | undefined };
 }) => {
-  const user = await currentUser()
+  const user = await getCachedUser()
   const roles = (user?.publicMetadata?.roles as string[]) ?? []
 
   const visibleRoles = roles.includes("superadmin") 
@@ -62,33 +67,33 @@ const AdminPage = async ({
                 const Icon = config.icon
                 return (
                   <Link
-  key={role}
-  href={`/${role}`}
-  className="group relative w-full h-28 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 ease-out"
->
-  <Image
-    src={config.image}
-    alt={config.label}
-    fill
-    className="object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
-  />
+                    key={role}
+                    href={`/${role}`}
+                    className="group relative w-full h-28 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 ease-out"
+                  >
+                    <Image
+                      src={config.image}
+                      alt={config.label}
+                      fill
+                      className="object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+                    />
 
-  {/* Overlay — some no hover revelando a imagem */}
-  <div className={`absolute inset-0 ${config.color} opacity-100 group-hover:opacity-30 transition-opacity duration-500`} />
+                    {/* Overlay — some no hover revelando a imagem */}
+                    <div className={`absolute inset-0 ${config.color} opacity-100 group-hover:opacity-30 transition-opacity duration-500`} />
 
-  <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent" />
 
-  <div className="absolute inset-0 flex items-center px-8 gap-6">
-    <Icon size={40} className="text-white shrink-0 drop-shadow-lg" />
-    <div className="w-px h-12 bg-white/40" />
-    <div>
-      <span className="text-white font-bold text-2xl drop-shadow-lg block">{config.label}</span>
-      <span className="text-white/70 text-sm group-hover:text-white transition-colors">
-        Acessar grupo →
-      </span>
-    </div>
-  </div>
-</Link>
+                    <div className="absolute inset-0 flex items-center px-8 gap-6">
+                      <Icon size={40} className="text-white shrink-0 drop-shadow-lg" />
+                      <div className="w-px h-12 bg-white/40" />
+                      <div>
+                        <span className="text-white font-bold text-2xl drop-shadow-lg block">{config.label}</span>
+                        <span className="text-white/70 text-sm group-hover:text-white transition-colors">
+                          Acessar grupo →
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
                 )
               })}
             </div>
@@ -120,7 +125,7 @@ const AdminPage = async ({
       <div className="w-full lg:w-1/3 flex flex-col gap-8">
         <EventCalendarContainer searchParams={searchParams}/>
         <Announcements/>
-         <Aniversariantes/>
+        <Aniversariantes/>
       </div>
     </div>
   )

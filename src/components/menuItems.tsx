@@ -3,6 +3,7 @@ import {
   Layers, Calendar, Megaphone, DollarSign,
   FileText, User, Settings, LogOut, Key,
   Heart, Info, Image, Youtube, CalendarDays,
+  ClipboardList,
 } from "lucide-react";
 
 const adminRoles = ["admin", "superadmin"];
@@ -19,20 +20,23 @@ export const menuItems = [
         href: "/member",
         visible: allRoles,
         hiddenForSociedades: false,
+        showOnlyForSociedades: false,
       },
       {
         icon: Info,
         label: "Saiba Mais",
         href: "/about",
         visible: allRoles,
-        hiddenForSociedades: false,
+        hiddenForSociedades: true,
+        showOnlyForSociedades: false,
       },
       {
         icon: CalendarDays,
         label: "Agenda Semanal",
         href: "/agenda",
         visible: allRoles,
-        hiddenForSociedades: false,
+        hiddenForSociedades: true,
+        showOnlyForSociedades: false,
       },
       {
         icon: Users,
@@ -40,6 +44,7 @@ export const menuItems = [
         href: "/list/members",
         visible: adminRoles,
         hiddenForSociedades: false,
+        showOnlyForSociedades: false,
       },
       {
         icon: Church,
@@ -47,6 +52,7 @@ export const menuItems = [
         href: "/list/internalsociety",
         visible: allRoles,
         hiddenForSociedades: true,
+        showOnlyForSociedades: false,
       },
       {
         icon: Shield,
@@ -54,6 +60,7 @@ export const menuItems = [
         href: "/list/council",
         visible: allRoles,
         hiddenForSociedades: true,
+        showOnlyForSociedades: false,
       },
       {
         icon: HandHelping,
@@ -61,6 +68,7 @@ export const menuItems = [
         href: "/list/diaconate",
         visible: allRoles,
         hiddenForSociedades: true,
+        showOnlyForSociedades: false,
       },
       {
         icon: Layers,
@@ -68,13 +76,31 @@ export const menuItems = [
         href: "/list/ministry",
         visible: allRoles,
         hiddenForSociedades: true,
+        showOnlyForSociedades: false,
       },
       {
         icon: Calendar,
         label: "Eventos da Igreja",
         href: "/list/events",
         visible: allRoles,
+        hiddenForSociedades: true,
+        showOnlyForSociedades: false,
+      },
+      {
+        icon: Calendar,
+        label: "Eventos",
+        href: "/list/events",
+        visible: staffRoles,
         hiddenForSociedades: false,
+        showOnlyForSociedades: true,
+      },
+      {
+        icon: ClipboardList,
+        label: "Presença",
+        href: "/list/attendance",
+        visible: staffRoles,
+        hiddenForSociedades: false,
+        showOnlyForSociedades: true,
       },
       {
         icon: Megaphone,
@@ -82,27 +108,31 @@ export const menuItems = [
         href: "/list/notice",
         visible: allRoles,
         hiddenForSociedades: false,
+        showOnlyForSociedades: false,
       },
       {
         icon: Youtube,
         label: "Sermões",
         href: "/sermons",
         visible: allRoles,
-        hiddenForSociedades: false,
+        hiddenForSociedades: true,
+        showOnlyForSociedades: false,
       },
       {
         icon: Image,
         label: "Galeria",
         href: "/gallery",
         visible: allRoles,
-        hiddenForSociedades: false,
+        hiddenForSociedades: true,
+        showOnlyForSociedades: false,
       },
       {
         icon: Heart,
         label: "Dízimos e Ofertas",
         href: "/tithes",
         visible: allRoles,
-        hiddenForSociedades: false,
+        hiddenForSociedades: true,
+        showOnlyForSociedades: false,
       },
       {
         icon: DollarSign,
@@ -110,6 +140,7 @@ export const menuItems = [
         href: "/list/finance",
         visible: adminRoles,
         hiddenForSociedades: true,
+        showOnlyForSociedades: false,
       },
       {
         icon: FileText,
@@ -117,6 +148,7 @@ export const menuItems = [
         href: "/list/documents",
         visible: staffRoles,
         hiddenForSociedades: false,
+        showOnlyForSociedades: false,
       },
       {
         icon: Key,
@@ -124,6 +156,7 @@ export const menuItems = [
         href: "/admin/credenciais",
         visible: adminRoles,
         hiddenForSociedades: true,
+        showOnlyForSociedades: false,
       },
     ],
   },
@@ -136,6 +169,7 @@ export const menuItems = [
         href: "/profile",
         visible: allRoles,
         hiddenForSociedades: false,
+        showOnlyForSociedades: false,
       },
       {
         icon: Settings,
@@ -143,6 +177,7 @@ export const menuItems = [
         href: "/settings",
         visible: adminRoles,
         hiddenForSociedades: false,
+        showOnlyForSociedades: false,
       },
       {
         icon: LogOut,
@@ -150,6 +185,7 @@ export const menuItems = [
         href: "/logout",
         visible: allRoles,
         hiddenForSociedades: false,
+        showOnlyForSociedades: false,
       },
     ],
   },

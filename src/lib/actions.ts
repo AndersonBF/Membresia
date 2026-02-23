@@ -358,4 +358,109 @@ export const bulkUpdateAttendance = async (
     console.error("Erro no bulkUpdateAttendance:", err);
     return { success: false, error: true };
   }
+
+  
+};
+
+// ===================== FINANCE =====================
+
+// ===================== FINANCE =====================
+
+export const createFinance = async (
+  _: CurrentState,
+  data: FormData
+): Promise<CurrentState> => {
+  try {
+    const description = data.get("description") as string;
+    const type = data.get("type") as "ENTRADA" | "SAIDA";
+    const value = parseFloat(data.get("value") as string);
+    const date = new Date(data.get("date") as string);
+    const societyId = data.get("societyId") ? Number(data.get("societyId")) : null;
+    const councilId = data.get("councilId") ? Number(data.get("councilId")) : null;
+    const roleContext = data.get("roleContext") as string | null;
+
+    await prisma.finance.create({
+      data: {
+        description,
+        type,
+        value,
+        date,
+        month: date.getMonth() + 1,
+        year: date.getFullYear(),
+        societyId,
+        councilId,
+      },
+    });
+
+    const path = roleContext
+      ? `/list/finance?societyId=${societyId}&roleContext=${roleContext}`
+      : "/list/finance";
+
+    revalidatePath(path);
+    revalidatePath("/list/finance");
+    return { success: true, error: false };
+  } catch (err) {
+    console.error(err);
+    return { success: false, error: true };
+  }
+};
+
+export const deleteFinance = async (
+  _: CurrentState,
+  data: FormData
+): Promise<CurrentState> => {
+  try {
+    const id = Number(data.get("id"));
+    const roleContext = data.get("roleContext") as string | null;
+    const societyId = data.get("societyId") as string | null;
+
+    await prisma.finance.delete({ where: { id } });
+
+    revalidatePath("/list/finance");
+    if (roleContext && societyId) {
+      revalidatePath(`/list/finance?societyId=${societyId}&roleContext=${roleContext}`);
+    }
+
+    return { success: true, error: false };
+  } catch (err) {
+    console.error(err);
+    return { success: false, error: true };
+  }
+};
+
+export const updateFinance = async (
+  _: CurrentState,
+  data: FormData
+): Promise<CurrentState> => {
+  try {
+    const id = Number(data.get("id"));
+    const description = data.get("description") as string;
+    const type = data.get("type") as "ENTRADA" | "SAIDA";
+    const value = parseFloat(data.get("value") as string);
+    const date = new Date(data.get("date") as string);
+    const roleContext = data.get("roleContext") as string | null;
+    const societyId = data.get("societyId") ? Number(data.get("societyId")) : null;
+
+    await prisma.finance.update({
+      where: { id },
+      data: {
+        description,
+        type,
+        value,
+        date,
+        month: date.getMonth() + 1,
+        year: date.getFullYear(),
+      },
+    });
+
+    revalidatePath("/list/finance");
+    if (roleContext && societyId) {
+      revalidatePath(`/list/finance?societyId=${societyId}&roleContext=${roleContext}`);
+    }
+
+    return { success: true, error: false };
+  } catch (err) {
+    console.error(err);
+    return { success: false, error: true };
+  }
 };

@@ -41,6 +41,7 @@ const roleRouteMap: Record<string, string> = {
   "/list/attendance": "/list/attendance",
   "/list/events":     "/list/events",
   "/list/documents":  "/list/documents",
+    "/list/finance":    "/list/finance",  // ← adicione essa linha
 }
 
 const MenuContent = () => {

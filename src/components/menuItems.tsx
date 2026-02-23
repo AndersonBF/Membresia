@@ -158,6 +158,14 @@ export const menuItems = [
         hiddenForSociedades: true,
         showOnlyForSociedades: false,
       },
+      {
+        icon: DollarSign,
+        label: "Financeiro",
+        href: "/list/finance",
+        visible: staffRoles,
+        hiddenForSociedades: false,
+        showOnlyForSociedades: true,
+      },
     ],
   },
   {

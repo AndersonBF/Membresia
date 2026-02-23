@@ -218,20 +218,25 @@ model Notice {
 // ===============================================
 // FINANCEIRO (Finance)
 // ===============================================
+enum FinanceType {
+  ENTRADA
+  SAIDA
+}
+
 model Finance {
-  id    Int   @id @default(autoincrement())
-  month Int
-  year  Int
-  value Float
+  id          Int         @id @default(autoincrement())
+  description String
+  type        FinanceType
+  value       Float
+  date        DateTime    @default(now())
+  month       Int
+  year        Int
 
   councilId Int?
   council   Council? @relation(fields: [councilId], references: [id], onDelete: SetNull)
 
   societyId Int?
   society   InternalSociety? @relation(fields: [societyId], references: [id], onDelete: SetNull)
-
-  @@unique([month, year, councilId])
-  @@unique([month, year, societyId])
 }
 
 // ===============================================

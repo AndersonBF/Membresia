@@ -5,33 +5,61 @@ import EventCalendarContainer from "@/components/EventCalendarContainer"
 import prisma from "@/lib/prisma"
 import Image from "next/image"
 import Link from "next/link"
-import { Users, Calendar, FileText, ArrowLeft } from "lucide-react"
+import { Users, Calendar, FileText, ArrowLeft, Phone, ChevronRight, Clock } from "lucide-react"
 
-const roleConfig: Record<string, { label: string; color: string; bg: string }> = {
-  ump:        { label: "UMP",        color: "text-blue-700",   bg: "bg-blue-100" },
-  upa:        { label: "UPA",        color: "text-purple-700", bg: "bg-purple-100" },
-  uph:        { label: "UPH",        color: "text-orange-700", bg: "bg-orange-100" },
-  saf:        { label: "SAF",        color: "text-pink-700",   bg: "bg-pink-100" },
-  ucp:        { label: "UCP",        color: "text-yellow-700", bg: "bg-yellow-100" },
-  diaconia:   { label: "Diaconia",   color: "text-teal-700",   bg: "bg-teal-100" },
-  conselho:   { label: "Conselho",   color: "text-indigo-700", bg: "bg-indigo-100" },
-  ministerio: { label: "Ministério", color: "text-green-700",  bg: "bg-green-100" },
-  ebd:        { label: "EBD",        color: "text-amber-700",  bg: "bg-amber-100" },
+const roleConfig: Record<string, {
+  label: string
+  tagline: string
+  accentColor: string
+  accentLight: string
+  accentDark: string
+}> = {
+  ump:        { label: "UMP",        tagline: "União de Mocidade Presbiteriana",     accentColor: "#2563eb", accentLight: "#eff6ff", accentDark: "#1e3a8a" },
+  upa:        { label: "UPA",        tagline: "União Presbiteriana de Adolescentes", accentColor: "#d97706", accentLight: "#fffbeb", accentDark: "#78350f" },
+  uph:        { label: "UPH",        tagline: "União Presbiteriana de Homens",       accentColor: "#ea580c", accentLight: "#fff7ed", accentDark: "#7c2d12" },
+  saf:        { label: "SAF",        tagline: "Sociedade Auxiliadora Feminina",      accentColor: "#db2777", accentLight: "#fdf2f8", accentDark: "#831843" },
+  ucp:        { label: "UCP",        tagline: "União das Crianças Presbiterianas",   accentColor: "#f59e0b", accentLight: "#fefce8", accentDark: "#78350f" },
+  diaconia:   { label: "Diaconia",   tagline: "Ministério de Serviço e Cuidado",    accentColor: "#0d9488", accentLight: "#f0fdfa", accentDark: "#134e4a" },
+  conselho:   { label: "Conselho",   tagline: "Conselho da Igreja",                 accentColor: "#4f46e5", accentLight: "#eef2ff", accentDark: "#1e1b4b" },
+  ministerio: { label: "Ministério", tagline: "Ministério de Louvor e Adoração",    accentColor: "#16a34a", accentLight: "#f0fdf4", accentDark: "#14532d" },
+  ebd:        { label: "EBD",        tagline: "Escola Bíblica Dominical",           accentColor: "#b45309", accentLight: "#fffbeb", accentDark: "#451a03" },
 }
 
 const societyMap: Record<string, number> = {
   saf: 3, uph: 4, ump: 5, upa: 6, ucp: 7,
 }
 
+const directoryCargos = [
+  "Presidente", "Vice-Presidente",
+  "1º Secretário", "2º Secretário",
+  "Tesoureiro", "1º Tesoureiro", "2º Tesoureiro",
+]
+
 async function getDataForRole(role: string) {
+  const societyId = societyMap[role]
   let memberWhere: any = {}
   let eventWhere: any = {}
   let documentWhere: any = {}
+  let directoryMembers: any[] = []
 
-  if (societyMap[role]) {
-    memberWhere = { societies: { some: { societyId: societyMap[role] } } }
-    eventWhere = { societyId: societyMap[role] }
-    documentWhere = { societyId: societyMap[role] }
+  if (societyId) {
+    memberWhere = { societies: { some: { societyId } } }
+    eventWhere = { societyId }
+    documentWhere = { societyId }
+
+    const societyWithCargos = await prisma.memberSociety.findMany({
+      where: { societyId, cargo: { not: null } },
+      include: {
+        member: {
+          select: { id: true, name: true, phone: true, gender: true, isActive: true },
+        },
+      },
+    })
+
+    directoryMembers = societyWithCargos
+      .filter((ms) => ms.cargo && directoryCargos.includes(ms.cargo))
+      .sort((a, b) => directoryCargos.indexOf(a.cargo!) - directoryCargos.indexOf(b.cargo!))
+
   } else if (role === "conselho") {
     memberWhere = { council: { isNot: null } }
     documentWhere = { councilId: 1 }
@@ -46,18 +74,19 @@ async function getDataForRole(role: string) {
     documentWhere = { bibleSchoolClassId: { not: null } }
   }
 
-  const [totalMembers, totalEvents, totalDocuments, recentMembers] = await Promise.all([
+  const [totalMembers, totalEvents, totalDocuments, recentMembers, upcomingEvents] = await Promise.all([
     prisma.member.count({ where: memberWhere }),
     prisma.event.count({ where: eventWhere }),
     prisma.document.count({ where: documentWhere }),
-    prisma.member.findMany({
-      where: memberWhere,
-      orderBy: { name: "asc" },
-      take: 5,
+    prisma.member.findMany({ where: memberWhere, orderBy: { name: "asc" }, take: 8 }),
+    prisma.event.findMany({
+      where: { ...eventWhere, date: { gte: new Date() } },
+      orderBy: { date: "asc" },
+      take: 3,
     }),
   ])
 
-  return { totalMembers, totalEvents, totalDocuments, recentMembers }
+  return { totalMembers, totalEvents, totalDocuments, recentMembers, directoryMembers, upcomingEvents }
 }
 
 const RolePage = async ({
@@ -78,107 +107,233 @@ const RolePage = async ({
     notFound()
   }
 
-  const { totalMembers, totalEvents, totalDocuments, recentMembers } = await getDataForRole(role)
+  const isAdmin = roles.includes("admin") || isSuperAdmin
+  const backHref = isAdmin ? "/admin" : roles.includes("member") ? "/member" : "/admin"
 
-  const cards = [
-    { label: "Membros", value: totalMembers, icon: Users, color: "bg-blue-50 text-blue-700" },
-    { label: "Eventos", value: totalEvents, icon: Calendar, color: "bg-green-50 text-green-700" },
-    { label: "Documentos", value: totalDocuments, icon: FileText, color: "bg-amber-50 text-amber-700" },
-  ]
+  const { totalMembers, totalEvents, totalDocuments, recentMembers, directoryMembers, upcomingEvents } =
+    await getDataForRole(role)
+
+  const ac = config.accentColor
+  const al = config.accentLight
+  const ad = config.accentDark
 
   return (
-    <div className="p-4 flex gap-4 flex-col md:flex-row">
-      <div className="w-full lg:w-2/3 flex flex-col gap-6">
+    <>
+      <style dangerouslySetInnerHTML={{ __html: `
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
+        .rp { font-family: 'DM Sans', sans-serif; }
+        @keyframes rp-in { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+        .rp-in { animation: rp-in 0.4s cubic-bezier(.22,1,.36,1) both; }
+        .d1{animation-delay:.03s}.d2{animation-delay:.08s}.d3{animation-delay:.13s}.d4{animation-delay:.18s}.d5{animation-delay:.23s}
+        .dir-card { transition: box-shadow .18s, transform .18s; }
+        .dir-card:hover { box-shadow: 0 6px 24px rgba(0,0,0,.1); transform: translateY(-2px); }
+        .dir-phone { opacity:0; transition: opacity .15s; }
+        .dir-card:hover .dir-phone { opacity:1; }
+        .ql-btn { transition: box-shadow .15s, transform .15s; }
+        .ql-btn:hover { box-shadow: 0 4px 14px rgba(0,0,0,.1); transform: translateY(-1px); }
+        .ev-row:hover { background: rgba(0,0,0,0.03); }
+        .m-row:hover  { background: rgba(0,0,0,0.03); }
+        .dark .ev-row:hover { background: rgba(255,255,255,0.04); }
+        .dark .m-row:hover  { background: rgba(255,255,255,0.04); }
+      `}} />
 
-        {/* BOTÃO VOLTAR + HEADER */}
-        <div className="flex items-center gap-3">
-          <Link
-            href="/admin"
-            className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition"
-          >
-            <ArrowLeft size={16} />
-            <span>Voltar para grupos</span>
-          </Link>
-        </div>
+      <div className="rp bg-gray-50 dark:bg-gray-950 min-h-screen transition-colors duration-200">
 
-        <div className={`${config.bg} ${config.color} rounded-xl px-6 py-5 shadow-sm`}>
-          <h1 className="text-2xl font-bold">{config.label}</h1>
-        </div>
-
-        {/* CARDS DE RESUMO */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {cards.map((card) => {
-            const Icon = card.icon
-            return (
-              <div key={card.label} className={`${card.color} rounded-xl p-5 flex items-center gap-4 shadow-sm`}>
-                <Icon size={28} className="shrink-0" />
-                <div>
-                  <p className="text-2xl font-bold">{card.value}</p>
-                  <p className="text-sm">{card.label}</p>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
-        {/* MEMBROS RECENTES */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="font-semibold text-gray-700">Membros recentes</h2>
-            <Link
-              href={`/${role}/membros`}
-              className="text-sm text-blue-600 hover:underline"
-            >
-              Ver todos
+        {/* HERO */}
+        <div className="rp-in d1" style={{ background: ad }}>
+          <div className="px-6 md:px-10 pt-6 pb-10">
+            <Link href={backHref}
+              className="inline-flex items-center gap-1.5 text-white/40 hover:text-white/70 text-xs transition mb-8">
+              <ArrowLeft size={13} /> Voltar
             </Link>
-          </div>
-          {recentMembers.length === 0 ? (
-            <p className="p-6 text-gray-500 text-sm">Nenhum membro neste grupo.</p>
-          ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-gray-500 text-left">
-                <tr>
-                  <th className="px-4 py-3">Nome</th>
-                  <th className="px-4 py-3 hidden md:table-cell">Username</th>
-                  <th className="px-4 py-3 hidden md:table-cell">Gênero</th>
-                  <th className="px-4 py-3 hidden md:table-cell">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentMembers.map((m) => (
-                  <tr key={m.id} className="border-t border-gray-100 hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <Image src="/profile.png" alt="" width={32} height={32} className="rounded-full" />
-                        <span className="font-medium">{m.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 hidden md:table-cell text-gray-500">{m.username ?? "-"}</td>
-                    <td className="px-4 py-3 hidden md:table-cell">
-                      {m.gender === "MASCULINO" ? (
-                        <span className="px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-800">M</span>
-                      ) : m.gender === "FEMININO" ? (
-                        <span className="px-2 py-0.5 rounded-full text-xs bg-pink-100 text-pink-800">F</span>
-                      ) : "-"}
-                    </td>
-                    <td className="px-4 py-3 hidden md:table-cell">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${m.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
-                        {m.isActive ? "Ativo" : "Inativo"}
-                      </span>
-                    </td>
-                  </tr>
+
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+              <div>
+                <h1 className="text-white font-bold leading-[0.9]" style={{ fontSize: "clamp(3.5rem,9vw,6rem)" }}>
+                  {config.label}
+                </h1>
+                <p className="text-white/40 text-sm mt-3 font-light">{config.tagline}</p>
+              </div>
+
+              <div className="flex divide-x divide-white/10 overflow-hidden rounded-xl" style={{ background: "rgba(255,255,255,0.06)" }}>
+                {[
+                  { n: totalMembers, l: "Membros" },
+                  { n: totalEvents, l: "Eventos" },
+                  { n: totalDocuments, l: "Docs" },
+                ].map((s, i) => (
+                  <div key={i} className="px-6 py-4 text-center">
+                    <p className="text-white text-2xl font-semibold leading-none">{s.n}</p>
+                    <p className="text-white/35 text-[10px] mt-1.5 tracking-wide">{s.l}</p>
+                  </div>
                 ))}
-              </tbody>
-            </table>
-          )}
+              </div>
+            </div>
+          </div>
+          <div style={{ height: 2, background: `linear-gradient(90deg, ${ac}, ${ac}55, transparent)` }} />
+        </div>
+
+        {/* BODY */}
+        <div className="p-4 md:p-6 flex gap-6 flex-col lg:flex-row">
+          <div className="w-full lg:w-2/3 flex flex-col gap-8">
+
+            {/* QUICK LINKS */}
+            <div className="grid grid-cols-3 gap-3 rp-in d2">
+              {[
+                { label: "Membros",    icon: Users,    href: `/${role}/membros` },
+                { label: "Eventos",    icon: Calendar, href: `/list/events?roleContext=${role}` },
+                { label: "Documentos", icon: FileText,  href: `/list/documents?roleContext=${role}` },
+              ].map((item) => {
+                const Icon = item.icon
+                return (
+                  <Link key={item.label} href={item.href}
+                    className="ql-btn bg-white dark:bg-gray-900 rounded-xl py-4 flex flex-col items-center gap-2 border border-gray-100 dark:border-gray-800 shadow-sm">
+                    <Icon size={18} style={{ color: ac }} />
+                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{item.label}</span>
+                  </Link>
+                )
+              })}
+            </div>
+
+            {/* DIRETORIA */}
+            {directoryMembers.length > 0 && (
+              <section className="rp-in d3">
+                <div className="flex items-center gap-2.5 mb-5">
+                  <span className="w-0.5 h-5 rounded-full block" style={{ background: ac }} />
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Diretoria</h2>
+                  <span className="text-xs text-gray-400 dark:text-gray-500 ml-1">— gestão atual</span>
+                </div>
+
+                <div className="grid grid-cols-5 gap-4">
+                  {directoryMembers.map((ms) => (
+                    <div key={ms.id} className="dir-card flex flex-col items-center text-center gap-2">
+                      <div className="rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800" style={{ width: 56, height: 56 }}>
+                        <Image src="/profile.png" alt={ms.member.name} width={56} height={56} className="object-cover w-full h-full" />
+                      </div>
+                      <div className="w-full">
+                        <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: ac }}>
+                          {ms.cargo}
+                        </p>
+                        <p className="font-semibold text-gray-800 dark:text-gray-200 text-xs leading-snug mt-0.5 break-words">
+                          {ms.member.name}
+                        </p>
+                        {ms.member.phone ? (
+                          <a href={`tel:${ms.member.phone}`}
+                            className="dir-phone mt-1 inline-flex items-center gap-1 text-[10px] text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition">
+                            <Phone size={9} />{ms.member.phone}
+                          </a>
+                        ) : (
+                          <span className="dir-phone mt-1 inline-block text-[10px] text-gray-300 dark:text-gray-600 italic">Sem telefone</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* PRÓXIMOS EVENTOS */}
+            {upcomingEvents.length > 0 && (
+              <section className="rp-in d4">
+                <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-0.5 h-5 rounded-full block" style={{ background: ac }} />
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Próximos Eventos</h2>
+                  </div>
+                  <Link href={`/list/events?roleContext=${role}`} className="text-xs flex items-center gap-1" style={{ color: ac }}>
+                    Ver todos <ChevronRight size={11} />
+                  </Link>
+                </div>
+
+                <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+                  {upcomingEvents.map((event, i) => {
+                    const d = new Date(event.date)
+                    const day = d.getDate().toString().padStart(2, "0")
+                    const month = d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "").toUpperCase()
+                    return (
+                      <div key={event.id}
+                        className={`ev-row flex items-center gap-4 px-5 py-4 transition-colors ${i < upcomingEvents.length - 1 ? "border-b border-gray-50 dark:border-gray-800" : ""}`}>
+                        <div className="text-center flex-shrink-0 w-10">
+                          <p className="text-[10px] font-semibold" style={{ color: ac }}>{month}</p>
+                          <p className="text-xl font-bold text-gray-900 dark:text-gray-100 leading-tight">{day}</p>
+                        </div>
+                        <div className="w-px h-8 bg-gray-100 dark:bg-gray-700 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-800 dark:text-gray-200 text-sm truncate">{event.title}</p>
+                          {event.startTime && (
+                            <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+                              <Clock size={9} />
+                              {new Date(event.startTime).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </section>
+            )}
+
+            {/* MEMBROS */}
+            <section className="rp-in d5">
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-0.5 h-5 rounded-full block" style={{ background: ac }} />
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Membros</h2>
+                  <span className="text-xs text-gray-400 dark:text-gray-500 ml-1">— {totalMembers} no total</span>
+                </div>
+                <Link href={`/${role}/membros`} className="text-xs flex items-center gap-1" style={{ color: ac }}>
+                  Ver todos <ChevronRight size={11} />
+                </Link>
+              </div>
+
+              <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+                {recentMembers.length === 0 ? (
+                  <p className="p-8 text-center text-gray-400 text-sm">Nenhum membro cadastrado.</p>
+                ) : (
+                  recentMembers.map((m, i) => (
+                    <div key={m.id}
+                      className={`m-row flex items-center gap-3 px-5 py-3.5 transition-colors ${i < recentMembers.length - 1 ? "border-b border-gray-50 dark:border-gray-800" : ""}`}>
+                      <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 flex-shrink-0">
+                        <Image src="/profile.png" alt={m.name} width={32} height={32} className="object-cover" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{m.name}</p>
+                        {m.phone && (
+                          <a href={`tel:${m.phone}`} className="text-xs text-gray-400 flex items-center gap-1 hover:text-gray-600 dark:hover:text-gray-300 transition mt-0.5">
+                            <Phone size={9} />{m.phone}
+                          </a>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-medium"
+                          style={{
+                            background: m.gender === "MASCULINO" ? "#eff6ff" : m.gender === "FEMININO" ? "#fdf2f8" : "#f3f4f6",
+                            color: m.gender === "MASCULINO" ? "#1d4ed8" : m.gender === "FEMININO" ? "#be185d" : "#9ca3af",
+                          }}>
+                          {m.gender === "MASCULINO" ? "M" : m.gender === "FEMININO" ? "F" : "—"}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                          m.isActive ? "bg-green-50 text-green-600" : "bg-red-50 text-red-500"
+                        }`}>
+                          {m.isActive ? "Ativo" : "Inativo"}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </section>
+
+          </div>
+
+          {/* SIDEBAR */}
+          <div className="w-full lg:w-1/3 flex flex-col gap-6">
+            <EventCalendarContainer searchParams={searchParams} />
+            <Announcements />
+          </div>
         </div>
       </div>
-
-      <div className="w-full lg:w-1/3 flex flex-col gap-8">
-        <EventCalendarContainer searchParams={searchParams} />
-        <Announcements />
-      </div>
-    </div>
+    </>
   )
 }
 

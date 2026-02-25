@@ -36,7 +36,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
     }
 
-    const { name, email, phone, birthDate, gender, roles } = await req.json()
+    const { name, email, phone, birthDate, gender, roles, cargos } = await req.json()
 
     const baseUsername = generateUsername(name)
     const password = generatePassword()
@@ -75,14 +75,15 @@ export async function POST(req: Request) {
       },
     })
 
-    // Cria relações de sociedades
+    // Cria relações de sociedades com cargo
     const societyRoles = roles.filter((r: string) => societyMap[r])
-    if (societyRoles.length > 0) {
-      await prisma.memberSociety.createMany({
-        data: societyRoles.map((r: string) => ({
+    for (const r of societyRoles) {
+      await prisma.memberSociety.create({
+        data: {
           memberId: member.id,
           societyId: societyMap[r],
-        })),
+          cargo: cargos?.[r] ?? null,
+        },
       })
     }
 

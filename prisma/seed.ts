@@ -231,32 +231,7 @@ const evento2 = await prisma.event.create({
   // ===============================================
   // FINANCEIRO
   // ===============================================
-  await prisma.finance.create({
-    data: {
-      month: 1,
-      year: 2025,
-      value: 5000.0,
-      councilId: conselho.id,
-    },
-  });
-
-  await prisma.finance.create({
-    data: {
-      month: 1,
-      year: 2025,
-      value: 1200.0,
-      societyId: sociedadeMulheres.id,
-    },
-  });
-
-  await prisma.finance.create({
-    data: {
-      month: 1,
-      year: 2025,
-      value: 800.0,
-      societyId: sociedadeHomens.id,
-    },
-  });
+  
 
   console.log("✅ Seed concluído com sucesso!");
 }

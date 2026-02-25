@@ -21,6 +21,16 @@ const roleOptions = [
   { id: "ebd", label: "EBD" },
 ]
 
+const sociedades = ["ump", "upa", "uph", "saf", "ucp"]
+
+const cargoOptions = [
+  "Presidente",
+  "Vice-Presidente",
+  "1º Secretário",
+  "2º Secretário",
+  "Tesoureiro",
+]
+
 const MemberForm = ({
   type,
   data,
@@ -47,20 +57,33 @@ const MemberForm = ({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [selectedRoles, setSelectedRoles] = useState<string[]>(() => {
-  if (!data) return []
-  const roles: string[] = []
-  const societyIdMap: Record<number, string> = { 3: "saf", 4: "uph", 5: "ump", 6: "upa", 7: "ucp" }
-  if (data.societies?.length) {
+    if (!data) return []
+    const roles: string[] = []
+    const societyIdMap: Record<number, string> = { 3: "saf", 4: "uph", 5: "ump", 6: "upa", 7: "ucp" }
+    if (data.societies?.length) {
+      data.societies.forEach((s: any) => {
+        if (societyIdMap[s.societyId]) roles.push(societyIdMap[s.societyId])
+      })
+    }
+    if (data.council) roles.push("conselho")
+    if (data.diaconate) roles.push("diaconia")
+    if (data.ministries?.length) roles.push("ministerio")
+    if (data.bibleSchoolClass) roles.push("ebd")
+    return roles
+  })
+
+  // Cargos por sociedade: { ump: "Presidente", upa: "", ... }
+  const [cargos, setCargos] = useState<Record<string, string>>(() => {
+    if (!data?.societies) return {}
+    const societyIdMap: Record<number, string> = { 3: "saf", 4: "uph", 5: "ump", 6: "upa", 7: "ucp" }
+    const result: Record<string, string> = {}
     data.societies.forEach((s: any) => {
-      if (societyIdMap[s.societyId]) roles.push(societyIdMap[s.societyId])
+      const roleKey = societyIdMap[s.societyId]
+      if (roleKey && s.cargo) result[roleKey] = s.cargo
     })
-  }
-  if (data.council) roles.push("conselho")
-  if (data.diaconate) roles.push("diaconia")
-  if (data.ministries?.length) roles.push("ministerio")
-  if (data.bibleSchoolClass) roles.push("ebd")
-  return roles
-})
+    return result
+  })
+
   const [credentials, setCredentials] = useState<{ username: string; password: string } | null>(null)
 
   const gender = watch("gender")
@@ -69,6 +92,14 @@ const MemberForm = ({
     setSelectedRoles((prev) =>
       prev.includes(roleId) ? prev.filter((r) => r !== roleId) : [...prev, roleId]
     )
+    // Remove cargo se desmarcar sociedade
+    if (selectedRoles.includes(roleId) && sociedades.includes(roleId)) {
+      setCargos((prev) => {
+        const next = { ...prev }
+        delete next[roleId]
+        return next
+      })
+    }
   }
 
   const onSubmit = handleSubmit(
@@ -85,6 +116,7 @@ const MemberForm = ({
               birthDate: formData.birthDate,
               gender: formData.gender,
               roles: selectedRoles,
+              cargos,
             }),
           })
 
@@ -97,10 +129,10 @@ const MemberForm = ({
           } else {
             toast.error(result.error ?? "Erro ao criar membro!")
           }
-                } else {
+        } else {
           const result = await updateMember(
             { success: false, error: false },
-            { ...formData, roles: selectedRoles } as any
+            { ...formData, roles: selectedRoles, cargos } as any
           )
 
           if (result.success) {
@@ -152,35 +184,17 @@ const MemberForm = ({
     )
   }
 
+  const selectedSociedades = selectedRoles.filter((r) => sociedades.includes(r))
+
   return (
     <form className="flex flex-col gap-4" onSubmit={onSubmit}>
       <h1 className="text-xl font-semibold">
         {type === "create" ? "Criar membro" : "Editar membro"}
       </h1>
 
-      <InputField
-        label="Nome"
-        name="name"
-        defaultValue={data?.name}
-        register={register}
-        error={errors.name}
-      />
-
-      <InputField
-        label="Email"
-        name="email"
-        defaultValue={data?.email}
-        register={register}
-        error={errors.email}
-      />
-
-      <InputField
-        label="Telefone"
-        name="phone"
-        defaultValue={data?.phone}
-        register={register}
-        error={errors.phone}
-      />
+      <InputField label="Nome" name="name" defaultValue={data?.name} register={register} error={errors.name} />
+      <InputField label="Email" name="email" defaultValue={data?.email} register={register} error={errors.email} />
+      <InputField label="Telefone" name="phone" defaultValue={data?.phone} register={register} error={errors.phone} />
 
       {/* GÊNERO */}
       <div className="flex flex-col gap-1">
@@ -190,10 +204,7 @@ const MemberForm = ({
             type="button"
             onClick={() => setValue("gender", "M")}
             className={`flex-1 py-2 rounded-md text-sm font-medium border transition
-              ${gender === "M"
-                ? "bg-blue-600 text-white border-blue-600"
-                : "bg-white text-gray-700 border-gray-300 hover:border-blue-400"
-              }`}
+              ${gender === "M" ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-700 border-gray-300 hover:border-blue-400"}`}
           >
             Masculino
           </button>
@@ -201,10 +212,7 @@ const MemberForm = ({
             type="button"
             onClick={() => setValue("gender", "F")}
             className={`flex-1 py-2 rounded-md text-sm font-medium border transition
-              ${gender === "F"
-                ? "bg-pink-500 text-white border-pink-500"
-                : "bg-white text-gray-700 border-gray-300 hover:border-pink-400"
-              }`}
+              ${gender === "F" ? "bg-pink-500 text-white border-pink-500" : "bg-white text-gray-700 border-gray-300 hover:border-pink-400"}`}
           >
             Feminino
           </button>
@@ -213,9 +221,7 @@ const MemberForm = ({
 
       {/* GRUPOS */}
       <div className="flex flex-col gap-2">
-        <span className="text-sm text-gray-600 font-medium">
-          {type === "create" ? "Grupos do membro" : "Grupos (roles)"}
-        </span>
+        <span className="text-sm text-gray-600 font-medium">Grupos</span>
         <div className="grid grid-cols-3 gap-2">
           {roleOptions.map((role) => (
             <button
@@ -234,14 +240,35 @@ const MemberForm = ({
         </div>
       </div>
 
+      {/* CARGOS POR SOCIEDADE */}
+      {selectedSociedades.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <span className="text-sm text-gray-600 font-medium">Cargos na Diretoria</span>
+          <div className="flex flex-col gap-2">
+            {selectedSociedades.map((soc) => (
+              <div key={soc} className="flex items-center gap-3">
+                <span className="text-xs font-semibold text-gray-500 uppercase w-10">{soc.toUpperCase()}</span>
+                <select
+                  value={cargos[soc] ?? ""}
+                  onChange={(e) => setCargos((prev) => ({ ...prev, [soc]: e.target.value }))}
+                  className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-700 focus:outline-none focus:border-green-500"
+                >
+                  <option value="">Sem cargo</option>
+                  {cargoOptions.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {type === "update" && (
         <input type="hidden" {...register("id")} defaultValue={data?.id} />
       )}
 
-      <button
-        disabled={isPending}
-        className="bg-blue-500 text-white p-2 rounded-md disabled:opacity-50"
-      >
+      <button disabled={isPending} className="bg-blue-500 text-white p-2 rounded-md disabled:opacity-50">
         {isPending ? "Salvando..." : type === "create" ? "Criar" : "Atualizar"}
       </button>
     </form>

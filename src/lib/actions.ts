@@ -45,7 +45,7 @@ export const createMember = async (
 
 export const updateMember = async (
   _: CurrentState,
-  data: MemberSchema & { roles?: string[] }
+  data: MemberSchema & { roles?: string[]; cargos?: Record<string, string> }
 ): Promise<CurrentState> => {
   if (!data.id) return { success: false, error: true };
 
@@ -61,15 +61,16 @@ export const updateMember = async (
     });
 
     if (data.roles !== undefined) {
-      // Atualiza sociedades
+      // Atualiza sociedades com cargo
       await prisma.memberSociety.deleteMany({ where: { memberId: data.id } })
       const societyRoles = data.roles.filter((r) => societyMap[r])
-      if (societyRoles.length > 0) {
-        await prisma.memberSociety.createMany({
-          data: societyRoles.map((r) => ({
+      for (const r of societyRoles) {
+        await prisma.memberSociety.create({
+          data: {
             memberId: data.id!,
             societyId: societyMap[r],
-          })),
+            cargo: data.cargos?.[r] ?? null,
+          },
         })
       }
 
@@ -358,11 +359,7 @@ export const bulkUpdateAttendance = async (
     console.error("Erro no bulkUpdateAttendance:", err);
     return { success: false, error: true };
   }
-
-  
 };
-
-// ===================== FINANCE =====================
 
 // ===================== FINANCE =====================
 

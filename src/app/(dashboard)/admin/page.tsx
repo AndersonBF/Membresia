@@ -25,11 +25,15 @@ const UPAIcon = ({ size }: { size?: number }) => (
   <Image src="/UPA.png" alt="UPA" width={(size ?? 32) + 16} height={(size ?? 32) + 16} className="object-contain" />
 )
 
+const UPHIcon = ({ size }: { size?: number }) => (
+  <Image src="/UPH.png" alt="UPH" width={(size ?? 32) + 24} height={(size ?? 32) + 24} className="object-contain scale-150" />
+)
+
 const roleConfig: Record<string, { label: string; icon: React.ElementType; color: string; image: string }> = {
   admin:      { label: "Admin",      icon: UserCircle,    color: "bg-gray-700",   image: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80" },
-  ump:        { label: "UMP",        icon: UMPIcon,       color: "bg-blue-600",   image: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=800&q=80" },
+  ump:        { label: "UMP",        icon: UMPIcon,       color: "bg-blue-600",   image: "/ump_fundo.jpg" },
   upa:        { label: "UPA",        icon: UPAIcon,       color: "bg-yellow-500", image: "https://images.unsplash.com/photo-1544928147-79a2dbc1f389?w=800&q=80" },
-  uph:        { label: "UPH",        icon: Users,         color: "bg-orange-500", image: "https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?w=800&q=80" },
+  uph:        { label: "UPH",        icon: UPHIcon,       color: "bg-orange-500", image: "https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?w=800&q=80" },
   saf:        { label: "SAF",        icon: Users,         color: "bg-pink-600",   image: "https://images.unsplash.com/photo-1573164713988-8665fc963095?w=800&q=80" },
   ucp:        { label: "UCP",        icon: Baby,          color: "bg-yellow-500", image: "https://images.unsplash.com/photo-1516627145497-ae6968895b40?w=800&q=80" },
   diaconia:   { label: "Diaconia",   icon: HandHelping,   color: "bg-teal-600",   image: "https://images.unsplash.com/photo-1593113598332-cd288d649433?w=800&q=80" },
@@ -71,18 +75,15 @@ const AdminPage = async ({
                     href={`/${role}`}
                     className="group relative w-full h-28 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 ease-out"
                   >
-                    <Image
-                      src={config.image}
-                      alt={config.label}
-                      fill
-                      className="object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
-                    />
-
-                    {/* Overlay — some no hover revelando a imagem */}
+                                      <Image
+                  src={config.image}
+                  alt={config.label}
+                  fill
+                  unoptimized={config.image.startsWith("/")}
+                  className="object-cover object-center group-hover:scale-110 transition-transform duration-700 ease-out"
+                />
                     <div className={`absolute inset-0 ${config.color} opacity-100 group-hover:opacity-30 transition-opacity duration-500`} />
-
                     <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent" />
-
                     <div className="absolute inset-0 flex items-center px-8 gap-6">
                       <Icon size={40} className="text-white shrink-0 drop-shadow-lg" />
                       <div className="w-px h-12 bg-white/40" />

@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "MemberSociety" ADD COLUMN     "cargo" TEXT,
+ADD COLUMN     "joinedAt" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP;

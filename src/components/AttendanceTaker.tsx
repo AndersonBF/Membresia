@@ -11,21 +11,22 @@ type AttendanceTakerProps = {
   event: any;
   members: any[];
   existingAttendance: any[];
+  backUrl?: string;
 };
 
 const AttendanceTaker = ({
   event,
   members,
   existingAttendance,
+  backUrl = "/list/attendance",
 }: AttendanceTakerProps) => {
   const router = useRouter();
   const [attendance, setAttendance] = useState<{ [key: number]: boolean }>({});
-  const [excludedMembers, setExcludedMembers] = useState<Set<number>>(new Set()); // ✅ Membros excluídos
+  const [excludedMembers, setExcludedMembers] = useState<Set<number>>(new Set());
   const [visitors, setVisitors] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
 
-  // Inicializar attendance com dados existentes
   useEffect(() => {
     if (existingAttendance.length > 0) {
       const attendanceMap: { [key: number]: boolean } = {};
@@ -34,7 +35,6 @@ const AttendanceTaker = ({
       });
       setAttendance(attendanceMap);
     } else {
-      // Inicializar todos como presentes por padrão
       const attendanceMap: { [key: number]: boolean } = {};
       members.forEach((member) => {
         attendanceMap[member.id] = true;
@@ -43,7 +43,6 @@ const AttendanceTaker = ({
     }
   }, [existingAttendance, members]);
 
-  // ✅ Toggle exclusão de membro
   const toggleMemberExclusion = (memberId: number) => {
     setExcludedMembers((prev) => {
       const newSet = new Set(prev);
@@ -85,14 +84,12 @@ const AttendanceTaker = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     setLoading(true);
 
     const formData = new FormData();
     formData.append("eventId", event.id.toString());
     formData.append("visitors", visitors.toString());
 
-    // ✅ Filtrar apenas membros não excluídos
     const attendanceData = members
       .filter((member) => !excludedMembers.has(member.id))
       .map((member) => ({
@@ -111,25 +108,23 @@ const AttendanceTaker = ({
 
     if (result.success) {
       toast.success("Presença salva com sucesso!");
-      router.push("/list/attendance");
+      router.push(backUrl);
       router.refresh();
     } else {
       toast.error("Erro ao salvar presença");
     }
   };
 
-  // ✅ Filtrar membros ativos (não excluídos)
   const activeMembers = members.filter((m) => !excludedMembers.has(m.id));
   const excludedMembersList = members.filter((m) => excludedMembers.has(m.id));
 
   const presentCount = activeMembers.filter((m) => attendance[m.id]).length;
   const absentCount = activeMembers.length - presentCount;
-  const attendancePercentage = activeMembers.length > 0 
-    ? ((presentCount / activeMembers.length) * 100).toFixed(1) 
+  const attendancePercentage = activeMembers.length > 0
+    ? ((presentCount / activeMembers.length) * 100).toFixed(1)
     : 0;
   const totalParticipants = presentCount + visitors;
 
-  // ✅ Função para exportar para Word
   const exportToWord = async () => {
     setExporting(true);
 
@@ -148,257 +143,146 @@ const AttendanceTaker = ({
                 alignment: AlignmentType.CENTER,
                 spacing: { after: 300 },
               }),
-
               new Paragraph({
                 children: [
-                  new TextRun({
-                    text: `Evento: `,
-                    bold: true,
-                  }),
-                  new TextRun({
-                    text: event.title,
-                  }),
+                  new TextRun({ text: `Evento: `, bold: true }),
+                  new TextRun({ text: event.title }),
                 ],
                 spacing: { after: 200 },
               }),
-
               new Paragraph({
                 children: [
-                  new TextRun({
-                    text: "Data: ",
-                    bold: true,
-                  }),
-                  new TextRun({
-                    text: new Date(event.date).toLocaleDateString("pt-BR"),
-                  }),
+                  new TextRun({ text: "Data: ", bold: true }),
+                  new TextRun({ text: new Date(event.date).toLocaleDateString("pt-BR") }),
                 ],
                 spacing: { after: 200 },
               }),
-
               new Paragraph({
                 text: "ESTATÍSTICAS",
                 heading: "Heading2",
                 spacing: { before: 400, after: 200 },
               }),
-
               new Paragraph({
                 children: [
-                  new TextRun({
-                    text: `Total de Membros Ativos: `,
-                    bold: true,
-                  }),
-                  new TextRun({
-                    text: `${activeMembers.length}`,
-                  }),
+                  new TextRun({ text: `Total de Membros Ativos: `, bold: true }),
+                  new TextRun({ text: `${activeMembers.length}` }),
                 ],
                 spacing: { after: 100 },
               }),
-
               ...(excludedMembersList.length > 0 ? [
                 new Paragraph({
                   children: [
-                    new TextRun({
-                      text: `Membros Excluídos (não eram membros): `,
-                      bold: true,
-                      color: "999999",
-                    }),
-                    new TextRun({
-                      text: `${excludedMembersList.length}`,
-                      color: "999999",
-                    }),
+                    new TextRun({ text: `Membros Excluídos: `, bold: true, color: "999999" }),
+                    new TextRun({ text: `${excludedMembersList.length}`, color: "999999" }),
                   ],
                   spacing: { after: 100 },
                 }),
               ] : []),
-
               new Paragraph({
                 children: [
-                  new TextRun({
-                    text: `Presentes: `,
-                    bold: true,
-                    color: "008000",
-                  }),
-                  new TextRun({
-                    text: `${presentCount}`,
-                    color: "008000",
-                  }),
+                  new TextRun({ text: `Presentes: `, bold: true, color: "008000" }),
+                  new TextRun({ text: `${presentCount}`, color: "008000" }),
                 ],
                 spacing: { after: 100 },
               }),
-
               new Paragraph({
                 children: [
-                  new TextRun({
-                    text: `Ausentes: `,
-                    bold: true,
-                    color: "FF0000",
-                  }),
-                  new TextRun({
-                    text: `${absentCount}`,
-                    color: "FF0000",
-                  }),
+                  new TextRun({ text: `Ausentes: `, bold: true, color: "FF0000" }),
+                  new TextRun({ text: `${absentCount}`, color: "FF0000" }),
                 ],
                 spacing: { after: 100 },
               }),
-
               new Paragraph({
                 children: [
-                  new TextRun({
-                    text: `Visitas: `,
-                    bold: true,
-                    color: "0000FF",
-                  }),
-                  new TextRun({
-                    text: `${visitors}`,
-                    color: "0000FF",
-                  }),
+                  new TextRun({ text: `Visitas: `, bold: true, color: "0000FF" }),
+                  new TextRun({ text: `${visitors}`, color: "0000FF" }),
                 ],
                 spacing: { after: 100 },
               }),
-
               new Paragraph({
                 children: [
-                  new TextRun({
-                    text: `Total de Participantes: `,
-                    bold: true,
-                  }),
-                  new TextRun({
-                    text: `${totalParticipants}`,
-                  }),
+                  new TextRun({ text: `Total de Participantes: `, bold: true }),
+                  new TextRun({ text: `${totalParticipants}` }),
                 ],
                 spacing: { after: 100 },
               }),
-
               new Paragraph({
                 children: [
-                  new TextRun({
-                    text: `Percentual de Presença (Membros Ativos): `,
-                    bold: true,
-                  }),
-                  new TextRun({
-                    text: `${attendancePercentage}%`,
-                  }),
+                  new TextRun({ text: `Percentual de Presença: `, bold: true }),
+                  new TextRun({ text: `${attendancePercentage}%` }),
                 ],
                 spacing: { after: 400 },
               }),
-
               new Paragraph({
                 text: "MEMBROS PRESENTES",
                 heading: "Heading2",
                 spacing: { before: 400, after: 200 },
               }),
-
               new Table({
-                width: {
-                  size: 100,
-                  type: WidthType.PERCENTAGE,
-                },
+                width: { size: 100, type: WidthType.PERCENTAGE },
                 rows: [
                   new TableRow({
                     children: [
-                      new TableCell({
-                        children: [new Paragraph({ text: "Nome" })],
-                        shading: { fill: "D3D3D3" },
-                      }),
-                      new TableCell({
-                        children: [new Paragraph({ text: "Email" })],
-                        shading: { fill: "D3D3D3" },
-                      }),
+                      new TableCell({ children: [new Paragraph({ text: "Nome" })], shading: { fill: "D3D3D3" } }),
+                      new TableCell({ children: [new Paragraph({ text: "Email" })], shading: { fill: "D3D3D3" } }),
                     ],
                   }),
-                  ...presentMembers.map(
-                    (member) =>
-                      new TableRow({
-                        children: [
-                          new TableCell({
-                            children: [new Paragraph(member.name)],
-                          }),
-                          new TableCell({
-                            children: [new Paragraph(member.email || "-")],
-                          }),
-                        ],
-                      })
+                  ...presentMembers.map((member) =>
+                    new TableRow({
+                      children: [
+                        new TableCell({ children: [new Paragraph(member.name)] }),
+                        new TableCell({ children: [new Paragraph(member.email || "-")] }),
+                      ],
+                    })
                   ),
                 ],
               }),
-
               new Paragraph({
                 text: "MEMBROS AUSENTES",
                 heading: "Heading2",
                 spacing: { before: 400, after: 200 },
               }),
-
               new Table({
-                width: {
-                  size: 100,
-                  type: WidthType.PERCENTAGE,
-                },
+                width: { size: 100, type: WidthType.PERCENTAGE },
                 rows: [
                   new TableRow({
                     children: [
-                      new TableCell({
-                        children: [new Paragraph({ text: "Nome" })],
-                        shading: { fill: "D3D3D3" },
-                      }),
-                      new TableCell({
-                        children: [new Paragraph({ text: "Email" })],
-                        shading: { fill: "D3D3D3" },
-                      }),
+                      new TableCell({ children: [new Paragraph({ text: "Nome" })], shading: { fill: "D3D3D3" } }),
+                      new TableCell({ children: [new Paragraph({ text: "Email" })], shading: { fill: "D3D3D3" } }),
                     ],
                   }),
-                  ...absentMembers.map(
-                    (member) =>
-                      new TableRow({
-                        children: [
-                          new TableCell({
-                            children: [new Paragraph(member.name)],
-                          }),
-                          new TableCell({
-                            children: [new Paragraph(member.email || "-")],
-                          }),
-                        ],
-                      })
+                  ...absentMembers.map((member) =>
+                    new TableRow({
+                      children: [
+                        new TableCell({ children: [new Paragraph(member.name)] }),
+                        new TableCell({ children: [new Paragraph(member.email || "-")] }),
+                      ],
+                    })
                   ),
                 ],
               }),
-
               ...(excludedMembersList.length > 0 ? [
                 new Paragraph({
                   text: "MEMBROS EXCLUÍDOS (NÃO ERAM MEMBROS NESTA DATA)",
                   heading: "Heading2",
                   spacing: { before: 400, after: 200 },
                 }),
-
                 new Table({
-                  width: {
-                    size: 100,
-                    type: WidthType.PERCENTAGE,
-                  },
+                  width: { size: 100, type: WidthType.PERCENTAGE },
                   rows: [
                     new TableRow({
                       children: [
-                        new TableCell({
-                          children: [new Paragraph({ text: "Nome" })],
-                          shading: { fill: "D3D3D3" },
-                        }),
-                        new TableCell({
-                          children: [new Paragraph({ text: "Email" })],
-                          shading: { fill: "D3D3D3" },
-                        }),
+                        new TableCell({ children: [new Paragraph({ text: "Nome" })], shading: { fill: "D3D3D3" } }),
+                        new TableCell({ children: [new Paragraph({ text: "Email" })], shading: { fill: "D3D3D3" } }),
                       ],
                     }),
-                    ...excludedMembersList.map(
-                      (member) =>
-                        new TableRow({
-                          children: [
-                            new TableCell({
-                              children: [new Paragraph(member.name)],
-                            }),
-                            new TableCell({
-                              children: [new Paragraph(member.email || "-")],
-                            }),
-                          ],
-                        })
+                    ...excludedMembersList.map((member) =>
+                      new TableRow({
+                        children: [
+                          new TableCell({ children: [new Paragraph(member.name)] }),
+                          new TableCell({ children: [new Paragraph(member.email || "-")] }),
+                        ],
+                      })
                     ),
                   ],
                 }),
@@ -411,7 +295,6 @@ const AttendanceTaker = ({
       const blob = await Packer.toBlob(doc);
       const fileName = `Presenca_${event.title.replace(/\s+/g, "_")}_${new Date(event.date).toLocaleDateString("pt-BR").replace(/\//g, "-")}.docx`;
       saveAs(blob, fileName);
-
       toast.success("Arquivo exportado com sucesso!");
     } catch (error) {
       console.error("Erro ao exportar:", error);
@@ -432,11 +315,7 @@ const AttendanceTaker = ({
               <span>📅 {new Date(event.date).toLocaleDateString("pt-BR")}</span>
               {event.startTime && (
                 <span>
-                  🕐{" "}
-                  {new Date(event.startTime).toLocaleTimeString("pt-BR", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                  🕐 {new Date(event.startTime).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                 </span>
               )}
               {event.society && <span>👥 {event.society.name}</span>}
@@ -445,7 +324,6 @@ const AttendanceTaker = ({
               <p className="mt-2 text-sm text-gray-700">{event.description}</p>
             )}
           </div>
-
           <button
             type="button"
             onClick={exportToWord}
@@ -459,7 +337,6 @@ const AttendanceTaker = ({
 
       {members.length > 0 ? (
         <>
-          {/* Quick Actions e Estatísticas */}
           <div className="flex gap-4 items-center flex-wrap">
             <button
               type="button"
@@ -476,7 +353,6 @@ const AttendanceTaker = ({
               ✗ Marcar Todos Ausentes
             </button>
 
-            {/* Campo de Visitas */}
             <div className="flex items-center gap-2 ml-4">
               <label htmlFor="visitors" className="text-sm font-semibold text-gray-700">
                 👤 Visitas:
@@ -491,12 +367,9 @@ const AttendanceTaker = ({
               />
             </div>
 
-            {/* Estatísticas */}
             <div className="ml-auto flex gap-6 items-center">
               <div className="text-right">
-                <div className="text-2xl font-bold text-blue-600">
-                  {attendancePercentage}%
-                </div>
+                <div className="text-2xl font-bold text-blue-600">{attendancePercentage}%</div>
                 <div className="text-xs text-gray-500">Presença</div>
               </div>
               <div className="text-sm font-semibold">
@@ -511,12 +384,11 @@ const AttendanceTaker = ({
             </div>
           </div>
 
-          {/* ✅ Mostrar membros excluídos se houver */}
           {excludedMembersList.length > 0 && (
             <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-md">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-yellow-700 font-semibold">
-                  ⚠️ {excludedMembersList.length} membro(s) excluído(s) (não eram membros nesta data)
+                  ⚠️ {excludedMembersList.length} membro(s) excluído(s)
                 </span>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -533,7 +405,6 @@ const AttendanceTaker = ({
             </div>
           )}
 
-          {/* Members List */}
           <div className="border rounded-md">
             <div className="bg-gray-50 p-3 border-b">
               <h2 className="font-semibold">
@@ -560,7 +431,6 @@ const AttendanceTaker = ({
                       )}
                     </div>
                   </div>
-
                   <div className="flex items-center gap-2">
                     <span
                       className={`px-4 py-2 rounded-full text-sm font-semibold ${
@@ -571,8 +441,6 @@ const AttendanceTaker = ({
                     >
                       {attendance[member.id] ? "✓ Presente" : "✗ Ausente"}
                     </span>
-
-                    {/* ✅ Botão para excluir membro */}
                     <button
                       type="button"
                       onClick={() => toggleMemberExclusion(member.id)}
@@ -587,7 +455,6 @@ const AttendanceTaker = ({
             </div>
           </div>
 
-          {/* Submit Button */}
           <div className="flex gap-4 sticky bottom-0 bg-white pt-4 border-t">
             <button
               type="submit"
@@ -598,7 +465,7 @@ const AttendanceTaker = ({
             </button>
             <button
               type="button"
-              onClick={() => router.push("/list/attendance")}
+              onClick={() => router.push(backUrl)}
               className="bg-gray-500 text-white px-6 py-3 rounded-md hover:bg-gray-600"
             >
               Cancelar

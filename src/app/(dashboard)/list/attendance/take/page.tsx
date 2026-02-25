@@ -9,24 +9,23 @@ const TakeAttendancePage = async ({
   searchParams: { [key: string]: string | undefined };
 }) => {
   const { sessionClaims } = await auth();
-  const role = (sessionClaims?.metadata as { role?: string })?.role;
+  const roles = (sessionClaims?.metadata as { roles?: string[] })?.roles ?? [];
 
-  if (role !== "admin") {
+  if (!roles.includes("admin") && !roles.includes("superadmin")) {
     redirect("/");
   }
 
   const eventId = searchParams.eventId ? parseInt(searchParams.eventId) : null;
+  const roleContext = searchParams.roleContext ?? null;
+  const societyId = searchParams.societyId ?? null;
 
   if (!eventId) {
     redirect("/list/attendance");
   }
 
-  // Buscar o evento selecionado
   const selectedEvent = await prisma.event.findUnique({
     where: { id: eventId },
-    include: {
-      society: true,
-    },
+    include: { society: true },
   });
 
   if (!selectedEvent) {
@@ -35,39 +34,31 @@ const TakeAttendancePage = async ({
 
   let members: any[] = [];
 
-  // Se o evento tem sociedade, buscar apenas membros dessa sociedade
   if (selectedEvent.societyId) {
     members = await prisma.member.findMany({
       where: {
-        societies: {
-          some: {
-            societyId: selectedEvent.societyId,
-          },
-        },
+        societies: { some: { societyId: selectedEvent.societyId } },
         isActive: true,
       },
-      orderBy: {
-        name: "asc",
-      },
+      orderBy: { name: "asc" },
     });
   } else {
-    // Se não tem sociedade, buscar todos os membros ativos
     members = await prisma.member.findMany({
-      where: {
-        isActive: true,
-      },
-      orderBy: {
-        name: "asc",
-      },
+      where: { isActive: true },
+      orderBy: { name: "asc" },
     });
   }
 
-  // Buscar presença já registrada
   const existingAttendance = await prisma.attendance.findMany({
-    where: {
-      eventId,
-    },
+    where: { eventId },
   });
+
+  // Monta o redirect de volta baseado no contexto
+  const backUrl = roleContext && societyId
+    ? `/list/attendance?societyId=${societyId}&roleContext=${roleContext}`
+    : roleContext
+    ? `/list/attendance?role=${roleContext}&roleContext=${roleContext}`
+    : "/list/attendance"
 
   return (
     <div className="bg-white p-4 rounded-md flex-1 m-4 mt-0">
@@ -75,6 +66,7 @@ const TakeAttendancePage = async ({
         event={selectedEvent}
         members={members}
         existingAttendance={existingAttendance}
+        backUrl={backUrl}
       />
     </div>
   );

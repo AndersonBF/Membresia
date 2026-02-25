@@ -15,9 +15,12 @@ const AttendanceListPage = async ({
   const roles = (sessionClaims?.metadata as { roles?: string[] })?.roles ?? [];
   const isAdmin = roles.includes("admin") || roles.includes("superadmin");
 
+  const roleContext = searchParams.roleContext ?? null
+  const societyId = searchParams.societyId ?? null
+
   const whereClause: any = {}
-  if (searchParams.societyId) {
-    whereClause.societyId = parseInt(searchParams.societyId)
+  if (societyId) {
+    whereClause.societyId = parseInt(societyId)
   } else if (searchParams.role) {
     whereClause.isPublic = true
   } else if (!isAdmin) {
@@ -36,6 +39,15 @@ const AttendanceListPage = async ({
     take: 50,
   });
 
+  // Monta a URL de retorno para o take page
+  const buildTakeUrl = (eventId: number) => {
+    const params = new URLSearchParams()
+    params.set("eventId", eventId.toString())
+    if (roleContext) params.set("roleContext", roleContext)
+    if (societyId) params.set("societyId", societyId)
+    return `/list/attendance/take?${params.toString()}`
+  }
+
   return (
     <div className="bg-white p-4 rounded-md flex-1 m-4 mt-0">
       <div className="flex items-center justify-between mb-6">
@@ -51,7 +63,7 @@ const AttendanceListPage = async ({
           return (
             <Link
               key={event.id}
-              href={`/list/attendance/take?eventId=${event.id}`}
+              href={buildTakeUrl(event.id)}
               className="block border rounded-lg p-4 hover:bg-gray-50 transition-colors"
             >
               <div className="flex items-center justify-between">

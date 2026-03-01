@@ -3,7 +3,7 @@ import {
   Layers, Calendar, Megaphone, DollarSign,
   FileText, User, Settings, LogOut, Key,
   Heart, Info, Image, Youtube, CalendarDays,
-  ClipboardList,
+  ClipboardList, CalendarRange, MessageSquare,
 } from "lucide-react";
 
 const adminRoles = ["admin", "superadmin"];
@@ -36,6 +36,14 @@ export const menuItems = [
         href: "/agenda",
         visible: allRoles,
         hiddenForSociedades: true,
+        showOnlyForSociedades: false,
+      },
+      {
+        icon: CalendarRange,
+        label: "Calendário Geral",
+        href: "/calendario-geral",
+        visible: allRoles,
+        hiddenForSociedades: false,
         showOnlyForSociedades: false,
       },
       {
@@ -90,6 +98,14 @@ export const menuItems = [
         icon: Calendar,
         label: "Eventos",
         href: "/list/events",
+        visible: staffRoles,
+        hiddenForSociedades: false,
+        showOnlyForSociedades: true,
+      },
+      {
+        icon: MessageSquare,
+        label: "Mensagens",
+        href: "/list/broadcasts",
         visible: staffRoles,
         hiddenForSociedades: false,
         showOnlyForSociedades: true,

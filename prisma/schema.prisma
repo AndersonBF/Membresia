@@ -29,7 +29,7 @@ model Member {
   gender    Gender?
   isActive  Boolean   @default(true)
   createdAt DateTime  @default(now())
-
+  profileImageUrl String? 
   // Relacionamentos
   ministries    MemberMinistry[]
   societies     MemberSociety[]
@@ -120,7 +120,7 @@ model InternalSociety {
   members  MemberSociety[]
   finances Finance[]
   events   Event[]
-
+  broadcasts Broadcast[]   // ← adicione esta linha
   documents Document[]
 }
 
@@ -266,4 +266,33 @@ model Document {
 
   bibleSchoolClassId Int?
   bibleSchoolClass   BibleSchoolClass? @relation(fields: [bibleSchoolClassId], references: [id], onDelete: Cascade)
+}
+
+model Broadcast {
+  id         Int      @id @default(autoincrement())
+  title      String
+  message    String
+  isPublic   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  societyId  Int
+  society    InternalSociety @relation(fields: [societyId], references: [id], onDelete: Cascade)
+
+  authorName String
+  authorRole String
+
+  reactions  BroadcastReaction[]
+}
+
+model BroadcastReaction {
+  id          Int      @id @default(autoincrement())
+  emoji       String
+  userId      String
+  userName    String
+  createdAt   DateTime @default(now())
+
+  broadcastId Int
+  broadcast   Broadcast @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
+
+  @@unique([broadcastId, userId, emoji])
 }

@@ -2,10 +2,11 @@ import { currentUser } from "@clerk/nextjs/server"
 import { notFound } from "next/navigation"
 import Announcements from "@/components/Announcements"
 import EventCalendarContainer from "@/components/EventCalendarContainer"
+import BroadcastFeed from "@/components/BroadcastFeed"
 import prisma from "@/lib/prisma"
 import Image from "next/image"
 import Link from "next/link"
-import { Users, Calendar, FileText, ArrowLeft, Phone, ChevronRight, Clock } from "lucide-react"
+import { Users, Calendar, FileText, ArrowLeft, Phone, ChevronRight, Clock, Cake } from "lucide-react"
 
 const roleConfig: Record<string, {
   label: string
@@ -34,6 +35,8 @@ const directoryCargos = [
   "1º Secretário", "2º Secretário",
   "Tesoureiro", "1º Tesoureiro", "2º Tesoureiro",
 ]
+
+const mesesPT = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"]
 
 async function getDataForRole(role: string) {
   const societyId = societyMap[role]
@@ -74,7 +77,9 @@ async function getDataForRole(role: string) {
     documentWhere = { bibleSchoolClassId: { not: null } }
   }
 
-  const [totalMembers, totalEvents, totalDocuments, recentMembers, upcomingEvents] = await Promise.all([
+  const now = new Date()
+
+  const [totalMembers, totalEvents, totalDocuments, recentMembers, upcomingEvents, allMembers] = await Promise.all([
     prisma.member.count({ where: memberWhere }),
     prisma.event.count({ where: eventWhere }),
     prisma.document.count({ where: documentWhere }),
@@ -84,9 +89,21 @@ async function getDataForRole(role: string) {
       orderBy: { date: "asc" },
       take: 3,
     }),
+    prisma.member.findMany({
+      where: { ...memberWhere, birthDate: { not: null }, isActive: true },
+      select: { id: true, name: true, birthDate: true },
+    }),
   ])
 
-  return { totalMembers, totalEvents, totalDocuments, recentMembers, directoryMembers, upcomingEvents }
+  // Filtra aniversariantes do mês atual
+  const birthdaysThisMonth = allMembers
+    .filter((m) => {
+      const bd = new Date(m.birthDate!)
+      return bd.getMonth() === now.getMonth()
+    })
+    .sort((a, b) => new Date(a.birthDate!).getDate() - new Date(b.birthDate!).getDate())
+
+  return { totalMembers, totalEvents, totalDocuments, recentMembers, directoryMembers, upcomingEvents, birthdaysThisMonth }
 }
 
 const RolePage = async ({
@@ -110,12 +127,15 @@ const RolePage = async ({
   const isAdmin = roles.includes("admin") || isSuperAdmin
   const backHref = isAdmin ? "/admin" : roles.includes("member") ? "/member" : "/admin"
 
-  const { totalMembers, totalEvents, totalDocuments, recentMembers, directoryMembers, upcomingEvents } =
+  const { totalMembers, totalEvents, totalDocuments, recentMembers, directoryMembers, upcomingEvents, birthdaysThisMonth } =
     await getDataForRole(role)
 
   const ac = config.accentColor
   const al = config.accentLight
   const ad = config.accentDark
+
+  const hoje = new Date()
+  const mesAtual = mesesPT[hoje.getMonth()]
 
   return (
     <>
@@ -124,7 +144,7 @@ const RolePage = async ({
         .rp { font-family: 'DM Sans', sans-serif; }
         @keyframes rp-in { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
         .rp-in { animation: rp-in 0.4s cubic-bezier(.22,1,.36,1) both; }
-        .d1{animation-delay:.03s}.d2{animation-delay:.08s}.d3{animation-delay:.13s}.d4{animation-delay:.18s}.d5{animation-delay:.23s}
+        .d1{animation-delay:.03s}.d2{animation-delay:.08s}.d3{animation-delay:.13s}.d4{animation-delay:.18s}.d5{animation-delay:.23s}.d6{animation-delay:.28s}
         .dir-card { transition: box-shadow .18s, transform .18s; }
         .dir-card:hover { box-shadow: 0 6px 24px rgba(0,0,0,.1); transform: translateY(-2px); }
         .dir-phone { opacity:0; transition: opacity .15s; }
@@ -133,11 +153,11 @@ const RolePage = async ({
         .ql-btn:hover { box-shadow: 0 4px 14px rgba(0,0,0,.1); transform: translateY(-1px); }
         .ev-row:hover { background: rgba(0,0,0,0.03); }
         .m-row:hover  { background: rgba(0,0,0,0.03); }
-        .dark .ev-row:hover { background: rgba(255,255,255,0.04); }
-        .dark .m-row:hover  { background: rgba(255,255,255,0.04); }
+        .bday-card { transition: box-shadow .15s, transform .15s; }
+        .bday-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.08); transform: translateY(-1px); }
       `}} />
 
-      <div className="rp bg-gray-50 dark:bg-gray-950 min-h-screen transition-colors duration-200">
+      <div className="rp bg-gray-50 min-h-screen">
 
         {/* HERO */}
         <div className="rp-in d1" style={{ background: ad }}>
@@ -186,9 +206,9 @@ const RolePage = async ({
                 const Icon = item.icon
                 return (
                   <Link key={item.label} href={item.href}
-                    className="ql-btn bg-white dark:bg-gray-900 rounded-xl py-4 flex flex-col items-center gap-2 border border-gray-100 dark:border-gray-800 shadow-sm">
+                    className="ql-btn bg-white rounded-xl py-4 flex flex-col items-center gap-2 border border-gray-100 shadow-sm">
                     <Icon size={18} style={{ color: ac }} />
-                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{item.label}</span>
+                    <span className="text-xs font-medium text-gray-500">{item.label}</span>
                   </Link>
                 )
               })}
@@ -199,30 +219,30 @@ const RolePage = async ({
               <section className="rp-in d3">
                 <div className="flex items-center gap-2.5 mb-5">
                   <span className="w-0.5 h-5 rounded-full block" style={{ background: ac }} />
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Diretoria</h2>
-                  <span className="text-xs text-gray-400 dark:text-gray-500 ml-1">— gestão atual</span>
+                  <h2 className="text-xl font-semibold text-gray-900">Diretoria</h2>
+                  <span className="text-xs text-gray-400 ml-1">— gestão atual</span>
                 </div>
 
                 <div className="grid grid-cols-5 gap-4">
                   {directoryMembers.map((ms) => (
                     <div key={ms.id} className="dir-card flex flex-col items-center text-center gap-2">
-                      <div className="rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800" style={{ width: 56, height: 56 }}>
+                      <div className="rounded-full overflow-hidden bg-gray-100" style={{ width: 56, height: 56 }}>
                         <Image src="/profile.png" alt={ms.member.name} width={56} height={56} className="object-cover w-full h-full" />
                       </div>
                       <div className="w-full">
                         <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: ac }}>
                           {ms.cargo}
                         </p>
-                        <p className="font-semibold text-gray-800 dark:text-gray-200 text-xs leading-snug mt-0.5 break-words">
+                        <p className="font-semibold text-gray-800 text-xs leading-snug mt-0.5 break-words">
                           {ms.member.name}
                         </p>
                         {ms.member.phone ? (
                           <a href={`tel:${ms.member.phone}`}
-                            className="dir-phone mt-1 inline-flex items-center gap-1 text-[10px] text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition">
+                            className="dir-phone mt-1 inline-flex items-center gap-1 text-[10px] text-gray-400 hover:text-gray-700 transition">
                             <Phone size={9} />{ms.member.phone}
                           </a>
                         ) : (
-                          <span className="dir-phone mt-1 inline-block text-[10px] text-gray-300 dark:text-gray-600 italic">Sem telefone</span>
+                          <span className="dir-phone mt-1 inline-block text-[10px] text-gray-300 italic">Sem telefone</span>
                         )}
                       </div>
                     </div>
@@ -237,28 +257,28 @@ const RolePage = async ({
                 <div className="flex items-center justify-between mb-5">
                   <div className="flex items-center gap-2.5">
                     <span className="w-0.5 h-5 rounded-full block" style={{ background: ac }} />
-                    <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Próximos Eventos</h2>
+                    <h2 className="text-xl font-semibold text-gray-900">Próximos Eventos</h2>
                   </div>
                   <Link href={`/list/events?roleContext=${role}`} className="text-xs flex items-center gap-1" style={{ color: ac }}>
                     Ver todos <ChevronRight size={11} />
                   </Link>
                 </div>
 
-                <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+                <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
                   {upcomingEvents.map((event, i) => {
                     const d = new Date(event.date)
                     const day = d.getDate().toString().padStart(2, "0")
                     const month = d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "").toUpperCase()
                     return (
                       <div key={event.id}
-                        className={`ev-row flex items-center gap-4 px-5 py-4 transition-colors ${i < upcomingEvents.length - 1 ? "border-b border-gray-50 dark:border-gray-800" : ""}`}>
+                        className={`ev-row flex items-center gap-4 px-5 py-4 transition-colors ${i < upcomingEvents.length - 1 ? "border-b border-gray-50" : ""}`}>
                         <div className="text-center flex-shrink-0 w-10">
                           <p className="text-[10px] font-semibold" style={{ color: ac }}>{month}</p>
-                          <p className="text-xl font-bold text-gray-900 dark:text-gray-100 leading-tight">{day}</p>
+                          <p className="text-xl font-bold text-gray-900 leading-tight">{day}</p>
                         </div>
-                        <div className="w-px h-8 bg-gray-100 dark:bg-gray-700 flex-shrink-0" />
+                        <div className="w-px h-8 bg-gray-100 flex-shrink-0" />
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-gray-800 dark:text-gray-200 text-sm truncate">{event.title}</p>
+                          <p className="font-medium text-gray-800 text-sm truncate">{event.title}</p>
                           {event.startTime && (
                             <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
                               <Clock size={9} />
@@ -273,33 +293,102 @@ const RolePage = async ({
               </section>
             )}
 
+            {/* ANIVERSARIANTES DO MÊS */}
+            {birthdaysThisMonth.length > 0 && (
+              <section className="rp-in d5">
+                <div className="flex items-center gap-2.5 mb-5">
+                  <span className="w-0.5 h-5 rounded-full block" style={{ background: ac }} />
+                  <h2 className="text-xl font-semibold text-gray-900">Aniversariantes</h2>
+                  <span className="text-xs text-gray-400 ml-1">— {mesAtual}</span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {birthdaysThisMonth.map((m) => {
+                    const bd = new Date(m.birthDate!)
+                    const dia = bd.getDate()
+                    const isHoje = bd.getDate() === hoje.getDate() && bd.getMonth() === hoje.getMonth()
+
+                    return (
+                      <div
+                        key={m.id}
+                        className={`bday-card rounded-xl p-3 flex flex-col items-center gap-2 border text-center relative overflow-hidden
+                          ${isHoje
+                            ? "bg-pink-50 border-pink-200 shadow-sm"
+                            : "bg-white border-gray-100 shadow-sm"
+                          }`}
+                      >
+                        {isHoje && (
+                          <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: `linear-gradient(90deg, ${ac}, #f472b6)` }} />
+                        )}
+
+                        {/* Dia em destaque */}
+                        <div
+                          className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg text-white shadow-sm"
+                          style={{ background: isHoje ? "#f472b6" : ac }}
+                        >
+                          {dia}
+                        </div>
+
+                        {/* Foto */}
+                        <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 ring-2 ring-white shadow-sm">
+                          <Image src="/profile.png" alt={m.name} width={48} height={48} className="object-cover" />
+                        </div>
+
+                        {/* Nome */}
+                        <p className="text-xs font-semibold text-gray-800 leading-snug line-clamp-2">
+                          {m.name.split(" ")[0]}
+                        </p>
+
+                        {isHoje && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-pink-600 bg-pink-100 px-2 py-0.5 rounded-full">
+                            <Cake size={9} /> Hoje!
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </section>
+            )}
+
+            {/* MENSAGENS */}
+            {societyMap[role] && (
+              <div className="rp-in d6">
+                <BroadcastFeed
+                  societyId={societyMap[role]}
+                  role={role}
+                  accentColor={ac}
+                />
+              </div>
+            )}
+
             {/* MEMBROS */}
-            <section className="rp-in d5">
+            <section className="rp-in d6">
               <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-2.5">
                   <span className="w-0.5 h-5 rounded-full block" style={{ background: ac }} />
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Membros</h2>
-                  <span className="text-xs text-gray-400 dark:text-gray-500 ml-1">— {totalMembers} no total</span>
+                  <h2 className="text-xl font-semibold text-gray-900">Membros</h2>
+                  <span className="text-xs text-gray-400 ml-1">— {totalMembers} no total</span>
                 </div>
                 <Link href={`/${role}/membros`} className="text-xs flex items-center gap-1" style={{ color: ac }}>
                   Ver todos <ChevronRight size={11} />
                 </Link>
               </div>
 
-              <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+              <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
                 {recentMembers.length === 0 ? (
                   <p className="p-8 text-center text-gray-400 text-sm">Nenhum membro cadastrado.</p>
                 ) : (
                   recentMembers.map((m, i) => (
                     <div key={m.id}
-                      className={`m-row flex items-center gap-3 px-5 py-3.5 transition-colors ${i < recentMembers.length - 1 ? "border-b border-gray-50 dark:border-gray-800" : ""}`}>
-                      <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 flex-shrink-0">
+                      className={`m-row flex items-center gap-3 px-5 py-3.5 transition-colors ${i < recentMembers.length - 1 ? "border-b border-gray-50" : ""}`}>
+                      <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 flex-shrink-0">
                         <Image src="/profile.png" alt={m.name} width={32} height={32} className="object-cover" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{m.name}</p>
+                        <p className="text-sm font-medium text-gray-800 truncate">{m.name}</p>
                         {m.phone && (
-                          <a href={`tel:${m.phone}`} className="text-xs text-gray-400 flex items-center gap-1 hover:text-gray-600 dark:hover:text-gray-300 transition mt-0.5">
+                          <a href={`tel:${m.phone}`} className="text-xs text-gray-400 flex items-center gap-1 hover:text-gray-600 transition mt-0.5">
                             <Phone size={9} />{m.phone}
                           </a>
                         )}

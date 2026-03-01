@@ -5,7 +5,7 @@ import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { menuItems } from "./menuItems";
-import { Users, Shield, HandHelping, Music, Baby, UserCircle, GraduationCap } from "lucide-react";
+import { Shield, HandHelping, Music, Baby, UserCircle, GraduationCap } from "lucide-react";
 import { Suspense } from "react";
 
 const sociedades = ["ump", "upa", "uph", "saf", "ucp"];
@@ -16,24 +16,60 @@ const societyMap: Record<string, number> = {
 }
 
 const UMPIcon = ({ size, className }: { size?: number; className?: string }) => (
-  <Image src="/UMP.png" alt="UMP" width={size ?? 20} height={size ?? 20} className={`object-contain ${className ?? ""}`} />
+  <Image
+    src="/UMP.png"
+    alt="UMP"
+    width={size ?? 20}
+    height={size ?? 20}
+    className={`object-contain ${className ?? ""}`}
+    style={{ filter: "brightness(0) invert(1)" }}
+  />
 )
 
 const UPAIcon = ({ size, className }: { size?: number; className?: string }) => (
-  <Image src="/UPA.png" alt="UPA" width={size ?? 20} height={size ?? 20} className={`object-contain ${className ?? ""}`} />
+  <Image
+    src="/UPA.png"
+    alt="UPA"
+    width={size ?? 20}
+    height={size ?? 20}
+    className={`object-contain ${className ?? ""}`}
+    style={{ filter: "brightness(0) invert(1)" }}
+  />
+)
+
+const SAFIcon = ({ size, className }: { size?: number; className?: string }) => (
+  <Image
+    src="/SAF.png"
+    alt="SAF"
+    width={size ?? 20}
+    height={size ?? 20}
+    className={`object-contain ${className ?? ""}`}
+    style={{ filter: "brightness(0) invert(1)" }}
+  />
+)
+
+const UPHIcon = ({ size, className }: { size?: number; className?: string }) => (
+  <Image
+    src="/UPH.png"
+    alt="UPH"
+    width={size ?? 20}
+    height={size ?? 20}
+    className={`object-contain ${className ?? ""}`}
+    style={{ filter: "brightness(0) invert(1)" }}
+  />
 )
 
 const roleConfig: Record<string, { label: string; icon: React.ElementType; color: string }> = {
-  admin:      { label: "Admin",      icon: UserCircle,    color: "text-gray-400" },
-  ump:        { label: "UMP",        icon: UMPIcon,       color: "text-blue-400" },
-  upa:        { label: "UPA",        icon: UPAIcon,       color: "text-yellow-400" },
-  uph:        { label: "UPH",        icon: Users,         color: "text-orange-400" },
-  saf:        { label: "SAF",        icon: Users,         color: "text-pink-400" },
-  ucp:        { label: "UCP",        icon: Baby,          color: "text-yellow-400" },
-  diaconia:   { label: "Diaconia",   icon: HandHelping,   color: "text-teal-400" },
-  conselho:   { label: "Conselho",   icon: Shield,        color: "text-indigo-400" },
-  ministerio: { label: "Ministério", icon: Music,         color: "text-green-400" },
-  ebd:        { label: "EBD",        icon: GraduationCap, color: "text-amber-400" },
+  admin:      { label: "Admin",      icon: UserCircle,    color: "text-white" },
+  ump:        { label: "UMP",        icon: UMPIcon,       color: "text-white" },
+  upa:        { label: "UPA",        icon: UPAIcon,       color: "text-white" },
+  uph:        { label: "UPH",        icon: UPHIcon,       color: "text-white" },
+  saf:        { label: "SAF",        icon: SAFIcon,       color: "text-white" },
+  ucp:        { label: "UCP",        icon: Baby,          color: "text-white" },
+  diaconia:   { label: "Diaconia",   icon: HandHelping,   color: "text-white" },
+  conselho:   { label: "Conselho",   icon: Shield,        color: "text-white" },
+  ministerio: { label: "Ministério", icon: Music,         color: "text-white" },
+  ebd:        { label: "EBD",        icon: GraduationCap, color: "text-white" },
 }
 
 const roleRouteMap: Record<string, string> = {
@@ -41,7 +77,8 @@ const roleRouteMap: Record<string, string> = {
   "/list/attendance": "/list/attendance",
   "/list/events":     "/list/events",
   "/list/documents":  "/list/documents",
-    "/list/finance":    "/list/finance",  // ← adicione essa linha
+  "/list/finance":    "/list/finance",
+  "/list/broadcasts": "/list/broadcasts",
 }
 
 const MenuContent = () => {

@@ -2,6 +2,17 @@ import { NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import prisma from "@/lib/prisma"
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+}
+
+// Responde ao preflight
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders })
+}
+
 const societyMap: Record<string, number> = {
   saf: 3, uph: 4, ump: 5, upa: 6, ucp: 7,
 }
@@ -17,7 +28,9 @@ export async function GET(
   { params }: { params: { role: string } }
 ) {
   const { userId } = await auth()
-  if (!userId) return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+  if (!userId) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401, headers: corsHeaders })
+  }
 
   const role = params.role
   const societyId = societyMap[role]
@@ -90,5 +103,5 @@ export async function GET(
     recentMembers,
     upcomingEvents,
     birthdaysThisMonth,
-  })
+  }, { headers: corsHeaders })
 }

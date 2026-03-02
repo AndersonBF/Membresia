@@ -8,6 +8,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 }
 
+// Responde ao preflight
 export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders })
 }
@@ -26,7 +27,11 @@ export async function GET(
   req: Request,
   { params }: { params: { role: string } }
 ) {
-  // COMENTADO: Permitindo acesso sem login por enquanto
+  /**
+   * COMENTADO PARA PERMITIR ACESSO DO APP SEM AUTENTICAÇÃO POR ENQUANTO
+   * Na Web, o Middleware ainda protege as páginas, mas esta API 
+   * precisa estar aberta para o App consumir os dados.
+   */
   /*
   const { userId } = await auth()
   if (!userId) {

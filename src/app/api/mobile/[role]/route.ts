@@ -8,7 +8,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 }
 
-// Responde ao preflight
 export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders })
 }
@@ -19,18 +18,21 @@ const societyMap: Record<string, number> = {
 
 const directoryCargos = [
   "Presidente", "Vice-Presidente",
-  "1º Secretário", "2º Secretário",
-  "Tesoureiro", "1º Tesoureiro", "2º Tesoureiro",
+  "1o Secretário", "2o Secretário",
+  "Tesoureiro", "1o Tesoureiro", "2o Tesoureiro",
 ]
 
 export async function GET(
   req: Request,
   { params }: { params: { role: string } }
 ) {
+  // COMENTADO: Permitindo acesso sem login por enquanto
+  /*
   const { userId } = await auth()
   if (!userId) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401, headers: corsHeaders })
   }
+  */
 
   const role = params.role
   const societyId = societyMap[role]

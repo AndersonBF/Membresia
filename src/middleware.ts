@@ -17,7 +17,16 @@ export default clerkMiddleware(async (auth, req) => {
   const { userId, sessionClaims } = await auth();
   const pathname = req.nextUrl.pathname;
 
-  // 🔥 REGRA 1 — APIs nunca redirecionam (sempre retornam JSON)
+  // ================================
+  // 🔥 REGRA 1 — API MOBILE PÚBLICA
+  // ================================
+  if (pathname.startsWith("/api/mobile")) {
+    return NextResponse.next();
+  }
+
+  // ================================
+  // 🔥 REGRA 2 — OUTRAS APIs PROTEGIDAS
+  // ================================
   if (pathname.startsWith("/api")) {
     if (!userId) {
       return new NextResponse(
@@ -29,12 +38,16 @@ export default clerkMiddleware(async (auth, req) => {
     return NextResponse.next();
   }
 
-  // 🔥 REGRA 2 — Rotas públicas (login/cadastro)
+  // ================================
+  // 🔥 REGRA 3 — ROTAS PÚBLICAS WEB
+  // ================================
   if (isPublicRoute(req)) {
     return NextResponse.next();
   }
 
-  // 🔥 REGRA 3 — Web protegida
+  // ================================
+  // 🔥 REGRA 4 — WEB PROTEGIDA
+  // ================================
   if (!userId) {
     return NextResponse.redirect(new URL("/sign-in", req.url));
   }
@@ -46,10 +59,12 @@ export default clerkMiddleware(async (auth, req) => {
     return NextResponse.redirect(new URL("/member", req.url));
   }
 
-  // 🔥 REGRA 4 — Controle de acesso por role
+  // ================================
+  // 🔥 REGRA 5 — CONTROLE POR ROLE
+  // ================================
   for (const { matcher, allowedRoles } of matchers) {
     if (matcher(req) && !allowedRoles.some((r) => roles.includes(r))) {
-      
+
       if (roles.includes("admin") || roles.includes("superadmin")) {
         return NextResponse.redirect(new URL("/admin", req.url));
       }
@@ -96,7 +111,7 @@ export const config = {
     "/list(.*)",
     "/agenda(.*)",
     "/calendario-geral(.*)",
-    "/api/mobile(.*)",
+    "/api/mobile(.*)",  // 🔥 continua passando pelo middleware
     "/api/role(.*)",
   ],
 };

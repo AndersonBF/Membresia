@@ -2,73 +2,58 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { routeAccessMap } from "./lib/settings";
 import { NextResponse } from "next/server";
 
-// ===============================================
-// MATCHERS DE PERMISSÃO (WEB)
-// ===============================================
 const matchers = Object.keys(routeAccessMap).map((route) => ({
   matcher: createRouteMatcher([route]),
   allowedRoles: routeAccessMap[route],
 }));
 
-// ===============================================
-// ROTAS PÚBLICAS (WEB)
-// ===============================================
+// Rotas públicas da web
 const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
-  const { pathname } = req.nextUrl;
+  const { userId, sessionClaims } = await auth();
+  const pathname = req.nextUrl.pathname;
 
-  // ===============================================
-  // 🔥 LIBERA TOTALMENTE AS APIs DO APP MOBILE
-  // Isso impede redirecionamento para HTML
-  // ===============================================
-  if (pathname.startsWith("/api/mobile")) {
+  // 🔥 REGRA 1 — APIs nunca redirecionam (sempre retornam JSON)
+  if (pathname.startsWith("/api")) {
+    if (!userId) {
+      return new NextResponse(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401 }
+      );
+    }
+
     return NextResponse.next();
   }
 
-  if (pathname.startsWith("/api/roles")) {
-    return NextResponse.next();
-  }
-
-  // ===============================================
-  // ROTAS PÚBLICAS (LOGIN / CADASTRO)
-  // ===============================================
+  // 🔥 REGRA 2 — Rotas públicas (login/cadastro)
   if (isPublicRoute(req)) {
     return NextResponse.next();
   }
 
-  // ===============================================
-  // PROTEÇÃO DAS ROTAS WEB
-  // ===============================================
-  const authData = await auth();
-
-  if (!authData.userId) {
+  // 🔥 REGRA 3 — Web protegida
+  if (!userId) {
     return NextResponse.redirect(new URL("/sign-in", req.url));
   }
 
   const roles =
-    (authData.sessionClaims?.metadata as { roles?: string[] })?.roles ?? [];
+    (sessionClaims?.metadata as { roles?: string[] })?.roles ?? [];
 
-  // Se não tiver roles, manda para área padrão
   if (roles.length === 0) {
     return NextResponse.redirect(new URL("/member", req.url));
   }
 
-  // ===============================================
-  // CONTROLE DE ACESSO BASEADO EM ROLE
-  // ===============================================
+  // 🔥 REGRA 4 — Controle de acesso por role
   for (const { matcher, allowedRoles } of matchers) {
     if (matcher(req) && !allowedRoles.some((r) => roles.includes(r))) {
       
-      // Admin sempre vai para /admin
       if (roles.includes("admin") || roles.includes("superadmin")) {
         return NextResponse.redirect(new URL("/admin", req.url));
       }
 
-      // Grupos internos
       const groupRoles = [
         "ump",
         "upa",
@@ -87,7 +72,6 @@ export default clerkMiddleware(async (auth, req) => {
         return NextResponse.redirect(new URL(`/${firstGroup}`, req.url));
       }
 
-      // Padrão
       return NextResponse.redirect(new URL("/member", req.url));
     }
   }
@@ -95,26 +79,8 @@ export default clerkMiddleware(async (auth, req) => {
   return NextResponse.next();
 });
 
-// ===============================================
-// CONFIGURAÇÃO DE MATCH
-// ===============================================
 export const config = {
   matcher: [
-    "/",
-    "/member(.*)",
-    "/admin(.*)",
-    "/ump(.*)",
-    "/upa(.*)",
-    "/uph(.*)",
-    "/saf(.*)",
-    "/ucp(.*)",
-    "/diaconia(.*)",
-    "/conselho(.*)",
-    "/ministerio(.*)",
-    "/ebd(.*)",
-    "/list(.*)",
-    "/agenda(.*)",
-    "/calendario-geral(.*)",
-    "/(api|trpc)(.*)", // Continua protegendo APIs web
+    "/((?!_next/static|_next/image|favicon.ico).*)",
   ],
 };

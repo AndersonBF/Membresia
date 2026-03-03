@@ -1,13 +1,15 @@
-// app/api/role/[role]/route.ts
 import { NextResponse } from "next/server"
+import { auth } from "@clerk/nextjs/server"
 import prisma from "@/lib/prisma"
 
+// Configuração de CORS para permitir que o App acesse a API
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 }
 
+// Responde ao preflight (necessário para o App)
 export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders })
 }
@@ -18,38 +20,24 @@ const societyMap: Record<string, number> = {
 
 const directoryCargos = [
   "Presidente", "Vice-Presidente",
-  "1º Secretário", "2º Secretário",
-  "Tesoureiro", "1º Tesoureiro", "2º Tesoureiro",
+  "1o Secretário", "2o Secretário",
+  "Tesoureiro", "1o Tesoureiro", "2o Tesoureiro",
 ]
-
-async function getUserId(req: Request): Promise<string | null> {
-  try {
-    const authHeader = req.headers.get("Authorization")
-    if (authHeader?.startsWith("Bearer ")) {
-      const token = authHeader.replace("Bearer ", "")
-      // Compatível com Clerk SDK v5+
-      const { verifyToken } = await import("@clerk/backend")
-      const verified = await verifyToken(token, {
-        secretKey: process.env.CLERK_SECRET_KEY!,
-      })
-      return verified.sub ?? null
-    }
-    const { auth } = await import("@clerk/nextjs/server")
-    const { userId } = await auth()
-    return userId
-  } catch {
-    return null
-  }
-}
 
 export async function GET(
   req: Request,
   { params }: { params: { role: string } }
 ) {
-  const userId = await getUserId(req)
+  /**
+   * COMENTADO PARA PERMITIR ACESSO DO APP SEM LOGIN
+   * O Middleware ainda protege a Web, mas esta API fica aberta para o App.
+   */
+  /*
+  const { userId } = await auth()
   if (!userId) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401, headers: corsHeaders })
   }
+  */
 
   const role = params.role
   const societyId = societyMap[role]
@@ -93,47 +81,35 @@ export async function GET(
 
   const now = new Date()
 
-  const [
-    totalMembers, totalEvents, totalDocuments,
-    recentMembers, upcomingEvents, allMembers, documents
-  ] = await Promise.all([
-    prisma.member.count({ where: memberWhere }),
-    prisma.event.count({ where: eventWhere }),
-    prisma.document.count({ where: documentWhere }),
-    prisma.member.findMany({ where: memberWhere, orderBy: { name: "asc" }, take: 8 }),
-    prisma.event.findMany({
-      where: { ...eventWhere, date: { gte: now } },
-      orderBy: { date: "asc" },
-      take: 3,
-    }),
-    prisma.member.findMany({
-      where: { ...memberWhere, birthDate: { not: null }, isActive: true },
-      select: { id: true, name: true, birthDate: true },
-    }),
-    // Documentos com todas as relações para exibir o nome da origem
-    prisma.document.findMany({
-      where: documentWhere,
-      orderBy: { createdAt: "desc" },
-      include: {
-        society:          { select: { name: true } },
-        ministry:         { select: { name: true } },
-        bibleSchoolClass: { select: { name: true } },
-        council:          { select: { id: true } },
-        diaconate:        { select: { id: true } },
-      },
-    }),
-  ])
+  const [totalMembers, totalEvents, totalDocuments, recentMembers, upcomingEvents, allMembers] =
+    await Promise.all([
+      prisma.member.count({ where: memberWhere }),
+      prisma.event.count({ where: eventWhere }),
+      prisma.document.count({ where: documentWhere }),
+      prisma.member.findMany({ where: memberWhere, orderBy: { name: "asc" }, take: 8 }),
+      prisma.event.findMany({
+        where: { ...eventWhere, date: { gte: now } },
+        orderBy: { date: "asc" },
+        take: 3,
+      }),
+      prisma.member.findMany({
+        where: { ...memberWhere, birthDate: { not: null }, isActive: true },
+        select: { id: true, name: true, birthDate: true },
+      }),
+    ])
 
   const birthdaysThisMonth = allMembers
     .filter(m => new Date(m.birthDate!).getMonth() === now.getMonth())
     .sort((a, b) => new Date(a.birthDate!).getDate() - new Date(b.birthDate!).getDate())
 
-  return NextResponse.json(
-    {
-      totalMembers, totalEvents, totalDocuments,
-      recentMembers, directoryMembers, upcomingEvents,
-      birthdaysThisMonth, documents,
-    },
-    { headers: corsHeaders }
-  )
+  // Retorna o JSON com os headers de CORS
+  return NextResponse.json({
+    totalMembers,
+    totalEvents,
+    totalDocuments,
+    directoryMembers,
+    recentMembers,
+    upcomingEvents,
+    birthdaysThisMonth,
+  }, { headers: corsHeaders })
 }

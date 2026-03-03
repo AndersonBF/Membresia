@@ -7,7 +7,7 @@ const matchers = Object.keys(routeAccessMap).map((route) => ({
   allowedRoles: routeAccessMap[route],
 }));
 
-// 1. Rotas que o App usa (Liberadas para não dar 401/404 no App)
+// 1. Rotas que o App usa (Liberadas para evitar redirecionamento e erro de JSON)
 const isAppApi = createRouteMatcher([
   "/api/mobile(.*)", 
   "/api/roles(.*)"
@@ -17,7 +17,8 @@ const isAppApi = createRouteMatcher([
 const isPublicRoute = createRouteMatcher(["/sign-in(.*)", "/sign-up(.*)"])
 
 export default clerkMiddleware(async (auth, req) => {
-  // REGRA PARA O APP: Se for uma API que o App usa, deixa passar direto
+  // REGRA PARA O APP: Se for uma API que o App usa, deixa passar direto sem validar nada
+  // Isso evita que o App receba HTML de login em vez de JSON
   if (isAppApi(req)) {
     return NextResponse.next()
   }
@@ -36,10 +37,13 @@ export default clerkMiddleware(async (auth, req) => {
 
   // --- SUA LÓGICA ORIGINAL DE PERMISSÕES PARA A WEB ---
   const roles = (authData.sessionClaims?.metadata as { roles?: string[] })?.roles ?? [];
+  
+  // Se o usuário não tiver roles, não faz nada (deixa o Clerk lidar ou redireciona para o padrão)
   if (roles.length === 0) return;
 
   for (const { matcher, allowedRoles } of matchers) {
     if (matcher(req) && !allowedRoles.some((r) => roles.includes(r))) {
+      // Lógica de redirecionamento de segurança baseada em cargo
       if (roles.includes("admin") || roles.includes("superadmin")) {
         return NextResponse.redirect(new URL("/admin", req.url));
       }

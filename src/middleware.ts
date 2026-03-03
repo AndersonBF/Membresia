@@ -81,6 +81,22 @@ export default clerkMiddleware(async (auth, req) => {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico).*)",
+    "/",
+    "/member(.*)",
+    "/admin(.*)",
+    "/ump(.*)",
+    "/upa(.*)",
+    "/uph(.*)",
+    "/saf(.*)",
+    "/ucp(.*)",
+    "/diaconia(.*)",
+    "/conselho(.*)",
+    "/ministerio(.*)",
+    "/ebd(.*)",
+    "/list(.*)",
+    "/agenda(.*)",
+    "/calendario-geral(.*)",
+    "/api/mobile(.*)",
+    "/api/role(.*)",
   ],
 };

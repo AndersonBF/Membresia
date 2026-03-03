@@ -2,61 +2,102 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { routeAccessMap } from "./lib/settings";
 import { NextResponse } from "next/server";
 
+// ===============================================
+// MATCHERS DE PERMISSÃO (WEB)
+// ===============================================
 const matchers = Object.keys(routeAccessMap).map((route) => ({
   matcher: createRouteMatcher([route]),
   allowedRoles: routeAccessMap[route],
 }));
 
-// 1. Rotas que o App usa (Liberadas para evitar redirecionamento e erro de JSON)
-const isAppApi = createRouteMatcher([
-  "/api/mobile(.*)", 
-  "/api/roles(.*)"
-])
-
-// 2. Rotas Públicas da Web (Login/Cadastro)
-const isPublicRoute = createRouteMatcher(["/sign-in(.*)", "/sign-up(.*)"])
+// ===============================================
+// ROTAS PÚBLICAS (WEB)
+// ===============================================
+const isPublicRoute = createRouteMatcher([
+  "/sign-in(.*)",
+  "/sign-up(.*)",
+]);
 
 export default clerkMiddleware(async (auth, req) => {
-  // REGRA PARA O APP: Se for uma API que o App usa, deixa passar direto sem validar nada
-  // Isso evita que o App receba HTML de login em vez de JSON
-  if (isAppApi(req)) {
-    return NextResponse.next()
+  const { pathname } = req.nextUrl;
+
+  // ===============================================
+  // 🔥 LIBERA TOTALMENTE AS APIs DO APP MOBILE
+  // Isso impede redirecionamento para HTML
+  // ===============================================
+  if (pathname.startsWith("/api/mobile")) {
+    return NextResponse.next();
   }
 
-  // REGRA PARA A WEB (PÚBLICO): Deixa passar login/cadastro
+  if (pathname.startsWith("/api/roles")) {
+    return NextResponse.next();
+  }
+
+  // ===============================================
+  // ROTAS PÚBLICAS (LOGIN / CADASTRO)
+  // ===============================================
   if (isPublicRoute(req)) {
-    return NextResponse.next()
+    return NextResponse.next();
   }
 
+  // ===============================================
+  // PROTEÇÃO DAS ROTAS WEB
+  // ===============================================
   const authData = await auth();
 
-  // REGRA PARA A WEB (PROTEGIDO): Se não estiver logado, manda para /sign-in
   if (!authData.userId) {
     return NextResponse.redirect(new URL("/sign-in", req.url));
   }
 
-  // --- SUA LÓGICA ORIGINAL DE PERMISSÕES PARA A WEB ---
-  const roles = (authData.sessionClaims?.metadata as { roles?: string[] })?.roles ?? [];
-  
-  // Se o usuário não tiver roles, não faz nada (deixa o Clerk lidar ou redireciona para o padrão)
-  if (roles.length === 0) return;
+  const roles =
+    (authData.sessionClaims?.metadata as { roles?: string[] })?.roles ?? [];
 
+  // Se não tiver roles, manda para área padrão
+  if (roles.length === 0) {
+    return NextResponse.redirect(new URL("/member", req.url));
+  }
+
+  // ===============================================
+  // CONTROLE DE ACESSO BASEADO EM ROLE
+  // ===============================================
   for (const { matcher, allowedRoles } of matchers) {
     if (matcher(req) && !allowedRoles.some((r) => roles.includes(r))) {
-      // Lógica de redirecionamento de segurança baseada em cargo
+      
+      // Admin sempre vai para /admin
       if (roles.includes("admin") || roles.includes("superadmin")) {
         return NextResponse.redirect(new URL("/admin", req.url));
       }
-      const groupRoles = ["ump", "upa", "uph", "saf", "ucp", "diaconia", "conselho", "ministerio", "ebd"];
+
+      // Grupos internos
+      const groupRoles = [
+        "ump",
+        "upa",
+        "uph",
+        "saf",
+        "ucp",
+        "diaconia",
+        "conselho",
+        "ministerio",
+        "ebd",
+      ];
+
       const firstGroup = roles.find((r) => groupRoles.includes(r));
+
       if (firstGroup) {
         return NextResponse.redirect(new URL(`/${firstGroup}`, req.url));
       }
+
+      // Padrão
       return NextResponse.redirect(new URL("/member", req.url));
     }
   }
+
+  return NextResponse.next();
 });
 
+// ===============================================
+// CONFIGURAÇÃO DE MATCH
+// ===============================================
 export const config = {
   matcher: [
     "/",
@@ -72,9 +113,8 @@ export const config = {
     "/ministerio(.*)",
     "/ebd(.*)",
     "/list(.*)",
-    "/list/broadcasts(.*)",
     "/agenda(.*)",
     "/calendario-geral(.*)",
-    "/(api|trpc)(.*)",
+    "/(api|trpc)(.*)", // Continua protegendo APIs web
   ],
 };

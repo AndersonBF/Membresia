@@ -1,3 +1,4 @@
+// app/api/mobile/[role]/route.ts
 import { NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
 
@@ -25,74 +26,68 @@ export async function GET(
       )
     }
 
-    // =============================
-    // 1️⃣ COUNCIL
-    // =============================
-    if (roleParam === "council") {
+    // ── CONSELHO ──────────────────────────────────────────────
+    if (roleParam === "conselho" || roleParam === "council") {
       const council = await prisma.council.findFirst({
         include: {
           documents: true,
-          finances: true,
+          finances:  true,
           members: {
-            include: {
-              member: true,
-            },
+            include: { member: true },
           },
         },
       })
-
-      return NextResponse.json(council, { headers: corsHeaders })
+      return NextResponse.json(
+        { ...council, events: [] },
+        { headers: corsHeaders }
+      )
     }
 
-    // =============================
-    // 2️⃣ DIACONATE
-    // =============================
-    if (roleParam === "diaconate") {
+    // ── DIACONIA ──────────────────────────────────────────────
+    if (roleParam === "diaconia" || roleParam === "diaconate") {
       const diaconate = await prisma.diaconate.findFirst({
         include: {
           documents: true,
           members: {
-            include: {
-              member: true,
-            },
+            include: { member: true },
           },
         },
       })
-
-      return NextResponse.json(diaconate, { headers: corsHeaders })
+      return NextResponse.json(
+        { ...diaconate, events: [] },
+        { headers: corsHeaders }
+      )
     }
 
-    // =============================
-    // 3️⃣ SOCIEDADES INTERNAS
-    // =============================
+    // ── SOCIEDADES INTERNAS ───────────────────────────────────
     const societyMap: Record<string, string> = {
-      ump: "UMP",
-      upa: "UPA",
-      uph: "UPH",
-      saf: "SAF",
+      ump:       "UMP",
+      upa:       "UPA",
+      uph:       "UPH",
+      saf:       "SAF",
+      ucp:       "UCP",
+      ministerio:"Ministério",
+      ebd:       "EBD",
     }
 
-    if (societyMap[roleParam]) {
+    const societyName = societyMap[roleParam]
+
+    if (societyName) {
       const society = await prisma.internalSociety.findFirst({
-        where: {
-          name: societyMap[roleParam],
-        },
+        where: { name: societyName },
         include: {
           documents: true,
-          broadcasts: true,
-          events: true,
-          finances: true,
+          events:    true,
+          finances:  true,
           members: {
-            include: {
-              member: true,
-            },
+            include: { member: true },
           },
         },
       })
 
       if (!society) {
         return NextResponse.json(
-          { error: "Sociedade não encontrada no banco" },
+          { error: "Sociedade não encontrada" },
           { status: 404, headers: corsHeaders }
         )
       }
@@ -100,9 +95,6 @@ export async function GET(
       return NextResponse.json(society, { headers: corsHeaders })
     }
 
-    // =============================
-    // ROLE INVÁLIDA
-    // =============================
     return NextResponse.json(
       { error: "Role inválida" },
       { status: 404, headers: corsHeaders }
@@ -110,7 +102,6 @@ export async function GET(
 
   } catch (error) {
     console.error("ERRO NA API MOBILE:", error)
-
     return NextResponse.json(
       { error: "Erro interno do servidor" },
       { status: 500, headers: corsHeaders }

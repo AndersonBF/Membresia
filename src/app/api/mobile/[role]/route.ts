@@ -33,6 +33,11 @@ export async function GET(
         include: {
           documents: true,
           finances: true,
+          members: {
+            include: {
+              member: true,
+            },
+          },
         },
       })
 
@@ -46,6 +51,11 @@ export async function GET(
       const diaconate = await prisma.diaconate.findFirst({
         include: {
           documents: true,
+          members: {
+            include: {
+              member: true,
+            },
+          },
         },
       })
 
@@ -72,6 +82,11 @@ export async function GET(
           broadcasts: true,
           events: true,
           finances: true,
+          members: {
+            include: {
+              member: true,
+            },
+          },
         },
       })
 

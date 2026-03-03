@@ -7,35 +7,34 @@ const matchers = Object.keys(routeAccessMap).map((route) => ({
   allowedRoles: routeAccessMap[route],
 }));
 
-// 1. Rotas que o App usa (Liberadas)
+// 1. Rotas que o App usa (Liberadas para não dar 401/404 no App)
 const isAppApi = createRouteMatcher([
-  "/api/mobile(.*)",
-  "/api/roles(.*)",
-  "/api/role/(.*)",   // ← adicionado para o app mobile
+  "/api/mobile(.*)", 
+  "/api/roles(.*)"
 ])
 
 // 2. Rotas Públicas da Web (Login/Cadastro)
 const isPublicRoute = createRouteMatcher(["/sign-in(.*)", "/sign-up(.*)"])
 
 export default clerkMiddleware(async (auth, req) => {
-  // SE FOR API DO APP: Deixa passar direto sem validar nada
+  // REGRA PARA O APP: Se for uma API que o App usa, deixa passar direto
   if (isAppApi(req)) {
     return NextResponse.next()
   }
 
-  // SE FOR ROTA PÚBLICA DA WEB: Deixa passar
+  // REGRA PARA A WEB (PÚBLICO): Deixa passar login/cadastro
   if (isPublicRoute(req)) {
     return NextResponse.next()
   }
 
   const authData = await auth();
 
-  // SE NÃO ESTIVER LOGADO NA WEB: Redireciona para login
+  // REGRA PARA A WEB (PROTEGIDO): Se não estiver logado, manda para /sign-in
   if (!authData.userId) {
     return NextResponse.redirect(new URL("/sign-in", req.url));
   }
 
-  // --- DAQUI PARA BAIXO: SUA LÓGICA ORIGINAL DE ROLES PARA A WEB ---
+  // --- SUA LÓGICA ORIGINAL DE PERMISSÕES PARA A WEB ---
   const roles = (authData.sessionClaims?.metadata as { roles?: string[] })?.roles ?? [];
   if (roles.length === 0) return;
 

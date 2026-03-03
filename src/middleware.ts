@@ -7,7 +7,6 @@ const matchers = Object.keys(routeAccessMap).map((route) => ({
   allowedRoles: routeAccessMap[route],
 }));
 
-// Rotas públicas da web
 const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
@@ -17,16 +16,16 @@ export default clerkMiddleware(async (auth, req) => {
   const { userId, sessionClaims } = await auth();
   const pathname = req.nextUrl.pathname;
 
-  // ================================
-  // 🔥 REGRA 1 — API MOBILE PÚBLICA
-  // ================================
+  // ============================
+  // 🔥 API MOBILE PÚBLICA
+  // ============================
   if (pathname.startsWith("/api/mobile")) {
     return NextResponse.next();
   }
 
-  // ================================
-  // 🔥 REGRA 2 — OUTRAS APIs PROTEGIDAS
-  // ================================
+  // ============================
+  // 🔥 OUTRAS APIs PROTEGIDAS
+  // ============================
   if (pathname.startsWith("/api")) {
     if (!userId) {
       return new NextResponse(
@@ -34,20 +33,19 @@ export default clerkMiddleware(async (auth, req) => {
         { status: 401 }
       );
     }
-
     return NextResponse.next();
   }
 
-  // ================================
-  // 🔥 REGRA 3 — ROTAS PÚBLICAS WEB
-  // ================================
+  // ============================
+  // 🔥 ROTAS PÚBLICAS
+  // ============================
   if (isPublicRoute(req)) {
     return NextResponse.next();
   }
 
-  // ================================
-  // 🔥 REGRA 4 — WEB PROTEGIDA
-  // ================================
+  // ============================
+  // 🔥 WEB PROTEGIDA
+  // ============================
   if (!userId) {
     return NextResponse.redirect(new URL("/sign-in", req.url));
   }
@@ -55,39 +53,67 @@ export default clerkMiddleware(async (auth, req) => {
   const roles =
     (sessionClaims?.metadata as { roles?: string[] })?.roles ?? [];
 
+  // ============================
+  // 🔥 SEM ROLE → MEMBER
+  // ============================
   if (roles.length === 0) {
-    return NextResponse.redirect(new URL("/member", req.url));
+    if (pathname !== "/member") {
+      return NextResponse.redirect(new URL("/member", req.url));
+    }
+    return NextResponse.next();
   }
 
-  // ================================
-  // 🔥 REGRA 5 — CONTROLE POR ROLE
-  // ================================
+  // ============================
+  // 🔥 CONTROLE POR ROLE (SEM LOOP)
+  // ============================
   for (const { matcher, allowedRoles } of matchers) {
-    if (matcher(req) && !allowedRoles.some((r) => roles.includes(r))) {
+    if (matcher(req)) {
+      const hasAccess = allowedRoles.some((r) => roles.includes(r));
 
-      if (roles.includes("admin") || roles.includes("superadmin")) {
-        return NextResponse.redirect(new URL("/admin", req.url));
+      if (!hasAccess) {
+        // Admin bypass
+        if (roles.includes("admin") || roles.includes("superadmin")) {
+          if (pathname !== "/admin") {
+            return NextResponse.redirect(new URL("/admin", req.url));
+          }
+          return NextResponse.next();
+        }
+
+        const groupRoles = [
+          "ump",
+          "upa",
+          "uph",
+          "saf",
+          "ucp",
+          "diaconia",
+          "conselho",
+          "ministerio",
+          "ebd",
+        ];
+
+        const firstGroup = roles.find((r) =>
+          groupRoles.includes(r)
+        );
+
+        if (firstGroup) {
+          const targetPath = `/${firstGroup}`;
+
+          // 🚫 NÃO redireciona se já estiver lá
+          if (pathname !== targetPath) {
+            return NextResponse.redirect(
+              new URL(targetPath, req.url)
+            );
+          }
+
+          return NextResponse.next();
+        }
+
+        if (pathname !== "/member") {
+          return NextResponse.redirect(new URL("/member", req.url));
+        }
+
+        return NextResponse.next();
       }
-
-      const groupRoles = [
-        "ump",
-        "upa",
-        "uph",
-        "saf",
-        "ucp",
-        "diaconia",
-        "conselho",
-        "ministerio",
-        "ebd",
-      ];
-
-      const firstGroup = roles.find((r) => groupRoles.includes(r));
-
-      if (firstGroup) {
-        return NextResponse.redirect(new URL(`/${firstGroup}`, req.url));
-      }
-
-      return NextResponse.redirect(new URL("/member", req.url));
     }
   }
 
@@ -111,7 +137,7 @@ export const config = {
     "/list(.*)",
     "/agenda(.*)",
     "/calendario-geral(.*)",
-    "/api/mobile(.*)",  // 🔥 continua passando pelo middleware
+    "/api/mobile(.*)",
     "/api/role(.*)",
   ],
 };

@@ -8,7 +8,11 @@ const matchers = Object.keys(routeAccessMap).map((route) => ({
 }));
 
 // 1. Rotas que o App usa (Liberadas)
-const isAppApi = createRouteMatcher(["/api/mobile(.*)", "/api/roles(.*)"])
+const isAppApi = createRouteMatcher([
+  "/api/mobile(.*)",
+  "/api/roles(.*)",
+  "/api/role/(.*)",   // ← adicionado para o app mobile
+])
 
 // 2. Rotas Públicas da Web (Login/Cadastro)
 const isPublicRoute = createRouteMatcher(["/sign-in(.*)", "/sign-up(.*)"])

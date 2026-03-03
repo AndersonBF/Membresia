@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server"
-import { auth } from "@clerk/nextjs/server"
 import prisma from "@/lib/prisma"
 
-// 1. CORRIGE O ERRO DE FETCH NA WEB (CORS)
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
@@ -13,15 +11,32 @@ export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders })
 }
 
-export async function GET(req: Request, { params }: { params: { role: string } }) {
-  // 2. CORRIGE O ERRO 401 NO APP (COMENTADO)
-  /*
-  const { userId } = await auth()
-  if (!userId) return NextResponse.json({ error: "Não autorizado" }, { status: 401, headers: corsHeaders })
-  */
+export async function GET(
+  req: Request,
+  context: { params: { role: string } }
+) {
+  try {
+    const role = context.params.role
 
-  // ... (toda a sua lógica de busca no Prisma continua aqui) ...
-  
-  // 3. RETORNA O JSON COM OS HEADERS (CORRIGE OS DOIS)
-  return NextResponse.json({ /* seus dados */ }, { headers: corsHeaders })
+    if (!role) {
+      return NextResponse.json(
+        { error: "Role não informada" },
+        { status: 400, headers: corsHeaders }
+      )
+    }
+
+    // 🔥 TESTE SIMPLES PRIMEIRO
+    return NextResponse.json(
+      { success: true, role },
+      { headers: corsHeaders }
+    )
+
+  } catch (error) {
+    console.error("ERRO NA API:", error)
+
+    return NextResponse.json(
+      { error: "Erro interno do servidor" },
+      { status: 500, headers: corsHeaders }
+    )
+  }
 }

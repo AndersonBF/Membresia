@@ -5,7 +5,7 @@ import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { menuItems } from "./menuItems";
-import { Shield, HandHelping, Music, Baby, UserCircle, GraduationCap } from "lucide-react";
+import { Shield, HandHelping, Layers, Baby, UserCircle, GraduationCap } from "lucide-react";
 import { Suspense } from "react";
 
 const sociedades = ["ump", "upa", "uph", "saf", "ucp"];
@@ -16,47 +16,20 @@ const societyMap: Record<string, number> = {
 }
 
 const UMPIcon = ({ size, className }: { size?: number; className?: string }) => (
-  <Image
-    src="/UMP.png"
-    alt="UMP"
-    width={size ?? 20}
-    height={size ?? 20}
-    className={`object-contain ${className ?? ""}`}
-    style={{ filter: "brightness(0) invert(1)" }}
-  />
+  <Image src="/UMP.png" alt="UMP" width={size ?? 20} height={size ?? 20}
+    className={`object-contain ${className ?? ""}`} style={{ filter: "brightness(0) invert(1)" }} />
 )
-
 const UPAIcon = ({ size, className }: { size?: number; className?: string }) => (
-  <Image
-    src="/UPA.png"
-    alt="UPA"
-    width={size ?? 20}
-    height={size ?? 20}
-    className={`object-contain ${className ?? ""}`}
-    style={{ filter: "brightness(0) invert(1)" }}
-  />
+  <Image src="/UPA.png" alt="UPA" width={size ?? 20} height={size ?? 20}
+    className={`object-contain ${className ?? ""}`} style={{ filter: "brightness(0) invert(1)" }} />
 )
-
 const SAFIcon = ({ size, className }: { size?: number; className?: string }) => (
-  <Image
-    src="/SAF.png"
-    alt="SAF"
-    width={size ?? 20}
-    height={size ?? 20}
-    className={`object-contain ${className ?? ""}`}
-    style={{ filter: "brightness(0) invert(1)" }}
-  />
+  <Image src="/SAF.png" alt="SAF" width={size ?? 20} height={size ?? 20}
+    className={`object-contain ${className ?? ""}`} style={{ filter: "brightness(0) invert(1)" }} />
 )
-
 const UPHIcon = ({ size, className }: { size?: number; className?: string }) => (
-  <Image
-    src="/UPH.png"
-    alt="UPH"
-    width={size ?? 20}
-    height={size ?? 20}
-    className={`object-contain ${className ?? ""}`}
-    style={{ filter: "brightness(0) invert(1)" }}
-  />
+  <Image src="/UPH.png" alt="UPH" width={size ?? 20} height={size ?? 20}
+    className={`object-contain ${className ?? ""}`} style={{ filter: "brightness(0) invert(1)" }} />
 )
 
 const roleConfig: Record<string, { label: string; icon: React.ElementType; color: string }> = {
@@ -68,7 +41,7 @@ const roleConfig: Record<string, { label: string; icon: React.ElementType; color
   ucp:        { label: "UCP",        icon: Baby,          color: "text-white" },
   diaconia:   { label: "Diaconia",   icon: HandHelping,   color: "text-white" },
   conselho:   { label: "Conselho",   icon: Shield,        color: "text-white" },
-  ministerio: { label: "Ministério", icon: Music,         color: "text-white" },
+  ministerio: { label: "Ministério", icon: Layers,        color: "text-white" },
   ebd:        { label: "EBD",        icon: GraduationCap, color: "text-white" },
 }
 
@@ -79,6 +52,7 @@ const roleRouteMap: Record<string, string> = {
   "/list/documents":  "/list/documents",
   "/list/finance":    "/list/finance",
   "/list/broadcasts": "/list/broadcasts",
+  "/galeria":         "/galeria",           // ← galeria da sociedade
 }
 
 const MenuContent = () => {
@@ -103,6 +77,9 @@ const MenuContent = () => {
     if (href === "/member") return "/member"
     if (href === "/admin") return `/${currentRole}`
     if (href === "/list/members") return `/${currentRole}/membros`
+
+    // Galeria da sociedade → /<role>/galeria
+    if (href === "/galeria") return `/${currentRole}/galeria`
 
     if (roleRouteMap[href] !== undefined) {
       const societyId = societyMap[currentRole]
@@ -142,7 +119,7 @@ const MenuContent = () => {
 
             return (
               <Link
-                key={item.label}
+                key={item.label + item.href}
                 href={href}
                 className={`flex items-center justify-center lg:justify-start gap-4
                   py-2 md:px-2 rounded-md transition

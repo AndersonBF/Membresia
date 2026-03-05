@@ -6,7 +6,7 @@ import BroadcastFeed from "@/components/BroadcastFeed"
 import prisma from "@/lib/prisma"
 import Image from "next/image"
 import Link from "next/link"
-import { Users, Calendar, FileText, ArrowLeft, Phone, ChevronRight, Clock, Cake } from "lucide-react"
+import { Users, Calendar, FileText, ArrowLeft, Phone, ChevronRight, Clock, Cake, Camera } from "lucide-react"
 
 const roleConfig: Record<string, {
   label: string
@@ -197,9 +197,10 @@ const RolePage = async ({
           <div className="w-full lg:w-2/3 flex flex-col gap-8">
 
             {/* QUICK LINKS */}
-            <div className="grid grid-cols-3 gap-3 rp-in d2">
+            <div className="grid grid-cols-4 gap-3 rp-in d2">
               {[
                 { label: "Membros",    icon: Users,    href: `/${role}/membros` },
+                { label: "Galeria",    icon: Camera,   href: `/${role}/galeria` },
                 { label: "Eventos",    icon: Calendar, href: `/list/events?roleContext=${role}` },
                 { label: "Documentos", icon: FileText,  href: `/list/documents?roleContext=${role}` },
               ].map((item) => {

@@ -4,6 +4,7 @@ import {
   FileText, User, Settings, LogOut, Key,
   Heart, Info, Image, Youtube, CalendarDays,
   ClipboardList, CalendarRange, MessageSquare,
+  Camera,
 } from "lucide-react";
 
 const adminRoles = ["admin", "superadmin"];
@@ -141,6 +142,14 @@ export const menuItems = [
         visible: allRoles,
         hiddenForSociedades: true,
         showOnlyForSociedades: false,
+      },
+      {
+        icon: Camera,
+        label: "Galeria",
+        href: "/galeria",          // ← tratado no resolveHref do Menu.tsx
+        visible: staffRoles,
+        hiddenForSociedades: false,
+        showOnlyForSociedades: true,
       },
       {
         icon: Heart,

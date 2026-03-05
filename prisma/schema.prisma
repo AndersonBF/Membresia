@@ -29,11 +29,12 @@ model Member {
   gender    Gender?
   isActive  Boolean   @default(true)
   createdAt DateTime  @default(now())
-  profileImageUrl String? 
+  profileImageUrl String?
+
   // Relacionamentos
   ministries    MemberMinistry[]
   societies     MemberSociety[]
-  
+
   bibleSchoolClassId Int?
   bibleSchoolClass   BibleSchoolClass? @relation(fields: [bibleSchoolClassId], references: [id], onDelete: SetNull)
 
@@ -51,8 +52,9 @@ model Council {
   id       Int             @id @default(1)
   members  MemberCouncil[]
   finances Finance[]
-  
+
   documents Document[]
+  albums    GalleryAlbum[]
 }
 
 // ===============================================
@@ -63,6 +65,7 @@ model Diaconate {
   members MemberDiaconate[]
 
   documents Document[]
+  albums    GalleryAlbum[]
 }
 
 // ===============================================
@@ -98,6 +101,7 @@ model Ministry {
   members MemberMinistry[]
 
   documents Document[]
+  albums    GalleryAlbum[]
 }
 
 model MemberMinistry {
@@ -115,13 +119,14 @@ model MemberMinistry {
 // SOCIEDADES INTERNAS (InternalSociety)
 // ===============================================
 model InternalSociety {
-  id       Int             @id @default(autoincrement())
-  name     String
-  members  MemberSociety[]
-  finances Finance[]
-  events   Event[]
-  broadcasts Broadcast[]   // ← adicione esta linha
-  documents Document[]
+  id         Int             @id @default(autoincrement())
+  name       String
+  members    MemberSociety[]
+  finances   Finance[]
+  events     Event[]
+  broadcasts Broadcast[]
+  documents  Document[]
+  albums     GalleryAlbum[]
 }
 
 model MemberSociety {
@@ -159,6 +164,7 @@ model BibleSchoolClass {
   bibleSchool   BibleSchool? @relation(name: "BibleSchoolClasses", fields: [bibleSchoolId], references: [id], onDelete: SetNull)
 
   documents Document[]
+  albums    GalleryAlbum[]
 }
 
 // ===============================================
@@ -243,7 +249,6 @@ model Finance {
 
 // ===============================================
 // DOCUMENTOS (Document)
-// Centraliza arquivos de todas as áreas
 // ===============================================
 model Document {
   id          Int      @id @default(autoincrement())
@@ -268,6 +273,9 @@ model Document {
   bibleSchoolClass   BibleSchoolClass? @relation(fields: [bibleSchoolClassId], references: [id], onDelete: Cascade)
 }
 
+// ===============================================
+// BROADCAST (Comunicados)
+// ===============================================
 model Broadcast {
   id         Int      @id @default(autoincrement())
   title      String
@@ -295,4 +303,43 @@ model BroadcastReaction {
   broadcast   Broadcast @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
 
   @@unique([broadcastId, userId, emoji])
+}
+
+// ===============================================
+// GALERIA (Gallery)
+// ===============================================
+model GalleryAlbum {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  coverUrl    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  societyId          Int?
+  society            InternalSociety?  @relation(fields: [societyId], references: [id], onDelete: Cascade)
+
+  councilId          Int?
+  council            Council?          @relation(fields: [councilId], references: [id], onDelete: Cascade)
+
+  diaconateId        Int?
+  diaconate          Diaconate?        @relation(fields: [diaconateId], references: [id], onDelete: Cascade)
+
+  ministryId         Int?
+  ministry           Ministry?         @relation(fields: [ministryId], references: [id], onDelete: Cascade)
+
+  bibleSchoolClassId Int?
+  bibleSchoolClass   BibleSchoolClass? @relation(fields: [bibleSchoolClassId], references: [id], onDelete: Cascade)
+
+  photos GalleryPhoto[]
+}
+
+model GalleryPhoto {
+  id        Int      @id @default(autoincrement())
+  url       String
+  caption   String?
+  albumId   Int
+  createdAt DateTime @default(now())
+
+  album GalleryAlbum @relation(fields: [albumId], references: [id], onDelete: Cascade)
 }

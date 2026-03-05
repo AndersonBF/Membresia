@@ -139,5 +139,6 @@ export const config = {
     "/calendario-geral(.*)",
     "/api/mobile(.*)",
     "/api/role(.*)",
+     "/api/(.*)",  
   ],
 };

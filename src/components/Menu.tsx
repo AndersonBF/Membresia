@@ -58,7 +58,7 @@ const MenuContent = () => {
   const roleContext  = searchParams.get("roleContext");
   const pathnameRole = pathname.split("/")[1];
 
-  // Detecta /ministerio/[id] (ignora /ministerio sem id)
+  // Detecta /ministerio/[id]
   const ministryMatch  = pathname.match(/^\/ministerio\/(\d+)/);
   const ministryId     = ministryMatch ? ministryMatch[1] : null;
   const isMinistryPage = !!ministryId;
@@ -71,8 +71,6 @@ const MenuContent = () => {
   const isSociedade = sociedades.includes(currentRole);
   const isRolePage  = allRoles.includes(currentRole) || isMinistryPage;
 
-  // Ministérios individuais se comportam como sociedades no menu
-  // (mostram itens contextuais: Membros, Eventos, Docs, Galeria, etc.)
   const effectiveIsSociedade = isSociedade || isMinistryPage;
 
   const currentRoleConfig = roleConfig[currentRole] ?? roleConfig["ministerio"];
@@ -82,10 +80,15 @@ const MenuContent = () => {
   const resolveHref = (href: string): string => {
     if (!isRolePage) return href;
 
-    if (href === "/member") return "/member";
-    if (href === "/admin")  return isMinistryPage
+    // "Início" dentro de qualquer role vai para a home do role, não /member
+    if (href === "/member") return isMinistryPage ? `/ministerio/${ministryId}` : `/${currentRole}`;
+
+    if (href === "/admin") return isMinistryPage
       ? `/ministerio/${ministryId}`
       : `/${currentRole}`;
+
+    // Relatórios da sociedade → /<role>/relatorios
+    if (href === "/relatorios") return `/${currentRole}/relatorios`;
 
     // ── Ministério individual ──
     if (isMinistryPage) {
@@ -99,7 +102,7 @@ const MenuContent = () => {
       return href;
     }
 
-    // ── Outras roles ──
+    // ── Outras roles (sociedades, diaconia, conselho, etc.) ──
     if (href === "/list/members") return `/${currentRole}/membros`;
     if (href === "/galeria")      return `/${currentRole}/galeria`;
 
@@ -138,7 +141,6 @@ const MenuContent = () => {
           </span>
 
           {section.items.map((item) => {
-            // Visibilidade — ministério individual trata-se como sociedade
             if (effectiveIsSociedade && item.hiddenForSociedades)    return null;
             if (!effectiveIsSociedade && item.showOnlyForSociedades) return null;
 

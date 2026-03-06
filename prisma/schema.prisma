@@ -191,7 +191,8 @@ model Event {
   date        DateTime
   startTime   DateTime?
   endTime     DateTime?
-  isPublic    Boolean   @default(false)
+  isPublic            Boolean   @default(false)
+  requiresAttendance  Boolean   @default(true)   // ← novo
 
   societyId Int?
   society   InternalSociety? @relation(fields: [societyId], references: [id], onDelete: SetNull)

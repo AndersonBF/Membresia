@@ -1,16 +1,25 @@
-import  prisma  from "@/lib/prisma";
+import prisma from "@/lib/prisma";
 import { notFound } from "next/navigation";
 
 interface Props {
   params: { role: string };
 }
 
+// Mesmo mapa usado no resto do app
+const societyMap: Record<string, number> = {
+  saf: 3, uph: 4, ump: 5, upa: 6, ucp: 7,
+}
+
 export default async function Relatorios({ params }: Props) {
-  const roleName = decodeURIComponent(params.role);
+  const role = decodeURIComponent(params.role);
+  const societyId = societyMap[role];
+
+  // Se o role não tem sociedade mapeada, retorna 404
+  if (!societyId) return notFound();
 
   const society = await prisma.internalSociety.findFirst({
     where: {
-      name: roleName,
+      id: societyId, // ← busca por ID, não por name
     },
     include: {
       members: {
@@ -42,7 +51,7 @@ export default async function Relatorios({ params }: Props) {
 
   const mediaPresenca =
     society.events.reduce((acc, event) => {
-      const total = event.attendances.length;
+      const total    = event.attendances.length;
       const presentes = event.attendances.filter(a => a.isPresent).length;
       return acc + (total > 0 ? presentes / total : 0);
     }, 0) / (society.events.length || 1);
@@ -58,16 +67,16 @@ export default async function Relatorios({ params }: Props) {
   const saldo = totalEntradas - totalSaidas;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 p-6">
       <h1 className="text-2xl font-bold">
-        Relatórios - {society.name}
+        Relatórios — {society.name}
       </h1>
 
-      <div className="grid grid-cols-4 gap-4">
-        <Card title="Membros" value={totalMembros} />
-        <Card title="Eventos" value={totalEventos} />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card title="Membros"        value={totalMembros} />
+        <Card title="Eventos"        value={totalEventos} />
         <Card title="Média Presença" value={(mediaPresenca * 100).toFixed(1) + "%"} />
-        <Card title="Saldo" value={"R$ " + saldo.toFixed(2)} />
+        <Card title="Saldo"          value={"R$ " + saldo.toFixed(2)} />
       </div>
     </div>
   );

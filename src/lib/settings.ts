@@ -1,13 +1,12 @@
+// src/lib/settings.ts
 export const ITEM_PER_PAGE = 10
 
 type RouteAccessMap = {
   [key: string]: string[];
 };
 
-const allRoles = ["member", "admin", "superadmin", "ump", "upa", "uph", "saf", "ucp", "diaconia", "conselho", "ministerio", "ebd"];
-
 export const routeAccessMap: RouteAccessMap = {
-  "/member":         allRoles,
+  "/member": ["member", "admin", "superadmin", "ump", "upa", "uph", "saf", "ucp", "diaconia", "conselho", "ministerio", "ebd"],
   "/admin(.*)":      ["admin", "superadmin"],
   "/ump(.*)":        ["ump", "admin", "superadmin"],
   "/upa(.*)":        ["upa", "admin", "superadmin"],
@@ -16,11 +15,9 @@ export const routeAccessMap: RouteAccessMap = {
   "/ucp(.*)":        ["ucp", "admin", "superadmin"],
   "/diaconia(.*)":   ["diaconia", "admin", "superadmin"],
   "/conselho(.*)":   ["conselho", "admin", "superadmin"],
-  // /ministerio      → lista de ministérios (qualquer um logado)
-  // /ministerio/[id] → página individual (qualquer membro pode acessar;
-  //                    a page.tsx verifica se é membro daquele ministério)
-  "/ministerio(.*)": allRoles,
+  "/ministerio(.*)": ["ministerio", "admin", "superadmin"],
   "/ebd(.*)":        ["ebd", "admin", "superadmin"],
-  "/list/members":   ["admin", "superadmin"],
+  "/list/members":       ["admin", "superadmin"],
+  "/list/members/(.*)":  ["admin", "superadmin"],
   "/list/position":  ["admin", "superadmin"],
 };

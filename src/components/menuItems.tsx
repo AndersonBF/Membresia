@@ -4,7 +4,7 @@ import {
   FileText, User, Settings, LogOut, Key,
   Heart, Info, Image, Youtube, CalendarDays,
   ClipboardList, CalendarRange, MessageSquare,
-  Camera,
+  Camera, BarChart2,
 } from "lucide-react";
 
 const adminRoles = ["admin", "superadmin"];
@@ -146,7 +146,7 @@ export const menuItems = [
       {
         icon: Camera,
         label: "Galeria",
-        href: "/galeria",          // ← tratado no resolveHref do Menu.tsx
+        href: "/galeria",
         visible: staffRoles,
         hiddenForSociedades: false,
         showOnlyForSociedades: true,
@@ -187,6 +187,14 @@ export const menuItems = [
         icon: DollarSign,
         label: "Financeiro",
         href: "/list/finance",
+        visible: staffRoles,
+        hiddenForSociedades: false,
+        showOnlyForSociedades: true,
+      },
+      {
+        icon: BarChart2,
+        label: "Relatórios",
+        href: "/relatorios",        // ← tratado no resolveHref do Menu.tsx igual ao /galeria
         visible: staffRoles,
         hiddenForSociedades: false,
         showOnlyForSociedades: true,

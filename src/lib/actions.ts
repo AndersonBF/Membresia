@@ -91,14 +91,11 @@ export const updateMember = async (
       }
 
       // Atualiza ministério
-      await prisma.memberMinistry.deleteMany({ where: { memberId: data.id } })
-      if (data.roles.includes("ministerio")) {
-        const ministry = await prisma.ministry.findFirst()
-        if (ministry) {
-          await prisma.memberMinistry.create({
-            data: { memberId: data.id, ministryId: ministry.id }
-          })
-        }
+      // Se "ministerio" foi DESMARCADO, remove todos os vínculos.
+      // Se ainda está marcado, preserva os vínculos específicos existentes
+      // (gerenciados pelo AddMemberToMinistryButton).
+      if (!data.roles.includes("ministerio")) {
+        await prisma.memberMinistry.deleteMany({ where: { memberId: data.id } })
       }
 
       // Atualiza roles no Clerk

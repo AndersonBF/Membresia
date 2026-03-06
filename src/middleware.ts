@@ -1,3 +1,4 @@
+// src/middleware.ts
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { routeAccessMap } from "./lib/settings";
 import { NextResponse } from "next/server";
@@ -118,18 +119,11 @@ export const config = {
     "/ucp(.*)",
     "/diaconia(.*)",
     "/conselho(.*)",
-    "/ministerio",
-    "/ministerio/(.*)",   // ← cobre /ministerio/[id] e /ministerio/[id]/galeria etc.
+    "/ministerio(.*)",
     "/ebd(.*)",
     "/list(.*)",
     "/agenda(.*)",
     "/calendario-geral(.*)",
-    "/about(.*)",
-    "/sermons(.*)",
-    "/gallery(.*)",
-    "/tithes(.*)",
-    "/profile(.*)",
-    "/settings(.*)",
     "/api/mobile(.*)",
     "/api/role(.*)",
     "/api/(.*)",

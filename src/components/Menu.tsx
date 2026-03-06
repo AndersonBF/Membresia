@@ -132,8 +132,8 @@ const MenuContent = () => {
       )}
 
       {menuItems.map((section) => (
-        <div key={section.title} className="flex flex-col gap-2">
-          <span className="text-2xl hidden lg:block text-white font-light my-4">
+        <div key={section.title} className="flex flex-col gap-1">
+          <span className="text-2xl hidden lg:block text-white font-light my-1">
             {section.title}
           </span>
 

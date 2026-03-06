@@ -9,7 +9,7 @@ const societyMap: Record<string, number> = {
 
 function getWhereForRole(role: string) {
   const societyId = societyMap[role]
-  if (societyId)   return { societyId }
+  if (societyId)             return { societyId }
   if (role === "conselho")   return { councilId: 1 }
   if (role === "diaconia")   return { diaconateId: 1 }
   if (role === "ministerio") return { ministryId: { not: null as any } }
@@ -18,11 +18,15 @@ function getWhereForRole(role: string) {
 }
 
 // GET /api/gallery/albums?role=ump
+// GET /api/gallery/albums?ministryId=4   ← específico por ministério
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
-  const role = searchParams.get("role") ?? ""
+  const role       = searchParams.get("role") ?? ""
+  const ministryId = searchParams.get("ministryId")
 
-  const where = getWhereForRole(role)
+  const where = ministryId
+    ? { ministryId: parseInt(ministryId) }
+    : getWhereForRole(role)
 
   const albums = await prisma.galleryAlbum.findMany({
     where,
@@ -37,29 +41,46 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/gallery/albums
+// Body com role (existente) ou ministryId (novo)
 export async function POST(req: NextRequest) {
   const user = await currentUser()
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const roles = (user.publicMetadata?.roles as string[]) ?? []
-  const isSuperAdmin = roles.includes("superadmin") || roles.includes("admin")
+  const isAdmin = roles.includes("superadmin") || roles.includes("admin")
 
-  const body = await req.json()
-  const { title, description, coverUrl, role } = body
-
-  if (!title || !role) {
-    return NextResponse.json({ error: "title e role são obrigatórios" }, { status: 400 })
+  if (!isAdmin) {
+    return NextResponse.json({ error: "Acesso negado" }, { status: 403 })
   }
 
-  // Verifica se tem acesso ao role
-  if (!isSuperAdmin && !roles.includes(role)) {
+  const body = await req.json()
+  const { title, description, coverUrl, role, ministryId } = body
+
+  if (!title) {
+    return NextResponse.json({ error: "title é obrigatório" }, { status: 400 })
+  }
+
+  // Criação via ministryId específico
+  if (ministryId) {
+    const album = await prisma.galleryAlbum.create({
+      data: { title, description, coverUrl, ministryId: parseInt(ministryId) },
+    })
+    return NextResponse.json(album, { status: 201 })
+  }
+
+  // Criação via role (comportamento original)
+  if (!role) {
+    return NextResponse.json({ error: "role ou ministryId são obrigatórios" }, { status: 400 })
+  }
+
+  if (!isAdmin && !roles.includes(role)) {
     return NextResponse.json({ error: "Acesso negado" }, { status: 403 })
   }
 
   const societyId = societyMap[role]
   const data: any = { title, description, coverUrl }
 
-  if (societyId)              data.societyId = societyId
+  if (societyId)                  data.societyId = societyId
   else if (role === "conselho")   data.councilId = 1
   else if (role === "diaconia")   data.diaconateId = 1
   else if (role === "ministerio") data.ministryId = 1

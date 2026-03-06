@@ -1,34 +1,36 @@
-import FormContainer from "@/components/FormContainer";
-import Pagination from "@/components/Pagination";
-import Table from "@/components/Table";
-import TableSearch from "@/components/TableSearch";
-import prisma from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
-import Image from "next/image";
-import Link from "next/link";
-import { ITEM_PER_PAGE } from "@/lib/settings";
-import { auth } from "@clerk/nextjs/server";
+// src/app/(dashboard)/list/members/page.tsx
+import FormContainer from "@/components/FormContainer"
+import Pagination from "@/components/Pagination"
+import Table from "@/components/Table"
+import TableSearch from "@/components/TableSearch"
+import prisma from "@/lib/prisma"
+import { Prisma } from "@prisma/client"
+import Image from "next/image"
+import Link from "next/link"
+import { ITEM_PER_PAGE } from "@/lib/settings"
+import { auth } from "@clerk/nextjs/server"
+import MemberAvatar from "@/components/MemberAvatar"
 
-export const dynamic = "force-dynamic";
+export const dynamic = "force-dynamic"
 
 type MemberWithRelations = Prisma.MemberGetPayload<{
   include: {
-    societies: { include: { society: true } };
-    council: true;
-    diaconate: true;
-    ministries: { include: { ministry: true } };
-    bibleSchoolClass: true;
-  };
-}>;
+    societies: { include: { society: true } }
+    council: true
+    diaconate: true
+    ministries: { include: { ministry: true } }
+    bibleSchoolClass: true
+  }
+}>
 
 const MemberListPage = async ({
   searchParams,
 }: {
-  searchParams: { [key: string]: string | undefined };
+  searchParams: { [key: string]: string | undefined }
 }) => {
-  const { sessionClaims } = await auth();
-  const roles = (sessionClaims?.metadata as { roles?: string[] })?.roles ?? [];
-  const isAdmin = roles.includes("admin") || roles.includes("superadmin");
+  const { sessionClaims } = await auth()
+  const roles = (sessionClaims?.metadata as { roles?: string[] })?.roles ?? []
+  const isAdmin = roles.includes("admin") || roles.includes("superadmin")
 
   const columns = [
     { header: "Info", accessor: "info" },
@@ -38,8 +40,8 @@ const MemberListPage = async ({
     { header: "Telefone", accessor: "phone", className: "hidden lg:table-cell" },
     { header: "Email", accessor: "email", className: "hidden xl:table-cell" },
     { header: "Status", accessor: "isActive", className: "hidden md:table-cell" },
-    { header: "Actions", accessor: "actions" },
-  ];
+    { header: "Ações", accessor: "actions" },
+  ]
 
   const renderRow = (item: MemberWithRelations) => (
     <tr
@@ -47,14 +49,17 @@ const MemberListPage = async ({
       className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-lamaPurpleLight"
     >
       <td className="flex items-center gap-4 p-4">
-        <Image src="/profile.png" alt="" width={40} height={40} className="w-10 h-10 rounded-full object-cover" />
+        <MemberAvatar
+          name={item.name}
+          profileImageUrl={(item as any).profileImageUrl}
+          size={40}
+        />
         <div className="flex flex-col">
           <h3 className="font-semibold">{item.name}</h3>
           <p className="text-xs text-gray-500">{item.username || `ID: ${item.id}`}</p>
         </div>
       </td>
 
-      {/* GRUPOS */}
       <td className="hidden md:table-cell">
         <div className="flex flex-wrap gap-1">
           {item.societies?.map((s) => (
@@ -133,15 +138,15 @@ const MemberListPage = async ({
         </div>
       </td>
     </tr>
-  );
+  )
 
-  const { page, ...queryParams } = searchParams;
-  const p = page ? parseInt(page) : 1;
+  const { page, ...queryParams } = searchParams
+  const p = page ? parseInt(page) : 1
 
-  const query: Prisma.MemberWhereInput = {};
+  const query: Prisma.MemberWhereInput = {}
 
   if (queryParams.search) {
-    query.name = { contains: queryParams.search, mode: "insensitive" };
+    query.name = { contains: queryParams.search, mode: "insensitive" }
   }
 
   const [data, count] = await prisma.$transaction([
@@ -159,7 +164,7 @@ const MemberListPage = async ({
       },
     }),
     prisma.member.count({ where: query }),
-  ]);
+  ])
 
   return (
     <div className="bg-white p-4 rounded-md flex-1 m-4 mt-0">
@@ -191,7 +196,7 @@ const MemberListPage = async ({
         </Link>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default MemberListPage;
+export default MemberListPage

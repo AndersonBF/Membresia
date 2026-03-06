@@ -8,6 +8,7 @@ import { Dispatch, SetStateAction, useTransition, useState } from "react";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import InputField from "../InputField";
+import { KeyRound, Copy, RefreshCw } from "lucide-react";
 
 const roleOptions = [
   { id: "ump", label: "UMP" },
@@ -72,7 +73,6 @@ const MemberForm = ({
     return roles
   })
 
-  // Cargos por sociedade: { ump: "Presidente", upa: "", ... }
   const [cargos, setCargos] = useState<Record<string, string>>(() => {
     if (!data?.societies) return {}
     const societyIdMap: Record<number, string> = { 3: "saf", 4: "uph", 5: "ump", 6: "upa", 7: "ucp" }
@@ -84,7 +84,8 @@ const MemberForm = ({
     return result
   })
 
-  const [credentials, setCredentials] = useState<{ username: string; password: string } | null>(null)
+  const [credentials, setCredentials] = useState<{ username: string; password: string; action?: string } | null>(null)
+  const [isResetting, setIsResetting] = useState(false)
 
   const gender = watch("gender")
 
@@ -92,7 +93,6 @@ const MemberForm = ({
     setSelectedRoles((prev) =>
       prev.includes(roleId) ? prev.filter((r) => r !== roleId) : [...prev, roleId]
     )
-    // Remove cargo se desmarcar sociedade
     if (selectedRoles.includes(roleId) && sociedades.includes(roleId)) {
       setCargos((prev) => {
         const next = { ...prev }
@@ -100,6 +100,34 @@ const MemberForm = ({
         return next
       })
     }
+  }
+
+  // Gera ou reseta credenciais do membro existente
+  async function handleResetCredentials() {
+    if (!data?.id) return
+    setIsResetting(true)
+    try {
+      const res = await fetch("/api/admin/reset-credentials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memberId: data.id }),
+      })
+      const result = await res.json()
+      if (res.ok) {
+        setCredentials(result)
+        toast.success(result.action === "reset" ? "Senha redefinida!" : "Credenciais criadas!")
+        router.refresh()
+      } else {
+        toast.error(result.error ?? "Erro ao gerar credenciais!")
+      }
+    } finally {
+      setIsResetting(false)
+    }
+  }
+
+  function copyCredentials(username: string, password: string) {
+    navigator.clipboard.writeText(`Username: ${username}\nSenha: ${password}`)
+    toast.success("Credenciais copiadas!")
   }
 
   const onSubmit = handleSubmit(
@@ -150,7 +178,8 @@ const MemberForm = ({
     }
   )
 
-  if (credentials) {
+  // Tela de credenciais após criar membro
+  if (credentials && type === "create") {
     return (
       <div className="flex flex-col gap-4">
         <h2 className="text-xl font-semibold text-green-700">✅ Membro criado!</h2>
@@ -166,10 +195,7 @@ const MemberForm = ({
           </div>
         </div>
         <button
-          onClick={() => {
-            navigator.clipboard.writeText(`Username: ${credentials.username}\nSenha: ${credentials.password}`)
-            toast.success("Credenciais copiadas!")
-          }}
+          onClick={() => copyCredentials(credentials.username, credentials.password)}
           className="bg-green-600 text-white py-2 rounded-md text-sm hover:bg-green-700 transition"
         >
           Copiar credenciais
@@ -261,6 +287,57 @@ const MemberForm = ({
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* CREDENCIAIS — só no modo update */}
+      {type === "update" && (
+        <div className="flex flex-col gap-2 border border-gray-200 rounded-lg p-3 bg-gray-50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <KeyRound size={15} className="text-gray-500" />
+              <span className="text-sm text-gray-600 font-medium">Credenciais de acesso</span>
+            </div>
+            {data?.username && (
+              <span className="text-xs text-gray-400 font-mono">{data.username}</span>
+            )}
+          </div>
+
+          {/* Mostra credenciais recém-geradas */}
+          {credentials && (
+            <div className="bg-white border border-green-200 rounded-md p-3 font-mono text-sm flex flex-col gap-1">
+              <div className="flex justify-between">
+                <span className="text-gray-500 text-xs">Username:</span>
+                <span className="font-bold text-gray-800">{credentials.username}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500 text-xs">Senha:</span>
+                <span className="font-bold text-gray-800">{credentials.password}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => copyCredentials(credentials.username, credentials.password)}
+                className="mt-1 flex items-center justify-center gap-1.5 text-xs text-green-700 hover:text-green-900 transition"
+              >
+                <Copy size={11} /> Copiar
+              </button>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={handleResetCredentials}
+            disabled={isResetting}
+            className="flex items-center justify-center gap-2 bg-white border border-gray-300 hover:border-gray-400 text-gray-700 py-2 rounded-md text-sm font-medium transition disabled:opacity-50"
+          >
+            <RefreshCw size={13} className={isResetting ? "animate-spin" : ""} />
+            {isResetting
+              ? "Gerando..."
+              : data?.username
+                ? "Redefinir senha"
+                : "Gerar credenciais"
+            }
+          </button>
         </div>
       )}
 

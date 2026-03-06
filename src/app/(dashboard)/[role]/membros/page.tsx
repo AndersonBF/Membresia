@@ -1,15 +1,18 @@
+// src/app/(dashboard)/[role]/membros/page.tsx
 import { currentUser } from "@clerk/nextjs/server"
 import { notFound } from "next/navigation"
 import prisma from "@/lib/prisma"
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Eye } from "lucide-react"
 import FormContainer from "@/components/FormContainer"
 import TableSearch from "@/components/TableSearch"
 import Pagination from "@/components/Pagination"
 import Table from "@/components/Table"
 import { Prisma } from "@prisma/client"
 import { ITEM_PER_PAGE } from "@/lib/settings"
+import MemberAvatar from "@/components/MemberAvatar"
+import MemberDrawerWrapper from "@/components/MemberDrawerWrapper"
 
 const roleConfig: Record<string, { label: string; color: string; bg: string }> = {
   ump:        { label: "UMP",        color: "text-blue-700",   bg: "bg-blue-100" },
@@ -92,7 +95,6 @@ export default async function RoleMembrosPage({
     const cargo = isSociedade
       ? item.societies?.find((s) => s.societyId === societyMap[role])?.cargo
       : null
-
     const hasCargo = !!cargo
 
     return (
@@ -101,14 +103,20 @@ export default async function RoleMembrosPage({
         className={`border-b border-gray-200 text-sm hover:bg-lamaPurpleLight transition-colors
           ${hasCargo ? "bg-amber-50" : "even:bg-slate-50"}`}
       >
+        {/* INFO */}
         <td className="flex items-center gap-4 p-4">
-          <Image src="/profile.png" alt="" width={40} height={40} className="w-10 h-10 rounded-full object-cover" />
+          <MemberAvatar
+            name={item.name}
+            profileImageUrl={(item as any).profileImageUrl}
+            size={40}
+          />
           <div className="flex flex-col">
             <h3 className="font-semibold">{item.name}</h3>
             <p className="text-xs text-gray-500">{item.username || `ID: ${item.id}`}</p>
           </div>
         </td>
 
+        {/* CARGO */}
         {isSociedade && (
           <td className="hidden md:table-cell">
             {hasCargo ? (
@@ -121,6 +129,7 @@ export default async function RoleMembrosPage({
           </td>
         )}
 
+        {/* GÊNERO */}
         <td className="hidden md:table-cell">
           {item.gender === "MASCULINO" ? (
             <span className="px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">M</span>
@@ -129,23 +138,30 @@ export default async function RoleMembrosPage({
           ) : <span className="text-gray-400">-</span>}
         </td>
 
+        {/* TELEFONE */}
         <td className="hidden lg:table-cell">{item.phone || "-"}</td>
+
+        {/* EMAIL */}
         <td className="hidden xl:table-cell">{item.email || <span className="text-gray-400">-</span>}</td>
 
+        {/* STATUS */}
         <td className="hidden md:table-cell">
           <span className={`px-2 py-1 rounded-full text-xs font-semibold ${item.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
             {item.isActive ? "Ativo" : "Inativo"}
           </span>
         </td>
 
+        {/* AÇÕES */}
         {isAdmin && (
           <td>
             <div className="flex items-center gap-2">
-              <Link href={`/list/members/${item.id}`}>
-                <button className="w-7 h-7 flex items-center justify-center rounded-full bg-lamaSky">
-                  <Image src="/view.png" alt="" width={16} height={16} />
-                </button>
-              </Link>
+              {/* botão view — aciona o drawer via hidden button */}
+            <button
+              data-drawer={item.id}
+              className="w-7 h-7 flex items-center justify-center rounded-full bg-sky-500 hover:bg-sky-600 transition"
+            >
+              <Eye size={14} className="pointer-events-none text-white" />
+            </button>
               <FormContainer table="member" type="update" data={item} />
               <FormContainer table="member" type="delete" id={item.id} />
             </div>
@@ -201,6 +217,33 @@ export default async function RoleMembrosPage({
         <Table columns={columns} renderRow={renderRow} data={data} />
         <Pagination page={p} count={count} />
       </div>
+
+      {/* Drawer — client component que escuta cliques nos botões .view-trigger */}
+      <MemberDrawerWrapper
+        members={data.map(m => ({
+          id: m.id,
+          name: m.name,
+          username: m.username,
+          profileImageUrl: (m as any).profileImageUrl ?? null,
+          gender: m.gender,
+          isActive: m.isActive,
+          phone: m.phone ?? null,
+          email: m.email ?? null,
+          birthDate: m.birthDate ? m.birthDate.toISOString() : null,
+          createdAt: m.createdAt.toISOString(),
+          societies: m.societies.map(s => ({
+            societyId: s.societyId,
+            cargo: s.cargo ?? null,
+            society: { name: s.society.name },
+          })),
+          council:   m.council   ? { councilId: m.council.councilId }     : null,
+          diaconate: m.diaconate ? { diaconateId: m.diaconate.diaconateId } : null,
+          ministries: m.ministries.map(mm => ({ ministry: { name: mm.ministry.name } })),
+          bibleSchoolClass: m.bibleSchoolClass ? { name: (m.bibleSchoolClass as any).name ?? "" } : null,
+        }))}
+        isAdmin={isAdmin}
+        role={role}
+      />
     </div>
   )
 }

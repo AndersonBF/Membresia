@@ -5,11 +5,11 @@ import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { menuItems } from "./menuItems";
-import { Shield, HandHelping, Layers, Baby, UserCircle, GraduationCap } from "lucide-react";
+import { Shield, HandHelping, Baby, UserCircle, GraduationCap, Layers } from "lucide-react";
 import { Suspense } from "react";
 
 const sociedades = ["ump", "upa", "uph", "saf", "ucp"];
-const allRoles = ["ump", "upa", "uph", "saf", "ucp", "diaconia", "conselho", "ministerio", "ebd"];
+const allRoles   = ["ump", "upa", "uph", "saf", "ucp", "diaconia", "conselho", "ministerio", "ebd"];
 
 const societyMap: Record<string, number> = {
   saf: 3, uph: 4, ump: 5, upa: 6, ucp: 7,
@@ -45,55 +45,86 @@ const roleConfig: Record<string, { label: string; icon: React.ElementType; color
   ebd:        { label: "EBD",        icon: GraduationCap, color: "text-white" },
 }
 
-const roleRouteMap: Record<string, string> = {
-  "/list/members":    "/membros",
-  "/list/attendance": "/list/attendance",
-  "/list/events":     "/list/events",
-  "/list/documents":  "/list/documents",
-  "/list/finance":    "/list/finance",
-  "/list/broadcasts": "/list/broadcasts",
-  "/galeria":         "/galeria",           // ← galeria da sociedade
-}
-
 const MenuContent = () => {
-  const pathname = usePathname();
+  const pathname     = usePathname();
   const searchParams = useSearchParams();
-  const { user } = useUser();
+  const { user }     = useUser();
 
-  const roles = (user?.publicMetadata?.roles as string[]) ?? [];
+  const roles        = (user?.publicMetadata?.roles as string[]) ?? [];
   const isSuperAdmin = roles.includes("superadmin");
 
-  const roleContext = searchParams.get("roleContext")
-  const pathnameRole = pathname.split("/")[1]
-  const currentRole = roleContext || (allRoles.includes(pathnameRole) ? pathnameRole : "")
+  // ── Detecta contexto ──────────────────────────────────────────────────────
+
+  const roleContext  = searchParams.get("roleContext");
+  const pathnameRole = pathname.split("/")[1];
+
+  // Detecta /ministerio/[id] (ignora /ministerio sem id)
+  const ministryMatch  = pathname.match(/^\/ministerio\/(\d+)/);
+  const ministryId     = ministryMatch ? ministryMatch[1] : null;
+  const isMinistryPage = !!ministryId;
+
+  const currentRole =
+    roleContext ||
+    (allRoles.includes(pathnameRole) ? pathnameRole : "") ||
+    (isMinistryPage ? "ministerio" : "");
 
   const isSociedade = sociedades.includes(currentRole);
-  const isRolePage = allRoles.includes(currentRole);
-  const currentRoleConfig = roleConfig[currentRole];
+  const isRolePage  = allRoles.includes(currentRole) || isMinistryPage;
 
-  const resolveHref = (href: string) => {
-    if (!isRolePage) return href
+  // Ministérios individuais se comportam como sociedades no menu
+  // (mostram itens contextuais: Membros, Eventos, Docs, Galeria, etc.)
+  const effectiveIsSociedade = isSociedade || isMinistryPage;
 
-    if (href === "/member") return "/member"
-    if (href === "/admin") return `/${currentRole}`
-    if (href === "/list/members") return `/${currentRole}/membros`
+  const currentRoleConfig = roleConfig[currentRole] ?? roleConfig["ministerio"];
 
-    // Galeria da sociedade → /<role>/galeria
-    if (href === "/galeria") return `/${currentRole}/galeria`
+  // ── Resolve hrefs ─────────────────────────────────────────────────────────
 
-    if (roleRouteMap[href] !== undefined) {
-      const societyId = societyMap[currentRole]
-      if (societyId) return `${roleRouteMap[href]}?societyId=${societyId}&roleContext=${currentRole}`
-      return `${roleRouteMap[href]}?role=${currentRole}&roleContext=${currentRole}`
+  const resolveHref = (href: string): string => {
+    if (!isRolePage) return href;
+
+    if (href === "/member") return "/member";
+    if (href === "/admin")  return isMinistryPage
+      ? `/ministerio/${ministryId}`
+      : `/${currentRole}`;
+
+    // ── Ministério individual ──
+    if (isMinistryPage) {
+      if (href === "/list/members")    return `/ministerio/${ministryId}/membros`;
+      if (href === "/list/events")     return `/list/events?ministryId=${ministryId}&roleContext=ministerio`;
+      if (href === "/list/documents")  return `/list/documents?ministryId=${ministryId}&roleContext=ministerio`;
+      if (href === "/list/finance")    return `/list/finance?ministryId=${ministryId}&roleContext=ministerio`;
+      if (href === "/list/attendance") return `/list/attendance?ministryId=${ministryId}&roleContext=ministerio`;
+      if (href === "/list/broadcasts") return `/list/broadcasts?ministryId=${ministryId}&roleContext=ministerio`;
+      if (href === "/galeria")         return `/ministerio/${ministryId}/galeria`;
+      return href;
     }
 
-    return href
-  }
+    // ── Outras roles ──
+    if (href === "/list/members") return `/${currentRole}/membros`;
+    if (href === "/galeria")      return `/${currentRole}/galeria`;
+
+    const societyId = societyMap[currentRole];
+    const roleRouteMap: Record<string, string> = {
+      "/list/attendance": "/list/attendance",
+      "/list/events":     "/list/events",
+      "/list/documents":  "/list/documents",
+      "/list/finance":    "/list/finance",
+      "/list/broadcasts": "/list/broadcasts",
+    };
+    if (roleRouteMap[href] !== undefined) {
+      if (societyId) return `${roleRouteMap[href]}?societyId=${societyId}&roleContext=${currentRole}`;
+      return `${roleRouteMap[href]}?role=${currentRole}&roleContext=${currentRole}`;
+    }
+
+    return href;
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────
 
   return (
     <div className="mt-4 text-sm">
 
-      {/* BADGE DO ROLE ATUAL */}
+      {/* BADGE do contexto atual */}
       {isRolePage && currentRoleConfig && (
         <div className="flex items-center justify-center px-2 py-4 mb-2 border-b border-green-700">
           <currentRoleConfig.icon size={56} className={currentRoleConfig.color} />
@@ -107,15 +138,16 @@ const MenuContent = () => {
           </span>
 
           {section.items.map((item) => {
-            if (isSociedade && item.hiddenForSociedades) return null;
-            if (!isSociedade && item.showOnlyForSociedades) return null;
+            // Visibilidade — ministério individual trata-se como sociedade
+            if (effectiveIsSociedade && item.hiddenForSociedades)    return null;
+            if (!effectiveIsSociedade && item.showOnlyForSociedades) return null;
 
             const hasAccess = isSuperAdmin || item.visible.some((v) => roles.includes(v));
             if (!hasAccess) return null;
 
-            const Icon = item.icon;
-            const href = resolveHref(item.href)
-            const isActive = pathname === href.split("?")[0]
+            const Icon     = item.icon;
+            const href     = resolveHref(item.href);
+            const isActive = pathname === href.split("?")[0];
 
             return (
               <Link
@@ -137,14 +169,12 @@ const MenuContent = () => {
       ))}
     </div>
   );
-}
+};
 
-const Menu = () => {
-  return (
-    <Suspense fallback={<div className="mt-4 text-white text-sm">Carregando...</div>}>
-      <MenuContent />
-    </Suspense>
-  )
-}
+const Menu = () => (
+  <Suspense fallback={<div className="mt-4 text-white text-sm">Carregando...</div>}>
+    <MenuContent />
+  </Suspense>
+);
 
 export default Menu;

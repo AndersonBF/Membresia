@@ -2,11 +2,10 @@ import { currentUser } from "@clerk/nextjs/server"
 import { notFound } from "next/navigation"
 import Announcements from "@/components/Announcements"
 import EventCalendarContainer from "@/components/EventCalendarContainer"
-import BroadcastFeed from "@/components/BroadcastFeed"
 import prisma from "@/lib/prisma"
 import Image from "next/image"
 import Link from "next/link"
-import { Users, Calendar, FileText, ArrowLeft, Phone, ChevronRight, Clock, Cake, Camera } from "lucide-react"
+import { Users, Calendar, FileText, ArrowLeft, Phone, ChevronRight, Clock, Cake } from "lucide-react"
 
 const roleConfig: Record<string, {
   label: string
@@ -44,6 +43,7 @@ async function getDataForRole(role: string) {
   let eventWhere: any = {}
   let documentWhere: any = {}
   let directoryMembers: any[] = []
+  let ministriesWithMembers: any[] = []
 
   if (societyId) {
     memberWhere = { societies: { some: { societyId } } }
@@ -72,6 +72,19 @@ async function getDataForRole(role: string) {
   } else if (role === "ministerio") {
     memberWhere = { ministries: { some: {} } }
     documentWhere = { ministryId: { not: null } }
+
+    ministriesWithMembers = await prisma.ministry.findMany({
+      include: {
+        members: {
+          include: {
+            member: {
+              select: { id: true, name: true, phone: true, gender: true, isActive: true },
+            },
+          },
+        },
+      },
+      orderBy: { name: "asc" },
+    })
   } else if (role === "ebd") {
     memberWhere = { bibleSchoolClassId: { not: null } }
     documentWhere = { bibleSchoolClassId: { not: null } }
@@ -95,7 +108,6 @@ async function getDataForRole(role: string) {
     }),
   ])
 
-  // Filtra aniversariantes do mês atual
   const birthdaysThisMonth = allMembers
     .filter((m) => {
       const bd = new Date(m.birthDate!)
@@ -103,7 +115,7 @@ async function getDataForRole(role: string) {
     })
     .sort((a, b) => new Date(a.birthDate!).getDate() - new Date(b.birthDate!).getDate())
 
-  return { totalMembers, totalEvents, totalDocuments, recentMembers, directoryMembers, upcomingEvents, birthdaysThisMonth }
+  return { totalMembers, totalEvents, totalDocuments, recentMembers, directoryMembers, upcomingEvents, birthdaysThisMonth, ministriesWithMembers }
 }
 
 const RolePage = async ({
@@ -127,7 +139,7 @@ const RolePage = async ({
   const isAdmin = roles.includes("admin") || isSuperAdmin
   const backHref = isAdmin ? "/admin" : roles.includes("member") ? "/member" : "/admin"
 
-  const { totalMembers, totalEvents, totalDocuments, recentMembers, directoryMembers, upcomingEvents, birthdaysThisMonth } =
+  const { totalMembers, totalEvents, totalDocuments, recentMembers, directoryMembers, upcomingEvents, birthdaysThisMonth, ministriesWithMembers } =
     await getDataForRole(role)
 
   const ac = config.accentColor
@@ -144,7 +156,7 @@ const RolePage = async ({
         .rp { font-family: 'DM Sans', sans-serif; }
         @keyframes rp-in { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
         .rp-in { animation: rp-in 0.4s cubic-bezier(.22,1,.36,1) both; }
-        .d1{animation-delay:.03s}.d2{animation-delay:.08s}.d3{animation-delay:.13s}.d4{animation-delay:.18s}.d5{animation-delay:.23s}.d6{animation-delay:.28s}
+        .d1{animation-delay:.03s}.d2{animation-delay:.08s}.d3{animation-delay:.13s}.d4{animation-delay:.18s}.d5{animation-delay:.23s}.d6{animation-delay:.28s}.d7{animation-delay:.33s}
         .dir-card { transition: box-shadow .18s, transform .18s; }
         .dir-card:hover { box-shadow: 0 6px 24px rgba(0,0,0,.1); transform: translateY(-2px); }
         .dir-phone { opacity:0; transition: opacity .15s; }
@@ -197,10 +209,9 @@ const RolePage = async ({
           <div className="w-full lg:w-2/3 flex flex-col gap-8">
 
             {/* QUICK LINKS */}
-            <div className="grid grid-cols-4 gap-3 rp-in d2">
+            <div className="grid grid-cols-3 gap-3 rp-in d2">
               {[
                 { label: "Membros",    icon: Users,    href: `/${role}/membros` },
-                { label: "Galeria",    icon: Camera,   href: `/${role}/galeria` },
                 { label: "Eventos",    icon: Calendar, href: `/list/events?roleContext=${role}` },
                 { label: "Documentos", icon: FileText,  href: `/list/documents?roleContext=${role}` },
               ].map((item) => {
@@ -250,6 +261,67 @@ const RolePage = async ({
                   ))}
                 </div>
               </section>
+            )}
+
+            {/* ── MINISTÉRIOS AGRUPADOS — mesmo padrão visual das outras seções ── */}
+            {role === "ministerio" && ministriesWithMembers.length > 0 && (
+              <>
+                {ministriesWithMembers.map((ministry, idx) => (
+                  <section key={ministry.id} className={`rp-in d${Math.min(idx + 3, 7)}`}>
+                    <div className="flex items-center justify-between mb-5">
+                      <div className="flex items-center gap-2.5">
+                        {/* Barra lateral — idêntica à das outras seções */}
+                        <span className="w-0.5 h-5 rounded-full block" style={{ background: ac }} />
+                        <h2 className="text-xl font-semibold text-gray-900">{ministry.name}</h2>
+                        <span className="text-xs text-gray-400 ml-1">
+                          — {ministry.members.length} membro{ministry.members.length !== 1 ? "s" : ""}
+                        </span>
+                      </div>
+                      <Link href={`/${role}/membros`} className="text-xs flex items-center gap-1" style={{ color: ac }}>
+                        Ver todos <ChevronRight size={11} />
+                      </Link>
+                    </div>
+
+                    {/* Lista de membros — idêntica à seção Membros */}
+                    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                      {ministry.members.length === 0 ? (
+                        <p className="p-8 text-center text-gray-400 text-sm">Nenhum membro neste ministério.</p>
+                      ) : (
+                        ministry.members.map((mm: any, i: number) => (
+                          <div key={mm.id}
+                            className={`m-row flex items-center gap-3 px-5 py-3.5 transition-colors ${i < ministry.members.length - 1 ? "border-b border-gray-50" : ""}`}>
+                            <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 flex-shrink-0">
+                              <Image src="/profile.png" alt={mm.member.name} width={32} height={32} className="object-cover" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-800 truncate">{mm.member.name}</p>
+                              {mm.member.phone && (
+                                <a href={`tel:${mm.member.phone}`} className="text-xs text-gray-400 flex items-center gap-1 hover:text-gray-600 transition mt-0.5">
+                                  <Phone size={9} />{mm.member.phone}
+                                </a>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-medium"
+                                style={{
+                                  background: mm.member.gender === "MASCULINO" ? "#eff6ff" : mm.member.gender === "FEMININO" ? "#fdf2f8" : "#f3f4f6",
+                                  color:      mm.member.gender === "MASCULINO" ? "#1d4ed8" : mm.member.gender === "FEMININO" ? "#be185d"  : "#9ca3af",
+                                }}>
+                                {mm.member.gender === "MASCULINO" ? "M" : mm.member.gender === "FEMININO" ? "F" : "—"}
+                              </span>
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                                mm.member.isActive ? "bg-green-50 text-green-600" : "bg-red-50 text-red-500"
+                              }`}>
+                                {mm.member.isActive ? "Ativo" : "Inativo"}
+                              </span>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </section>
+                ))}
+              </>
             )}
 
             {/* PRÓXIMOS EVENTOS */}
@@ -321,25 +393,18 @@ const RolePage = async ({
                         {isHoje && (
                           <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: `linear-gradient(90deg, ${ac}, #f472b6)` }} />
                         )}
-
-                        {/* Dia em destaque */}
                         <div
                           className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg text-white shadow-sm"
                           style={{ background: isHoje ? "#f472b6" : ac }}
                         >
                           {dia}
                         </div>
-
-                        {/* Foto */}
                         <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 ring-2 ring-white shadow-sm">
                           <Image src="/profile.png" alt={m.name} width={48} height={48} className="object-cover" />
                         </div>
-
-                        {/* Nome */}
                         <p className="text-xs font-semibold text-gray-800 leading-snug line-clamp-2">
                           {m.name.split(" ")[0]}
                         </p>
-
                         {isHoje && (
                           <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-pink-600 bg-pink-100 px-2 py-0.5 rounded-full">
                             <Cake size={9} /> Hoje!
@@ -352,67 +417,58 @@ const RolePage = async ({
               </section>
             )}
 
-            {/* MENSAGENS */}
-            {societyMap[role] && (
-              <div className="rp-in d6">
-                <BroadcastFeed
-                  societyId={societyMap[role]}
-                  role={role}
-                  accentColor={ac}
-                />
-              </div>
-            )}
-
-            {/* MEMBROS */}
-            <section className="rp-in d6">
-              <div className="flex items-center justify-between mb-5">
-                <div className="flex items-center gap-2.5">
-                  <span className="w-0.5 h-5 rounded-full block" style={{ background: ac }} />
-                  <h2 className="text-xl font-semibold text-gray-900">Membros</h2>
-                  <span className="text-xs text-gray-400 ml-1">— {totalMembers} no total</span>
+            {/* MEMBROS — aparece para todas as roles exceto "ministerio" que já mostra por grupo */}
+            {role !== "ministerio" && (
+              <section className="rp-in d6">
+                <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-0.5 h-5 rounded-full block" style={{ background: ac }} />
+                    <h2 className="text-xl font-semibold text-gray-900">Membros</h2>
+                    <span className="text-xs text-gray-400 ml-1">— {totalMembers} no total</span>
+                  </div>
+                  <Link href={`/${role}/membros`} className="text-xs flex items-center gap-1" style={{ color: ac }}>
+                    Ver todos <ChevronRight size={11} />
+                  </Link>
                 </div>
-                <Link href={`/${role}/membros`} className="text-xs flex items-center gap-1" style={{ color: ac }}>
-                  Ver todos <ChevronRight size={11} />
-                </Link>
-              </div>
 
-              <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                {recentMembers.length === 0 ? (
-                  <p className="p-8 text-center text-gray-400 text-sm">Nenhum membro cadastrado.</p>
-                ) : (
-                  recentMembers.map((m, i) => (
-                    <div key={m.id}
-                      className={`m-row flex items-center gap-3 px-5 py-3.5 transition-colors ${i < recentMembers.length - 1 ? "border-b border-gray-50" : ""}`}>
-                      <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 flex-shrink-0">
-                        <Image src="/profile.png" alt={m.name} width={32} height={32} className="object-cover" />
+                <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                  {recentMembers.length === 0 ? (
+                    <p className="p-8 text-center text-gray-400 text-sm">Nenhum membro cadastrado.</p>
+                  ) : (
+                    recentMembers.map((m, i) => (
+                      <div key={m.id}
+                        className={`m-row flex items-center gap-3 px-5 py-3.5 transition-colors ${i < recentMembers.length - 1 ? "border-b border-gray-50" : ""}`}>
+                        <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 flex-shrink-0">
+                          <Image src="/profile.png" alt={m.name} width={32} height={32} className="object-cover" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-800 truncate">{m.name}</p>
+                          {m.phone && (
+                            <a href={`tel:${m.phone}`} className="text-xs text-gray-400 flex items-center gap-1 hover:text-gray-600 transition mt-0.5">
+                              <Phone size={9} />{m.phone}
+                            </a>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium"
+                            style={{
+                              background: m.gender === "MASCULINO" ? "#eff6ff" : m.gender === "FEMININO" ? "#fdf2f8" : "#f3f4f6",
+                              color: m.gender === "MASCULINO" ? "#1d4ed8" : m.gender === "FEMININO" ? "#be185d" : "#9ca3af",
+                            }}>
+                            {m.gender === "MASCULINO" ? "M" : m.gender === "FEMININO" ? "F" : "—"}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                            m.isActive ? "bg-green-50 text-green-600" : "bg-red-50 text-red-500"
+                          }`}>
+                            {m.isActive ? "Ativo" : "Inativo"}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-800 truncate">{m.name}</p>
-                        {m.phone && (
-                          <a href={`tel:${m.phone}`} className="text-xs text-gray-400 flex items-center gap-1 hover:text-gray-600 transition mt-0.5">
-                            <Phone size={9} />{m.phone}
-                          </a>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-medium"
-                          style={{
-                            background: m.gender === "MASCULINO" ? "#eff6ff" : m.gender === "FEMININO" ? "#fdf2f8" : "#f3f4f6",
-                            color: m.gender === "MASCULINO" ? "#1d4ed8" : m.gender === "FEMININO" ? "#be185d" : "#9ca3af",
-                          }}>
-                          {m.gender === "MASCULINO" ? "M" : m.gender === "FEMININO" ? "F" : "—"}
-                        </span>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                          m.isActive ? "bg-green-50 text-green-600" : "bg-red-50 text-red-500"
-                        }`}>
-                          {m.isActive ? "Ativo" : "Inativo"}
-                        </span>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </section>
+                    ))
+                  )}
+                </div>
+              </section>
+            )}
 
           </div>
 

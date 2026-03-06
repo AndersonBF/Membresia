@@ -80,31 +80,17 @@ export default clerkMiddleware(async (auth, req) => {
         }
 
         const groupRoles = [
-          "ump",
-          "upa",
-          "uph",
-          "saf",
-          "ucp",
-          "diaconia",
-          "conselho",
-          "ministerio",
-          "ebd",
+          "ump", "upa", "uph", "saf", "ucp",
+          "diaconia", "conselho", "ministerio", "ebd",
         ];
 
-        const firstGroup = roles.find((r) =>
-          groupRoles.includes(r)
-        );
+        const firstGroup = roles.find((r) => groupRoles.includes(r));
 
         if (firstGroup) {
           const targetPath = `/${firstGroup}`;
-
-          // 🚫 NÃO redireciona se já estiver lá
           if (pathname !== targetPath) {
-            return NextResponse.redirect(
-              new URL(targetPath, req.url)
-            );
+            return NextResponse.redirect(new URL(targetPath, req.url));
           }
-
           return NextResponse.next();
         }
 
@@ -132,13 +118,20 @@ export const config = {
     "/ucp(.*)",
     "/diaconia(.*)",
     "/conselho(.*)",
-    "/ministerio(.*)",
+    "/ministerio",
+    "/ministerio/(.*)",   // ← cobre /ministerio/[id] e /ministerio/[id]/galeria etc.
     "/ebd(.*)",
     "/list(.*)",
     "/agenda(.*)",
     "/calendario-geral(.*)",
+    "/about(.*)",
+    "/sermons(.*)",
+    "/gallery(.*)",
+    "/tithes(.*)",
+    "/profile(.*)",
+    "/settings(.*)",
     "/api/mobile(.*)",
     "/api/role(.*)",
-     "/api/(.*)",  
+    "/api/(.*)",
   ],
 };

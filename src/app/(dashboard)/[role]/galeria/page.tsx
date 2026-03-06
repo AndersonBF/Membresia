@@ -45,13 +45,13 @@ export default function GalleryPage({ params }: { params: { role: string } }) {
   const ad = config?.accentDark  ?? "#1e3a8a"
   const al = config?.accentLight ?? "#eff6ff"
 
-  const [albums, setAlbums]           = useState<Album[]>([])
-  const [loading, setLoading]         = useState(true)
-  const [activeAlbum, setActiveAlbum] = useState<Album | null>(null)
+  const [albums, setAlbums]               = useState<Album[]>([])
+  const [loading, setLoading]             = useState(true)
+  const [activeAlbum, setActiveAlbum]     = useState<Album | null>(null)
   const [lightboxPhoto, setLightboxPhoto] = useState<Photo | null>(null)
-  const [lightboxIdx, setLightboxIdx] = useState(0)
-  const [search, setSearch]           = useState("")
-  const [view, setView]               = useState<"grid" | "masonry">("grid")
+  const [lightboxIdx, setLightboxIdx]     = useState(0)
+  const [search, setSearch]               = useState("")
+  const [view, setView]                   = useState<"grid" | "masonry">("grid")
 
   const [showCreateAlbum, setShowCreateAlbum] = useState(false)
   const [newAlbumTitle, setNewAlbumTitle]     = useState("")
@@ -66,14 +66,34 @@ export default function GalleryPage({ params }: { params: { role: string } }) {
   const [previews, setPreviews]             = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  async function fetchAlbums() {
+  // ─── Helpers ──────────────────────────────────────────────────────────────
+
+  async function fetchAlbums(): Promise<Album[]> {
     setLoading(true)
-    const res = await fetch(`/api/gallery/albums?role=${role}`)
-    if (res.ok) setAlbums(await res.json())
-    setLoading(false)
+    try {
+      const res = await fetch(`/api/gallery/albums?role=${role}`)
+      if (res.ok) {
+        const data: Album[] = await res.json()
+        setAlbums(data)
+        return data
+      }
+    } finally {
+      setLoading(false)
+    }
+    return []
   }
 
   useEffect(() => { fetchAlbums() }, [role])
+
+  /** Limpa todo o estado de upload — incluindo flags de progresso */
+  function clearSelection() {
+    setSelectedFiles([])
+    setPreviews([])
+    setPhotoCaption("")
+    setUploadProgress(0)
+    setAddingPhoto(false)
+    if (fileInputRef.current) fileInputRef.current.value = ""
+  }
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? [])
@@ -90,26 +110,26 @@ export default function GalleryPage({ params }: { params: { role: string } }) {
     setPreviews(files.map(f => URL.createObjectURL(f)))
   }
 
-  function clearSelection() {
-    setSelectedFiles([])
-    setPreviews([])
-    setPhotoCaption("")
-    if (fileInputRef.current) fileInputRef.current.value = ""
-  }
+  // ─── Álbuns ───────────────────────────────────────────────────────────────
 
   async function handleCreateAlbum() {
     if (!newAlbumTitle.trim()) return
     setCreating(true)
-    const res = await fetch("/api/gallery/albums", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: newAlbumTitle, description: newAlbumDesc, role }),
-    })
-    if (res.ok) {
-      setNewAlbumTitle(""); setNewAlbumDesc(""); setShowCreateAlbum(false)
-      await fetchAlbums()
+    try {
+      const res = await fetch("/api/gallery/albums", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: newAlbumTitle, description: newAlbumDesc, role }),
+      })
+      if (res.ok) {
+        setNewAlbumTitle("")
+        setNewAlbumDesc("")
+        setShowCreateAlbum(false)
+        await fetchAlbums()
+      }
+    } finally {
+      setCreating(false)
     }
-    setCreating(false)
   }
 
   async function handleDeleteAlbum(id: number) {
@@ -119,45 +139,47 @@ export default function GalleryPage({ params }: { params: { role: string } }) {
     await fetchAlbums()
   }
 
+  // ─── Fotos ────────────────────────────────────────────────────────────────
+
   async function handleAddPhotos() {
     if (!selectedFiles.length || !activeAlbum) return
     setAddingPhoto(true)
     setUploadProgress(0)
 
-    for (let i = 0; i < selectedFiles.length; i++) {
-      const formData = new FormData()
-      formData.append("file", selectedFiles[i])
-      const uploadRes = await fetch("/api/gallery/upload", { method: "POST", body: formData })
-      if (!uploadRes.ok) continue
-      const { url } = await uploadRes.json()
-      await fetch("/api/gallery/photos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ albumId: activeAlbum.id, url, caption: photoCaption || null }),
-      })
-      setUploadProgress(Math.round(((i + 1) / selectedFiles.length) * 100))
-    }
+    try {
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const formData = new FormData()
+        formData.append("file", selectedFiles[i])
+        const uploadRes = await fetch("/api/gallery/upload", { method: "POST", body: formData })
+        if (!uploadRes.ok) continue
+        const { url } = await uploadRes.json()
+        await fetch("/api/gallery/photos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ albumId: activeAlbum.id, url, caption: photoCaption || null }),
+        })
+        setUploadProgress(Math.round(((i + 1) / selectedFiles.length) * 100))
+      }
 
-    clearSelection(); setShowAddPhoto(false)
-    const updated = await fetch(`/api/gallery/albums?role=${role}`)
-    if (updated.ok) {
-      const all: Album[] = await updated.json()
-      setAlbums(all)
+      const all = await fetchAlbums()
       setActiveAlbum(all.find(a => a.id === activeAlbum.id) ?? null)
+    } finally {
+      // Garante reset mesmo se ocorrer erro durante o upload
+      clearSelection()
+      setShowAddPhoto(false)
     }
-    setAddingPhoto(false); setUploadProgress(0)
   }
 
   async function handleDeletePhoto(photoId: number) {
     if (!confirm("Excluir esta foto?")) return
-    await fetch(`/api/gallery/photos?id=${photoId}`, { method: "DELETE" })
+
+    // Fecha lightbox imediatamente para evitar estado inconsistente
     setLightboxPhoto(null)
-    const updated = await fetch(`/api/gallery/albums?role=${role}`)
-    if (updated.ok) {
-      const all: Album[] = await updated.json()
-      setAlbums(all)
-      setActiveAlbum(all.find(a => a.id === activeAlbum?.id) ?? null)
-    }
+
+    await fetch(`/api/gallery/photos?id=${photoId}`, { method: "DELETE" })
+
+    const all = await fetchAlbums()
+    setActiveAlbum(all.find(a => a.id === activeAlbum?.id) ?? null)
   }
 
   async function handleDownload(photo: Photo) {
@@ -171,22 +193,35 @@ export default function GalleryPage({ params }: { params: { role: string } }) {
     URL.revokeObjectURL(blobUrl)
   }
 
-  function openLightbox(photo: Photo, idx: number) { setLightboxPhoto(photo); setLightboxIdx(idx) }
+  // ─── Lightbox ─────────────────────────────────────────────────────────────
+
+  function openLightbox(photo: Photo, idx: number) {
+    setLightboxPhoto(photo)
+    setLightboxIdx(idx)
+  }
+
   function lightboxNext() {
     if (!activeAlbum) return
     const next = (lightboxIdx + 1) % activeAlbum.photos.length
-    setLightboxIdx(next); setLightboxPhoto(activeAlbum.photos[next])
+    setLightboxIdx(next)
+    setLightboxPhoto(activeAlbum.photos[next])
   }
+
   function lightboxPrev() {
     if (!activeAlbum) return
     const prev = (lightboxIdx - 1 + activeAlbum.photos.length) % activeAlbum.photos.length
-    setLightboxIdx(prev); setLightboxPhoto(activeAlbum.photos[prev])
+    setLightboxIdx(prev)
+    setLightboxPhoto(activeAlbum.photos[prev])
   }
+
+  // ─── Derived ──────────────────────────────────────────────────────────────
 
   const filteredAlbums = albums.filter(a =>
     a.title.toLowerCase().includes(search.toLowerCase()) ||
     (a.description ?? "").toLowerCase().includes(search.toLowerCase())
   )
+
+  // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
     <>
@@ -339,7 +374,9 @@ export default function GalleryPage({ params }: { params: { role: string } }) {
                     <button onClick={() => setView("grid")} className="p-2.5 transition" style={{ background: view === "grid" ? al : "", color: view === "grid" ? ac : "#9ca3af" }}><Grid3X3 size={15} /></button>
                     <button onClick={() => setView("masonry")} className="p-2.5 transition" style={{ background: view === "masonry" ? al : "", color: view === "masonry" ? ac : "#9ca3af" }}><LayoutGrid size={15} /></button>
                   </div>
-                  <button className="btn-primary" onClick={() => setShowAddPhoto(true)}><Upload size={14} /> Adicionar fotos</button>
+                  <button className="btn-primary" onClick={() => { clearSelection(); setShowAddPhoto(true) }}>
+                    <Upload size={14} /> Adicionar fotos
+                  </button>
                   <button onClick={() => handleDeleteAlbum(activeAlbum.id)} className="w-9 h-9 rounded-xl border border-red-100 flex items-center justify-center text-red-400 hover:bg-red-50 hover:border-red-200 transition bg-white">
                     <Trash2 size={14} />
                   </button>
@@ -353,15 +390,23 @@ export default function GalleryPage({ params }: { params: { role: string } }) {
                   </div>
                   <p className="text-gray-800 font-semibold text-lg">Nenhuma foto ainda</p>
                   <p className="text-gray-400 text-sm mt-1 mb-5">Adicione fotos a este álbum</p>
-                  <button className="btn-primary" onClick={() => setShowAddPhoto(true)}><Upload size={14} /> Adicionar fotos</button>
+                  <button className="btn-primary" onClick={() => { clearSelection(); setShowAddPhoto(true) }}>
+                    <Upload size={14} /> Adicionar fotos
+                  </button>
                 </div>
               ) : view === "grid" ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                   {activeAlbum.photos.map((photo, idx) => (
                     <div key={photo.id} className="photo-tile rounded-xl overflow-hidden relative aspect-square bg-gray-100 shadow-sm">
                       <img src={photo.url} alt={photo.caption ?? ""} className="w-full h-full object-cover" onClick={() => openLightbox(photo, idx)} />
-                      <button className="del-btn absolute top-2 right-2 w-7 h-7 rounded-full bg-red-500 text-white flex items-center justify-center shadow-md" onClick={e => { e.stopPropagation(); handleDeletePhoto(photo.id) }}><X size={12} /></button>
-                      {photo.caption && <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-2 py-1.5"><p className="text-white text-[10px] truncate">{photo.caption}</p></div>}
+                      <button className="del-btn absolute top-2 right-2 w-7 h-7 rounded-full bg-red-500 text-white flex items-center justify-center shadow-md" onClick={e => { e.stopPropagation(); handleDeletePhoto(photo.id) }}>
+                        <X size={12} />
+                      </button>
+                      {photo.caption && (
+                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-2 py-1.5">
+                          <p className="text-white text-[10px] truncate">{photo.caption}</p>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -370,8 +415,14 @@ export default function GalleryPage({ params }: { params: { role: string } }) {
                   {activeAlbum.photos.map((photo, idx) => (
                     <div key={photo.id} className="masonry-item photo-tile rounded-xl overflow-hidden relative bg-gray-100 shadow-sm">
                       <img src={photo.url} alt={photo.caption ?? ""} className="w-full h-auto" onClick={() => openLightbox(photo, idx)} />
-                      <button className="del-btn absolute top-2 right-2 w-7 h-7 rounded-full bg-red-500 text-white flex items-center justify-center shadow-md" onClick={e => { e.stopPropagation(); handleDeletePhoto(photo.id) }}><X size={12} /></button>
-                      {photo.caption && <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-2 py-1.5"><p className="text-white text-[10px] truncate">{photo.caption}</p></div>}
+                      <button className="del-btn absolute top-2 right-2 w-7 h-7 rounded-full bg-red-500 text-white flex items-center justify-center shadow-md" onClick={e => { e.stopPropagation(); handleDeletePhoto(photo.id) }}>
+                        <X size={12} />
+                      </button>
+                      {photo.caption && (
+                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-2 py-1.5">
+                          <p className="text-white text-[10px] truncate">{photo.caption}</p>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -386,12 +437,21 @@ export default function GalleryPage({ params }: { params: { role: string } }) {
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 fade-in" onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-5">
                 <h3 className="font-bold text-gray-900 text-lg">Novo Álbum</h3>
-                <button onClick={() => setShowCreateAlbum(false)} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 transition"><X size={15} /></button>
+                <button onClick={() => setShowCreateAlbum(false)} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 transition">
+                  <X size={15} />
+                </button>
               </div>
               <div className="space-y-3">
                 <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">Nome do álbum *</label>
-                  <input className="inp" placeholder="Ex: Retiro 2025" value={newAlbumTitle} onChange={e => setNewAlbumTitle(e.target.value)} onKeyDown={e => e.key === "Enter" && handleCreateAlbum()} autoFocus />
+                  <input
+                    className="inp"
+                    placeholder="Ex: Retiro 2025"
+                    value={newAlbumTitle}
+                    onChange={e => setNewAlbumTitle(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && handleCreateAlbum()}
+                    autoFocus
+                  />
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">Descrição</label>
@@ -408,26 +468,31 @@ export default function GalleryPage({ params }: { params: { role: string } }) {
           </div>
         )}
 
-        {/* MODAL: Add Photos com upload do computador */}
+        {/* MODAL: Add Photos */}
         {showAddPhoto && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop" style={{ background: "rgba(0,0,0,0.5)" }}
-            onClick={() => { if (!addingPhoto) { setShowAddPhoto(false); clearSelection() } }}>
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop"
+            style={{ background: "rgba(0,0,0,0.5)" }}
+            onClick={() => { if (!addingPhoto) { setShowAddPhoto(false); clearSelection() } }}
+          >
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 fade-in" onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-5">
                 <h3 className="font-bold text-gray-900 text-lg">Adicionar Fotos</h3>
                 {!addingPhoto && (
-                  <button onClick={() => { setShowAddPhoto(false); clearSelection() }} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 transition"><X size={15} /></button>
+                  <button onClick={() => { setShowAddPhoto(false); clearSelection() }} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 transition">
+                    <X size={15} />
+                  </button>
                 )}
               </div>
 
               {previews.length === 0 ? (
-                // Drop zone
                 <div
                   className="drop-zone p-10 flex flex-col items-center justify-center gap-3 cursor-pointer"
                   onClick={() => fileInputRef.current?.click()}
                   onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add("over") }}
                   onDragLeave={e => e.currentTarget.classList.remove("over")}
-                  onDrop={e => { e.currentTarget.classList.remove("over"); handleDrop(e) }}>
+                  onDrop={e => { e.currentTarget.classList.remove("over"); handleDrop(e) }}
+                >
                   <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: al }}>
                     <Upload size={26} style={{ color: ac }} />
                   </div>
@@ -441,7 +506,6 @@ export default function GalleryPage({ params }: { params: { role: string } }) {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {/* Grid de previews */}
                   <div className="preview-grid">
                     {previews.map((src, i) => (
                       <div key={i} className="preview-item">
@@ -450,23 +514,35 @@ export default function GalleryPage({ params }: { params: { role: string } }) {
                           <button className="preview-remove" onClick={() => {
                             setSelectedFiles(f => f.filter((_, idx) => idx !== i))
                             setPreviews(p => p.filter((_, idx) => idx !== i))
-                          }}><X size={10} /></button>
+                          }}>
+                            <X size={10} />
+                          </button>
                         )}
                       </div>
                     ))}
                     {!addingPhoto && (
-                      <div className="preview-item flex items-center justify-center cursor-pointer border-2 border-dashed border-gray-200 hover:border-gray-400 transition rounded-lg"
-                        onClick={() => fileInputRef.current?.click()}>
+                      <div
+                        className="preview-item flex items-center justify-center cursor-pointer border-2 border-dashed border-gray-200 hover:border-gray-400 transition rounded-lg"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
                         <Plus size={20} className="text-gray-300" />
                       </div>
                     )}
                   </div>
 
-                  <p className="text-xs text-gray-400">{selectedFiles.length} foto{selectedFiles.length !== 1 ? "s" : ""} selecionada{selectedFiles.length !== 1 ? "s" : ""}</p>
+                  <p className="text-xs text-gray-400">
+                    {selectedFiles.length} foto{selectedFiles.length !== 1 ? "s" : ""} selecionada{selectedFiles.length !== 1 ? "s" : ""}
+                  </p>
 
                   <div>
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">Legenda (opcional)</label>
-                    <input className="inp" placeholder="Ex: Retiro de verão 2025" value={photoCaption} onChange={e => setPhotoCaption(e.target.value)} disabled={addingPhoto} />
+                    <input
+                      className="inp"
+                      placeholder="Ex: Retiro de verão 2025"
+                      value={photoCaption}
+                      onChange={e => setPhotoCaption(e.target.value)}
+                      disabled={addingPhoto}
+                    />
                   </div>
 
                   {addingPhoto && (
@@ -486,7 +562,10 @@ export default function GalleryPage({ params }: { params: { role: string } }) {
                       <button className="btn-ghost" onClick={() => { setShowAddPhoto(false); clearSelection() }}>Cancelar</button>
                     )}
                     <button className="btn-primary" onClick={handleAddPhotos} disabled={addingPhoto || !selectedFiles.length}>
-                      {addingPhoto ? `Enviando ${uploadProgress}%...` : <><Upload size={14} /> Enviar {selectedFiles.length} foto{selectedFiles.length !== 1 ? "s" : ""}</>}
+                      {addingPhoto
+                        ? `Enviando ${uploadProgress}%...`
+                        : <><Upload size={14} /> Enviar {selectedFiles.length} foto{selectedFiles.length !== 1 ? "s" : ""}</>
+                      }
                     </button>
                   </div>
                 </div>
@@ -499,18 +578,39 @@ export default function GalleryPage({ params }: { params: { role: string } }) {
 
         {/* LIGHTBOX */}
         {lightboxPhoto && activeAlbum && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center fade-in" style={{ background: "rgba(0,0,0,0.92)" }} onClick={() => setLightboxPhoto(null)}>
-            <button className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition" onClick={() => setLightboxPhoto(null)}><X size={18} /></button>
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center fade-in"
+            style={{ background: "rgba(0,0,0,0.92)" }}
+            onClick={() => setLightboxPhoto(null)}
+          >
+            <button
+              className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition"
+              onClick={() => setLightboxPhoto(null)}
+            >
+              <X size={18} />
+            </button>
+
             {activeAlbum.photos.length > 1 && (
-              <button className="lightbox-nav absolute left-4 w-11 h-11 rounded-full bg-white/10 text-white flex items-center justify-center" onClick={e => { e.stopPropagation(); lightboxPrev() }}><ChevronLeft size={20} /></button>
+              <button
+                className="lightbox-nav absolute left-4 w-11 h-11 rounded-full bg-white/10 text-white flex items-center justify-center"
+                onClick={e => { e.stopPropagation(); lightboxPrev() }}
+              >
+                <ChevronLeft size={20} />
+              </button>
             )}
+
             <div className="max-w-5xl max-h-screen p-4 flex flex-col items-center gap-3" onClick={e => e.stopPropagation()}>
-              <img src={lightboxPhoto.url} alt={lightboxPhoto.caption ?? ""} className="max-h-[80vh] max-w-full rounded-lg object-contain shadow-2xl" />
-              {lightboxPhoto.caption && <p className="text-white/70 text-sm text-center">{lightboxPhoto.caption}</p>}
+              <img
+                src={lightboxPhoto.url}
+                alt={lightboxPhoto.caption ?? ""}
+                className="max-h-[80vh] max-w-full rounded-lg object-contain shadow-2xl"
+              />
+              {lightboxPhoto.caption && (
+                <p className="text-white/70 text-sm text-center">{lightboxPhoto.caption}</p>
+              )}
               <p className="text-white/30 text-xs">{lightboxIdx + 1} / {activeAlbum.photos.length}</p>
               <div className="flex items-center gap-4">
-                <button onClick={() => handleDownload(lightboxPhoto)}
-                  className="flex items-center gap-1.5 text-white/60 hover:text-white text-xs transition">
+                <button onClick={() => handleDownload(lightboxPhoto)} className="flex items-center gap-1.5 text-white/60 hover:text-white text-xs transition">
                   <Download size={11} /> Baixar foto
                 </button>
                 <button onClick={() => handleDeletePhoto(lightboxPhoto.id)} className="flex items-center gap-1.5 text-red-400 hover:text-red-300 text-xs transition">
@@ -518,8 +618,14 @@ export default function GalleryPage({ params }: { params: { role: string } }) {
                 </button>
               </div>
             </div>
+
             {activeAlbum.photos.length > 1 && (
-              <button className="lightbox-nav absolute right-4 w-11 h-11 rounded-full bg-white/10 text-white flex items-center justify-center" onClick={e => { e.stopPropagation(); lightboxNext() }}><ChevronRight size={20} /></button>
+              <button
+                className="lightbox-nav absolute right-4 w-11 h-11 rounded-full bg-white/10 text-white flex items-center justify-center"
+                onClick={e => { e.stopPropagation(); lightboxNext() }}
+              >
+                <ChevronRight size={20} />
+              </button>
             )}
           </div>
         )}

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Church, Bell, Shield, Users, Palette,
   Database, ChevronRight, Save, ToggleLeft,
@@ -8,6 +8,7 @@ import {
   AlertTriangle, Check, Info, Mail, Phone,
   MapPin, Globe, BookOpen, Calendar,
   UserCheck, Lock, Eye, EyeOff, RefreshCw,
+  Youtube, ExternalLink,
 } from "lucide-react"
 
 // ─── tipos ───────────────────────────────────────────
@@ -93,18 +94,21 @@ function ToggleRow({ toggle, onChange }: { toggle: Toggle; onChange: (id: string
   )
 }
 
-function SaveButton({ onClick, saved }: { onClick: () => void; saved: boolean }) {
+function SaveButton({ onClick, saved, saving }: { onClick: () => void; saved: boolean; saving: boolean }) {
   return (
     <button
       onClick={onClick}
+      disabled={saving}
       className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${
         saved
           ? "bg-green-100 text-green-700"
+          : saving
+          ? "bg-green-400 text-white cursor-not-allowed"
           : "bg-green-600 hover:bg-green-700 text-white shadow-sm"
       }`}
     >
       {saved ? <Check size={16} /> : <Save size={16} />}
-      {saved ? "Salvo!" : "Salvar alterações"}
+      {saved ? "Salvo!" : saving ? "Salvando..." : "Salvar alterações"}
     </button>
   )
 }
@@ -114,9 +118,9 @@ export default function SettingsPage() {
   const [activeSection, setActiveSection] = useState<Section>("igreja")
   const [toggles, setToggles] = useState(initialToggles)
   const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
-  // dados da igreja (apenas UI — persistir via API)
   const [churchData, setChurchData] = useState({
     name: "Igreja Presbiteriana",
     city: "Toledo",
@@ -127,7 +131,23 @@ export default function SettingsPage() {
     website: "",
     pastor: "Rev. João da Silva",
     founded: "1985",
+    youtubeChannelUrl: "",
   })
+
+  // ── Carrega as configurações do banco ao montar ──
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.churchName) {
+          setChurchData((prev) => ({ ...prev, name: data.churchName }))
+        }
+        if (data.youtubeChannelUrl) {
+          setChurchData((prev) => ({ ...prev, youtubeChannelUrl: data.youtubeChannelUrl }))
+        }
+      })
+      .catch(() => {/* silencioso */})
+  }, [])
 
   const [accentColor, setAccentColor] = useState("green")
   const colorOptions = [
@@ -145,9 +165,24 @@ export default function SettingsPage() {
     }))
   }
 
-  function handleSave() {
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2500)
+  async function handleSave() {
+    setSaving(true)
+    try {
+      await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          churchName: churchData.name,
+          youtubeChannelUrl: churchData.youtubeChannelUrl,
+        }),
+      })
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2500)
+    } catch {
+      alert("Erro ao salvar. Tente novamente.")
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -212,7 +247,7 @@ export default function SettingsPage() {
                   { label: "E-mail", key: "email", icon: Mail },
                   { label: "Website", key: "website", icon: Globe },
                 ].map((field) => (
-                  <div key={field.key} className={field.full ? "sm:col-span-2" : ""}>
+                  <div key={field.key} className={(field as any).full ? "sm:col-span-2" : ""}>
                     <label className="text-xs font-semibold text-gray-500 mb-1.5 flex items-center gap-1.5">
                       <field.icon size={12} />
                       {field.label}
@@ -227,8 +262,66 @@ export default function SettingsPage() {
                 ))}
               </div>
 
+              {/* ── BLOCO YOUTUBE ── */}
+              <div className="rounded-2xl border border-gray-100 bg-gray-50/60 p-5 flex flex-col gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-red-50 rounded-xl">
+                    <Youtube size={18} className="text-red-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-gray-800">Canal do YouTube</p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Vincula o canal da igreja para exibir vídeos na aba Sermões
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 mb-1.5 flex items-center gap-1.5">
+                    <Youtube size={11} />
+                    URL do Canal
+                  </label>
+                  <input
+                    type="url"
+                    value={churchData.youtubeChannelUrl}
+                    onChange={(e) => setChurchData((prev) => ({ ...prev, youtubeChannelUrl: e.target.value }))}
+                    placeholder="https://www.youtube.com/@IPBToledo"
+                    className="w-full border border-gray-200 bg-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-300 text-gray-700 placeholder:text-gray-300"
+                  />
+                  <p className="mt-1 text-[11px] text-gray-400 leading-relaxed">
+                    Cole a URL do canal — funciona com <code className="bg-gray-100 px-1 rounded">@handle</code>, <code className="bg-gray-100 px-1 rounded">/channel/UCxxx</code> ou <code className="bg-gray-100 px-1 rounded">/c/nome</code>
+                  </p>
+                </div>
+
+                {churchData.youtubeChannelUrl ? (
+                  <a
+                    href={churchData.youtubeChannelUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 bg-red-50 hover:bg-red-100 border border-red-100 rounded-xl px-4 py-3 transition group"
+                  >
+                    <div className="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center shrink-0 shadow-sm">
+                      <Youtube size={15} className="text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-red-700">Canal vinculado</p>
+                      <p className="text-xs text-red-400 truncate mt-0.5">{churchData.youtubeChannelUrl}</p>
+                    </div>
+                    <ExternalLink size={14} className="text-red-300 group-hover:text-red-500 shrink-0 transition" />
+                  </a>
+                ) : (
+                  <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
+                    <Info size={14} className="text-amber-500 mt-0.5 shrink-0" />
+                    <p className="text-xs text-amber-700 leading-relaxed">
+                      Configure a URL do canal para que vídeos recentes apareçam automaticamente na aba <strong>Sermões</strong>.
+                    </p>
+                  </div>
+                )}
+              </div>
+              {/* ── FIM BLOCO YOUTUBE ── */}
+
               <div className="flex justify-end">
-                <SaveButton onClick={handleSave} saved={saved} />
+                <SaveButton onClick={handleSave} saved={saved} saving={saving} />
               </div>
             </>
           )}
@@ -250,7 +343,7 @@ export default function SettingsPage() {
               </div>
 
               <div className="flex justify-end">
-                <SaveButton onClick={handleSave} saved={saved} />
+                <SaveButton onClick={handleSave} saved={saved} saving={saving} />
               </div>
             </>
           )}
@@ -290,7 +383,7 @@ export default function SettingsPage() {
               </div>
 
               <div className="flex justify-end">
-                <SaveButton onClick={handleSave} saved={saved} />
+                <SaveButton onClick={handleSave} saved={saved} saving={saving} />
               </div>
             </>
           )}
@@ -335,7 +428,7 @@ export default function SettingsPage() {
               </div>
 
               <div className="flex justify-end">
-                <SaveButton onClick={handleSave} saved={saved} />
+                <SaveButton onClick={handleSave} saved={saved} saving={saving} />
               </div>
             </>
           )}
@@ -380,7 +473,7 @@ export default function SettingsPage() {
               </div>
 
               <div className="flex justify-end">
-                <SaveButton onClick={handleSave} saved={saved} />
+                <SaveButton onClick={handleSave} saved={saved} saving={saving} />
               </div>
             </>
           )}

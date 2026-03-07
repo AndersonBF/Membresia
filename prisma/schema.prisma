@@ -344,3 +344,16 @@ model GalleryPhoto {
 
   album GalleryAlbum @relation(fields: [albumId], references: [id], onDelete: Cascade)
 }
+
+// Adicione este model ao final do seu schema.prisma
+
+// ===============================================
+// CONFIGURAÇÕES DA IGREJA (ChurchSettings)
+// ===============================================
+model ChurchSettings {
+  id                 Int     @id @default(1)
+  churchName         String? @default("Igreja")
+  youtubeChannelId   String? // ID do canal: UCxxxxxxxxxx
+  youtubeChannelUrl  String? // URL completa do canal (fallback)
+  updatedAt          DateTime @updatedAt
+}

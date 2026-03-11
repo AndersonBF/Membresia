@@ -351,9 +351,22 @@ model GalleryPhoto {
 // CONFIGURAÇÕES DA IGREJA (ChurchSettings)
 // ===============================================
 model ChurchSettings {
-  id                 Int     @id @default(1)
-  churchName         String? @default("Igreja")
-  youtubeChannelId   String? // ID do canal: UCxxxxxxxxxx
-  youtubeChannelUrl  String? // URL completa do canal (fallback)
-  updatedAt          DateTime @updatedAt
+  id                Int      @id @default(1)
+  churchName        String?
+  youtubeChannelUrl String?
+  // Dados para o Saiba Mais
+  pastor            String?
+  founded           String?
+  city              String?
+  state             String?
+  address           String?
+  phone             String?
+  email             String?
+  website           String?
+  about             String?  // Texto de apresentação
+  photoUrl          String?  // Foto da igreja (futuramente upload)
+  mapsUrl           String?  // Link do Google Maps
+  updatedAt         DateTime @updatedAt
 }
+
+

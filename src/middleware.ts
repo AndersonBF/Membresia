@@ -54,6 +54,15 @@ export default clerkMiddleware(async (auth, req) => {
   const roles =
     (sessionClaims?.metadata as { roles?: string[] })?.roles ?? [];
 
+  const groupRoles = [
+    "ump", "upa", "uph", "saf", "ucp",
+    "diaconia", "conselho", "ministerio", "ebd",
+  ];
+
+  const isMember     = roles.includes("member");
+  const isAdmin      = roles.includes("admin") || roles.includes("superadmin");
+  const hasGroupRole = roles.some((r) => groupRoles.includes(r));
+
   // ============================
   // 🔥 SEM ROLE → MEMBER
   // ============================
@@ -65,7 +74,20 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   // ============================
-  // 🔥 CONTROLE POR ROLE (SEM LOOP)
+  // 🔥 REDIRECT INICIAL (só na raiz "/")
+  // ============================
+  if (pathname === "/") {
+    if (isAdmin)      return NextResponse.redirect(new URL("/admin", req.url));
+    if (isMember)     return NextResponse.redirect(new URL("/member", req.url));
+    if (hasGroupRole) {
+      const firstGroup = roles.find((r) => groupRoles.includes(r))!;
+      return NextResponse.redirect(new URL(`/${firstGroup}`, req.url));
+    }
+    return NextResponse.redirect(new URL("/member", req.url));
+  }
+
+  // ============================
+  // 🔥 CONTROLE POR ROLE
   // ============================
   for (const { matcher, allowedRoles } of matchers) {
     if (matcher(req)) {
@@ -73,20 +95,23 @@ export default clerkMiddleware(async (auth, req) => {
 
       if (!hasAccess) {
         // Admin bypass
-        if (roles.includes("admin") || roles.includes("superadmin")) {
+        if (isAdmin) {
           if (pathname !== "/admin") {
             return NextResponse.redirect(new URL("/admin", req.url));
           }
           return NextResponse.next();
         }
 
-        const groupRoles = [
-          "ump", "upa", "uph", "saf", "ucp",
-          "diaconia", "conselho", "ministerio", "ebd",
-        ];
+        // Tem role member → vai para /member
+        if (isMember) {
+          if (pathname !== "/member") {
+            return NextResponse.redirect(new URL("/member", req.url));
+          }
+          return NextResponse.next();
+        }
 
+        // Tem role de grupo → vai para o grupo
         const firstGroup = roles.find((r) => groupRoles.includes(r));
-
         if (firstGroup) {
           const targetPath = `/${firstGroup}`;
           if (pathname !== targetPath) {
@@ -98,7 +123,6 @@ export default clerkMiddleware(async (auth, req) => {
         if (pathname !== "/member") {
           return NextResponse.redirect(new URL("/member", req.url));
         }
-
         return NextResponse.next();
       }
     }

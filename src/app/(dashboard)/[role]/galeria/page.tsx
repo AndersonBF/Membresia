@@ -62,6 +62,7 @@ export default function GalleryPage({ params }: { params: { role: string } }) {
   const [photoCaption, setPhotoCaption]     = useState("")
   const [addingPhoto, setAddingPhoto]       = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadError, setUploadError]       = useState<string | null>(null)
   const [selectedFiles, setSelectedFiles]   = useState<File[]>([])
   const [previews, setPreviews]             = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -85,29 +86,61 @@ export default function GalleryPage({ params }: { params: { role: string } }) {
 
   useEffect(() => { fetchAlbums() }, [role])
 
-  /** Limpa todo o estado de upload — incluindo flags de progresso */
   function clearSelection() {
     setSelectedFiles([])
-    setPreviews([])
+    setPreviews(prev => { prev.forEach(u => URL.revokeObjectURL(u)); return [] })
     setPhotoCaption("")
     setUploadProgress(0)
     setAddingPhoto(false)
+    setUploadError(null)
     if (fileInputRef.current) fileInputRef.current.value = ""
   }
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? [])
     if (!files.length) return
+    previews.forEach(u => URL.revokeObjectURL(u))
     setSelectedFiles(files)
     setPreviews(files.map(f => URL.createObjectURL(f)))
+    setUploadError(null)
   }
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault()
     const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith("image/"))
     if (!files.length) return
+    previews.forEach(u => URL.revokeObjectURL(u))
     setSelectedFiles(files)
     setPreviews(files.map(f => URL.createObjectURL(f)))
+    setUploadError(null)
+  }
+
+  // ─── Upload direto para Cloudinary (bypassa limite da Vercel) ─────────────
+
+  async function uploadToCloudinary(file: File): Promise<string> {
+    // Busca credenciais do servidor (rota leve, sem body grande)
+    const credRes = await fetch("/api/gallery/upload")
+    if (!credRes.ok) throw new Error("Não foi possível obter credenciais de upload")
+    const { cloudName, uploadPreset } = await credRes.json()
+
+    const formData = new FormData()
+    formData.append("file", file)
+    formData.append("upload_preset", uploadPreset)
+    formData.append("folder", "gallery")
+
+    // Upload direto browser → Cloudinary (sem passar pela Vercel)
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+      method: "POST",
+      body: formData,
+    })
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err?.error?.message ?? `Upload falhou (${res.status})`)
+    }
+
+    const data = await res.json()
+    return data.secure_url as string
   }
 
   // ─── Álbuns ───────────────────────────────────────────────────────────────
@@ -143,41 +176,45 @@ export default function GalleryPage({ params }: { params: { role: string } }) {
 
   async function handleAddPhotos() {
     if (!selectedFiles.length || !activeAlbum) return
+
     setAddingPhoto(true)
     setUploadProgress(0)
+    setUploadError(null)
 
     try {
       for (let i = 0; i < selectedFiles.length; i++) {
-        const formData = new FormData()
-        formData.append("file", selectedFiles[i])
-        const uploadRes = await fetch("/api/gallery/upload", { method: "POST", body: formData })
-        if (!uploadRes.ok) continue
-        const { url } = await uploadRes.json()
+        // 1. Upload direto para Cloudinary
+        const url = await uploadToCloudinary(selectedFiles[i])
+
+        // 2. Salva referência no banco via API leve (só JSON, sem arquivo)
         await fetch("/api/gallery/photos", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ albumId: activeAlbum.id, url, caption: photoCaption || null }),
+          body: JSON.stringify({
+            albumId: activeAlbum.id,
+            url,
+            caption: photoCaption || null,
+          }),
         })
+
         setUploadProgress(Math.round(((i + 1) / selectedFiles.length) * 100))
       }
 
       const all = await fetchAlbums()
       setActiveAlbum(all.find(a => a.id === activeAlbum.id) ?? null)
-    } finally {
-      // Garante reset mesmo se ocorrer erro durante o upload
-      clearSelection()
       setShowAddPhoto(false)
+      clearSelection()
+    } catch (err: any) {
+      setUploadError(err?.message ?? "Erro desconhecido durante o upload")
+      setAddingPhoto(false)
+      setUploadProgress(0)
     }
   }
 
   async function handleDeletePhoto(photoId: number) {
     if (!confirm("Excluir esta foto?")) return
-
-    // Fecha lightbox imediatamente para evitar estado inconsistente
     setLightboxPhoto(null)
-
     await fetch(`/api/gallery/photos?id=${photoId}`, { method: "DELETE" })
-
     const all = await fetchAlbums()
     setActiveAlbum(all.find(a => a.id === activeAlbum?.id) ?? null)
   }
@@ -512,6 +549,7 @@ export default function GalleryPage({ params }: { params: { role: string } }) {
                         <img src={src} alt="" />
                         {!addingPhoto && (
                           <button className="preview-remove" onClick={() => {
+                            URL.revokeObjectURL(previews[i])
                             setSelectedFiles(f => f.filter((_, idx) => idx !== i))
                             setPreviews(p => p.filter((_, idx) => idx !== i))
                           }}>
@@ -545,14 +583,27 @@ export default function GalleryPage({ params }: { params: { role: string } }) {
                     />
                   </div>
 
+                  {/* Progresso */}
                   {addingPhoto && (
                     <div className="space-y-1.5">
                       <div className="flex justify-between text-xs text-gray-500">
-                        <span>Enviando fotos para a nuvem...</span>
+                        <span>Enviando para o Cloudinary...</span>
                         <span>{uploadProgress}%</span>
                       </div>
                       <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
                         <div className="h-2 rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%`, background: ac }} />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Erro */}
+                  {uploadError && (
+                    <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl p-3">
+                      <X size={14} className="text-red-400 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-red-600 text-xs font-semibold">Erro no upload</p>
+                        <p className="text-red-500 text-xs mt-0.5">{uploadError}</p>
+                        <p className="text-red-400 text-xs mt-1">Verifique se o Upload Preset está configurado como <strong>Unsigned</strong> no Cloudinary.</p>
                       </div>
                     </div>
                   )}

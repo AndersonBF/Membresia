@@ -6,6 +6,7 @@ import {
   ArrowLeft, Plus, X, Upload, ImageIcon,
   Trash2, ChevronLeft, ChevronRight, Grid3X3,
   LayoutGrid, Search, Camera, FolderOpen, Download,
+  Pencil, Check,
 } from "lucide-react"
 
 interface Photo {
@@ -57,6 +58,13 @@ export default function GalleryPage({ params }: { params: { role: string } }) {
   const [newAlbumTitle, setNewAlbumTitle]     = useState("")
   const [newAlbumDesc, setNewAlbumDesc]       = useState("")
   const [creating, setCreating]               = useState(false)
+
+  // ── Rename state ──────────────────────────────────────────────────────────
+  const [showRenameAlbum, setShowRenameAlbum] = useState(false)
+  const [renameTitle, setRenameTitle]         = useState("")
+  const [renameDesc, setRenameDesc]           = useState("")
+  const [renaming, setRenaming]               = useState(false)
+  const renameTitleRef = useRef<HTMLInputElement>(null)
 
   const [showAddPhoto, setShowAddPhoto]     = useState(false)
   const [photoCaption, setPhotoCaption]     = useState("")
@@ -118,7 +126,6 @@ export default function GalleryPage({ params }: { params: { role: string } }) {
   // ─── Upload direto para Cloudinary (bypassa limite da Vercel) ─────────────
 
   async function uploadToCloudinary(file: File): Promise<string> {
-    // Busca credenciais do servidor (rota leve, sem body grande)
     const credRes = await fetch("/api/gallery/upload")
     if (!credRes.ok) throw new Error("Não foi possível obter credenciais de upload")
     const { cloudName, uploadPreset } = await credRes.json()
@@ -128,7 +135,6 @@ export default function GalleryPage({ params }: { params: { role: string } }) {
     formData.append("upload_preset", uploadPreset)
     formData.append("folder", "gallery")
 
-    // Upload direto browser → Cloudinary (sem passar pela Vercel)
     const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
       method: "POST",
       body: formData,
@@ -165,6 +171,35 @@ export default function GalleryPage({ params }: { params: { role: string } }) {
     }
   }
 
+  function openRenameModal() {
+    if (!activeAlbum) return
+    setRenameTitle(activeAlbum.title)
+    setRenameDesc(activeAlbum.description ?? "")
+    setShowRenameAlbum(true)
+    // foca o input após o modal abrir
+    setTimeout(() => renameTitleRef.current?.focus(), 50)
+  }
+
+  async function handleRenameAlbum() {
+    if (!renameTitle.trim() || !activeAlbum) return
+    setRenaming(true)
+    try {
+      const res = await fetch(`/api/gallery/albums/${activeAlbum.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: renameTitle.trim(), description: renameDesc.trim() || null }),
+      })
+      if (res.ok) {
+        setShowRenameAlbum(false)
+        const all = await fetchAlbums()
+        // atualiza o álbum ativo com os novos dados
+        setActiveAlbum(all.find(a => a.id === activeAlbum.id) ?? null)
+      }
+    } finally {
+      setRenaming(false)
+    }
+  }
+
   async function handleDeleteAlbum(id: number) {
     if (!confirm("Excluir este álbum e todas as fotos?")) return
     await fetch(`/api/gallery/albums/${id}`, { method: "DELETE" })
@@ -183,10 +218,8 @@ export default function GalleryPage({ params }: { params: { role: string } }) {
 
     try {
       for (let i = 0; i < selectedFiles.length; i++) {
-        // 1. Upload direto para Cloudinary
         const url = await uploadToCloudinary(selectedFiles[i])
 
-        // 2. Salva referência no banco via API leve (só JSON, sem arquivo)
         await fetch("/api/gallery/photos", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -402,7 +435,17 @@ export default function GalleryPage({ params }: { params: { role: string } }) {
                     <ArrowLeft size={15} />
                   </button>
                   <div>
-                    <h2 className="font-bold text-gray-900 text-xl">{activeAlbum.title}</h2>
+                    <div className="flex items-center gap-2">
+                      <h2 className="font-bold text-gray-900 text-xl">{activeAlbum.title}</h2>
+                      {/* Botão renomear inline */}
+                      <button
+                        onClick={openRenameModal}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition"
+                        title="Renomear álbum"
+                      >
+                        <Pencil size={13} />
+                      </button>
+                    </div>
                     {activeAlbum.description && <p className="text-gray-400 text-sm">{activeAlbum.description}</p>}
                   </div>
                 </div>
@@ -505,6 +548,59 @@ export default function GalleryPage({ params }: { params: { role: string } }) {
           </div>
         )}
 
+        {/* MODAL: Rename Album */}
+        {showRenameAlbum && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop" style={{ background: "rgba(0,0,0,0.5)" }}
+            onClick={() => { if (!renaming) setShowRenameAlbum(false) }}>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 fade-in" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: al }}>
+                    <Pencil size={14} style={{ color: ac }} />
+                  </div>
+                  <h3 className="font-bold text-gray-900 text-lg">Renomear Álbum</h3>
+                </div>
+                {!renaming && (
+                  <button onClick={() => setShowRenameAlbum(false)} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 transition">
+                    <X size={15} />
+                  </button>
+                )}
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">Nome do álbum *</label>
+                  <input
+                    ref={renameTitleRef}
+                    className="inp"
+                    placeholder="Ex: Retiro 2025"
+                    value={renameTitle}
+                    onChange={e => setRenameTitle(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && handleRenameAlbum()}
+                    disabled={renaming}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">Descrição</label>
+                  <textarea
+                    className="inp resize-none"
+                    rows={3}
+                    placeholder="Descreva este álbum..."
+                    value={renameDesc}
+                    onChange={e => setRenameDesc(e.target.value)}
+                    disabled={renaming}
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2 mt-5 justify-end">
+                <button className="btn-ghost" onClick={() => setShowRenameAlbum(false)} disabled={renaming}>Cancelar</button>
+                <button className="btn-primary" onClick={handleRenameAlbum} disabled={renaming || !renameTitle.trim()}>
+                  {renaming ? "Salvando..." : <><Check size={14} /> Salvar</>}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* MODAL: Add Photos */}
         {showAddPhoto && (
           <div
@@ -583,7 +679,6 @@ export default function GalleryPage({ params }: { params: { role: string } }) {
                     />
                   </div>
 
-                  {/* Progresso */}
                   {addingPhoto && (
                     <div className="space-y-1.5">
                       <div className="flex justify-between text-xs text-gray-500">
@@ -596,7 +691,6 @@ export default function GalleryPage({ params }: { params: { role: string } }) {
                     </div>
                   )}
 
-                  {/* Erro */}
                   {uploadError && (
                     <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl p-3">
                       <X size={14} className="text-red-400 mt-0.5 flex-shrink-0" />

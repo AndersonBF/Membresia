@@ -18,10 +18,19 @@ export async function GET() {
   const user = await currentUser()
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  return NextResponse.json({
-    cloudName:    process.env.CLOUDINARY_CLOUD_NAME,
-    uploadPreset: process.env.CLOUDINARY_UPLOAD_PRESET,
-  })
+  const cloudName    = process.env.CLOUDINARY_CLOUD_NAME
+  const uploadPreset = process.env.CLOUDINARY_UPLOAD_PRESET
+
+  if (!cloudName) {
+    console.error("[gallery/upload] CLOUDINARY_CLOUD_NAME não definido")
+    return NextResponse.json({ error: "CLOUDINARY_CLOUD_NAME não configurado" }, { status: 500 })
+  }
+  if (!uploadPreset) {
+    console.error("[gallery/upload] CLOUDINARY_UPLOAD_PRESET não definido")
+    return NextResponse.json({ error: "CLOUDINARY_UPLOAD_PRESET não configurado. Adicione esta variável de ambiente na Vercel." }, { status: 500 })
+  }
+
+  return NextResponse.json({ cloudName, uploadPreset })
 }
 
 // POST → upload via servidor

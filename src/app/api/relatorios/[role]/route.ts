@@ -7,7 +7,6 @@ const societyMap: Record<string, number> = {
   saf: 3, uph: 4, ump: 5, upa: 6, ucp: 7,
 }
 
-// Faixas etárias de 5 em 5 anos, de 0 até 80+
 const AGE_BRACKETS = [
   { label: "0–4",   min: 0,  max: 4  },
   { label: "5–9",   min: 5,  max: 9  },
@@ -43,7 +42,6 @@ export async function GET(req: NextRequest, { params }: { params: { role: string
 
   const societyId = societyMap[role]
 
-  // ── WHERE clauses ────────────────────────────────────────────────────────
   let memberWhere: any = {}
   let eventWhere: any = {}
   let financeWhere: any = {}
@@ -63,7 +61,6 @@ export async function GET(req: NextRequest, { params }: { params: { role: string
     memberWhere  = { bibleSchoolClass: { isNot: null } }
   }
 
-  // ── Queries paralelas ────────────────────────────────────────────────────
   const [members, events, finances, directory] = await Promise.all([
     prisma.member.findMany({
       where: memberWhere,
@@ -99,7 +96,7 @@ export async function GET(req: NextRequest, { params }: { params: { role: string
     }) : Promise.resolve([]),
   ])
 
-  // ── Processamento: Membros ───────────────────────────────────────────────
+  // ── Membros ──────────────────────────────────────────────────────────────
   const now = new Date()
   const totalMembers  = members.length
   const activeMembers = members.filter(m => m.isActive).length
@@ -109,7 +106,6 @@ export async function GET(req: NextRequest, { params }: { params: { role: string
     nao_informado: members.filter(m => !m.gender).length,
   }
 
-  // Faixa etária de 5 em 5 anos — só inclui faixas com pelo menos 1 membro
   const ageMap: Record<string, number> = {}
   let naoInformadoAge = 0
 
@@ -122,7 +118,6 @@ export async function GET(req: NextRequest, { params }: { params: { role: string
     if (bracket) ageMap[bracket.label] = (ageMap[bracket.label] ?? 0) + 1
   })
 
-  // Array ordenado, faixas vazias omitidas
   const ageDist = [
     ...AGE_BRACKETS
       .filter(b => (ageMap[b.label] ?? 0) > 0)
@@ -130,7 +125,6 @@ export async function GET(req: NextRequest, { params }: { params: { role: string
     ...(naoInformadoAge > 0 ? [{ faixa: "N/A", total: naoInformadoAge }] : []),
   ]
 
-  // Crescimento mensal (últimos 12 meses)
   const monthlyGrowth = Array.from({ length: 12 }, (_, i) => {
     const d = new Date(now.getFullYear(), now.getMonth() - (11 - i), 1)
     const count = members.filter(m => new Date(m.createdAt) <= d).length
@@ -140,12 +134,14 @@ export async function GET(req: NextRequest, { params }: { params: { role: string
     }
   })
 
-  // ── Processamento: Presença ──────────────────────────────────────────────
+  // ── Presença ─────────────────────────────────────────────────────────────
   const attendanceByEvent = events.map(e => {
-    const total   = e.attendances.length
     const present = e.attendances.filter(a => a.isPresent).length
+    // Se ninguém foi marcado como presente, considera total = 0 (evento sem chamada feita)
+    const total   = present === 0 ? 0 : e.attendances.length
+    const absent  = total - present
     const rate    = total > 0 ? Math.round((present / total) * 100) : 0
-    return { id: e.id, title: e.title, date: e.date.toISOString(), total, present, absent: total - present, rate }
+    return { id: e.id, title: e.title, date: e.date.toISOString(), total, present, absent, rate }
   })
 
   const monthlyAttendance = Array.from({ length: 12 }, (_, i) => {
@@ -153,7 +149,11 @@ export async function GET(req: NextRequest, { params }: { params: { role: string
     const dEnd = new Date(now.getFullYear(), now.getMonth() - (11 - i) + 1, 0)
     const evs  = events.filter(e => e.date >= d && e.date <= dEnd)
     const totalPresent = evs.reduce((s, e) => s + e.attendances.filter(a => a.isPresent).length, 0)
-    const totalAll     = evs.reduce((s, e) => s + e.attendances.length, 0)
+    // Usa o mesmo critério: só conta total de eventos que tiveram ao menos 1 presente
+    const totalAll = evs.reduce((s, e) => {
+      const p = e.attendances.filter(a => a.isPresent).length
+      return s + (p === 0 ? 0 : e.attendances.length)
+    }, 0)
     return {
       mes: d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" }),
       eventos: evs.length,
@@ -165,6 +165,8 @@ export async function GET(req: NextRequest, { params }: { params: { role: string
 
   const memberPresence: Record<number, { present: number; total: number }> = {}
   events.forEach(e => {
+    const hasPresent = e.attendances.some(a => a.isPresent)
+    if (!hasPresent) return // ignora eventos sem nenhuma presença marcada
     e.attendances.forEach(a => {
       if (!memberPresence[a.memberId]) memberPresence[a.memberId] = { present: 0, total: 0 }
       memberPresence[a.memberId].total++
@@ -175,12 +177,18 @@ export async function GET(req: NextRequest, { params }: { params: { role: string
   const presenceRanking = members
     .map(m => {
       const p = memberPresence[m.id] ?? { present: 0, total: 0 }
-      return { id: m.id, name: m.name, present: p.present, total: p.total, rate: p.total > 0 ? Math.round((p.present / p.total) * 100) : null }
+      return {
+        id: m.id,
+        name: m.name,
+        present: p.present,
+        total: p.total,
+        rate: p.total > 0 ? Math.round((p.present / p.total) * 100) : null,
+      }
     })
     .filter(m => m.total > 0)
     .sort((a, b) => (b.rate ?? 0) - (a.rate ?? 0))
 
-  // ── Processamento: Finanças ──────────────────────────────────────────────
+  // ── Finanças ─────────────────────────────────────────────────────────────
   const totalEntradas = finances.filter(f => f.type === "ENTRADA").reduce((s, f) => s + f.value, 0)
   const totalSaidas   = finances.filter(f => f.type === "SAIDA").reduce((s, f) => s + f.value, 0)
   const saldo         = totalEntradas - totalSaidas
@@ -192,20 +200,55 @@ export async function GET(req: NextRequest, { params }: { params: { role: string
     const mf    = finances.filter(f => f.month === month && f.year === year)
     const entradas = mf.filter(f => f.type === "ENTRADA").reduce((s, f) => s + f.value, 0)
     const saidas   = mf.filter(f => f.type === "SAIDA").reduce((s, f) => s + f.value, 0)
-    return { mes: d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" }), entradas, saidas, saldo: entradas - saidas }
+    return {
+      mes: d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" }),
+      entradas,
+      saidas,
+      saldo: entradas - saidas,
+    }
   })
 
-  // ── Diretoria ────────────────────────────────────────────────────────────
-  const directoryCargos = ["Presidente", "Vice-Presidente", "1º Secretário", "2º Secretário", "Tesoureiro", "1º Tesoureiro", "2º Tesoureiro"]
+  // ── Diretoria ─────────────────────────────────────────────────────────────
+  const directoryCargos = [
+    "Presidente", "Vice-Presidente",
+    "1º Secretário", "2º Secretário",
+    "Tesoureiro", "1º Tesoureiro", "2º Tesoureiro",
+  ]
   const directoryData = (directory as any[])
     .filter(d => d.cargo && directoryCargos.includes(d.cargo))
     .sort((a, b) => directoryCargos.indexOf(a.cargo) - directoryCargos.indexOf(b.cargo))
     .map(d => ({ cargo: d.cargo, member: d.member }))
 
   return NextResponse.json({
-    members: { total: totalMembers, active: activeMembers, inactive: totalMembers - activeMembers, genderDist, ageDist, monthlyGrowth },
-    attendance: { totalEvents: events.length, byEvent: attendanceByEvent, monthly: monthlyAttendance, ranking: presenceRanking },
-    finance: { totalEntradas, totalSaidas, saldo, byMonth: financeByMonth, transactions: finances.map(f => ({ id: f.id, description: f.description, type: f.type, value: f.value, date: f.date.toISOString(), month: f.month, year: f.year })) },
+    members: {
+      total: totalMembers,
+      active: activeMembers,
+      inactive: totalMembers - activeMembers,
+      genderDist,
+      ageDist,
+      monthlyGrowth,
+    },
+    attendance: {
+      totalEvents: events.length,
+      byEvent: attendanceByEvent,
+      monthly: monthlyAttendance,
+      ranking: presenceRanking,
+    },
+    finance: {
+      totalEntradas,
+      totalSaidas,
+      saldo,
+      byMonth: financeByMonth,
+      transactions: finances.map(f => ({
+        id: f.id,
+        description: f.description,
+        type: f.type,
+        value: f.value,
+        date: f.date.toISOString(),
+        month: f.month,
+        year: f.year,
+      })),
+    },
     directory: directoryData,
   })
 }

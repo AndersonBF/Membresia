@@ -9,7 +9,6 @@ import { Shield, HandHelping, Layers, Baby, UserCircle, GraduationCap } from "lu
 import { Suspense } from "react";
 
 const sociedades = ["ump", "upa", "uph", "saf", "ucp"];
-// Roles que também usam o menu reduzido (showOnlyForSociedades), mas sem societyId
 const gruposExtras = ["diaconia", "conselho", "ministerio", "ebd"];
 const allRoles = ["ump", "upa", "uph", "saf", "ucp", "diaconia", "conselho", "ministerio", "ebd"];
 
@@ -47,6 +46,7 @@ const roleConfig: Record<string, { label: string; icon: React.ElementType; color
   ebd:        { label: "EBD",        icon: GraduationCap, color: "text-white" },
 }
 
+// /relatorios e /galeria removidos — tratados com condições diretas no resolveHref
 const roleRouteMap: Record<string, string> = {
   "/list/members":    "/membros",
   "/list/attendance": "/list/attendance",
@@ -54,8 +54,6 @@ const roleRouteMap: Record<string, string> = {
   "/list/documents":  "/list/documents",
   "/list/finance":    "/list/finance",
   "/list/broadcasts": "/list/broadcasts",
-  "/galeria":         "/galeria",
-  "/relatorios":      "/relatorios",
 }
 
 const MenuContent = () => {
@@ -70,21 +68,17 @@ const MenuContent = () => {
   const pathnameRole = pathname.split("/")[1]
   const currentRole = roleContext || (allRoles.includes(pathnameRole) ? pathnameRole : "")
 
-  // ministryId / councilId / etc — vem da URL quando estamos dentro de /ministerio/[id]
   const ministryId = searchParams.get("ministryId")
-  // Para ministerio, o "groupId" é o id do ministério específico
-  // Para diaconia/conselho — fixo (id=1), para ebd — classId
   const groupId = ministryId
     || searchParams.get("councilId")
     || searchParams.get("diaconateId")
     || searchParams.get("classId")
 
   const isSociedade = sociedades.includes(currentRole);
-  const isGrupoExtra = gruposExtras.includes(currentRole); // ministerio, conselho, diaconia, ebd
+  const isGrupoExtra = gruposExtras.includes(currentRole);
   const isRolePage = allRoles.includes(currentRole);
   const currentRoleConfig = roleConfig[currentRole];
 
-  // Para o menu reduzido (showOnlyForSociedades), tanto sociedades quanto gruposExtras usam o mesmo menu
   const useReducedMenu = isSociedade || isGrupoExtra;
 
   const resolveHref = (href: string) => {
@@ -94,19 +88,18 @@ const MenuContent = () => {
     if (href === "/admin") return `/${currentRole}`
     if (href === "/list/members") return `/${currentRole}/membros`
 
-    // Galeria → /<role>/galeria
-    if (href === "/galeria") return `/${currentRole}/galeria`
+    // Rotas que sempre ficam dentro de /<role>/
+    if (href === "/galeria")    return `/${currentRole}/galeria`
+    if (href === "/relatorios") return `/${currentRole}/relatorios`
 
     if (roleRouteMap[href] !== undefined) {
       const societyId = societyMap[currentRole]
 
       if (societyId) {
-        // Sociedade clássica (ump, saf, etc.)
         return `${roleRouteMap[href]}?societyId=${societyId}&roleContext=${currentRole}`
       }
 
       if (isGrupoExtra) {
-        // Grupo extra: passa ministryId/councilId se disponível, senão só roleContext
         const idParam = groupId ? `&ministryId=${groupId}` : ""
         return `${roleRouteMap[href]}?roleContext=${currentRole}${idParam}`
       }
@@ -120,7 +113,6 @@ const MenuContent = () => {
   return (
     <div className="mt-4 text-sm">
 
-      {/* BADGE DO ROLE ATUAL */}
       {isRolePage && currentRoleConfig && (
         <div className="flex items-center justify-center px-2 py-4 mb-2 border-b border-green-700">
           <currentRoleConfig.icon size={56} className={currentRoleConfig.color} />
@@ -134,7 +126,6 @@ const MenuContent = () => {
           </span>
 
           {section.items.map((item) => {
-            // Menu reduzido para sociedades E grupos extras
             if (useReducedMenu && item.hiddenForSociedades) return null;
             if (!useReducedMenu && item.showOnlyForSociedades) return null;
 

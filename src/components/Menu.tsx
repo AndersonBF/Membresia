@@ -5,11 +5,13 @@ import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { menuItems } from "./menuItems";
-import { Shield, HandHelping, Baby, UserCircle, GraduationCap, Layers } from "lucide-react";
+import { Shield, HandHelping, Layers, Baby, UserCircle, GraduationCap } from "lucide-react";
 import { Suspense } from "react";
 
 const sociedades = ["ump", "upa", "uph", "saf", "ucp"];
-const allRoles   = ["ump", "upa", "uph", "saf", "ucp", "diaconia", "conselho", "ministerio", "ebd"];
+// Roles que também usam o menu reduzido (showOnlyForSociedades), mas sem societyId
+const gruposExtras = ["diaconia", "conselho", "ministerio", "ebd"];
+const allRoles = ["ump", "upa", "uph", "saf", "ucp", "diaconia", "conselho", "ministerio", "ebd"];
 
 const societyMap: Record<string, number> = {
   saf: 3, uph: 4, ump: 5, upa: 6, ucp: 7,
@@ -45,89 +47,80 @@ const roleConfig: Record<string, { label: string; icon: React.ElementType; color
   ebd:        { label: "EBD",        icon: GraduationCap, color: "text-white" },
 }
 
-const MenuContent = () => {
-  const pathname     = usePathname();
-  const searchParams = useSearchParams();
-  const { user }     = useUser();
+const roleRouteMap: Record<string, string> = {
+  "/list/members":    "/membros",
+  "/list/attendance": "/list/attendance",
+  "/list/events":     "/list/events",
+  "/list/documents":  "/list/documents",
+  "/list/finance":    "/list/finance",
+  "/list/broadcasts": "/list/broadcasts",
+  "/galeria":         "/galeria",
+  "/relatorios":      "/relatorios",
+}
 
-  const roles        = (user?.publicMetadata?.roles as string[]) ?? [];
+const MenuContent = () => {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { user } = useUser();
+
+  const roles = (user?.publicMetadata?.roles as string[]) ?? [];
   const isSuperAdmin = roles.includes("superadmin");
 
-  // ── Detecta contexto ──────────────────────────────────────────────────────
+  const roleContext = searchParams.get("roleContext")
+  const pathnameRole = pathname.split("/")[1]
+  const currentRole = roleContext || (allRoles.includes(pathnameRole) ? pathnameRole : "")
 
-  const roleContext  = searchParams.get("roleContext");
-  const pathnameRole = pathname.split("/")[1];
-
-  // Detecta /ministerio/[id]
-  const ministryMatch  = pathname.match(/^\/ministerio\/(\d+)/);
-  const ministryId     = ministryMatch ? ministryMatch[1] : null;
-  const isMinistryPage = !!ministryId;
-
-  const currentRole =
-    roleContext ||
-    (allRoles.includes(pathnameRole) ? pathnameRole : "") ||
-    (isMinistryPage ? "ministerio" : "");
+  // ministryId / councilId / etc — vem da URL quando estamos dentro de /ministerio/[id]
+  const ministryId = searchParams.get("ministryId")
+  // Para ministerio, o "groupId" é o id do ministério específico
+  // Para diaconia/conselho — fixo (id=1), para ebd — classId
+  const groupId = ministryId
+    || searchParams.get("councilId")
+    || searchParams.get("diaconateId")
+    || searchParams.get("classId")
 
   const isSociedade = sociedades.includes(currentRole);
-  const isRolePage  = allRoles.includes(currentRole) || isMinistryPage;
+  const isGrupoExtra = gruposExtras.includes(currentRole); // ministerio, conselho, diaconia, ebd
+  const isRolePage = allRoles.includes(currentRole);
+  const currentRoleConfig = roleConfig[currentRole];
 
-  const effectiveIsSociedade = isSociedade || isMinistryPage;
+  // Para o menu reduzido (showOnlyForSociedades), tanto sociedades quanto gruposExtras usam o mesmo menu
+  const useReducedMenu = isSociedade || isGrupoExtra;
 
-  const currentRoleConfig = roleConfig[currentRole] ?? roleConfig["ministerio"];
+  const resolveHref = (href: string) => {
+    if (!isRolePage) return href
 
-  // ── Resolve hrefs ─────────────────────────────────────────────────────────
+    if (href === "/member") return "/member"
+    if (href === "/admin") return `/${currentRole}`
+    if (href === "/list/members") return `/${currentRole}/membros`
 
-  const resolveHref = (href: string): string => {
-    if (!isRolePage) return href;
+    // Galeria → /<role>/galeria
+    if (href === "/galeria") return `/${currentRole}/galeria`
 
-    // "Início" dentro de qualquer role vai para a home do role, não /member
-    if (href === "/member") return isMinistryPage ? `/ministerio/${ministryId}` : `/${currentRole}`;
-
-    if (href === "/admin") return isMinistryPage
-      ? `/ministerio/${ministryId}`
-      : `/${currentRole}`;
-
-    // Relatórios da sociedade → /<role>/relatorios
-    if (href === "/relatorios") return `/${currentRole}/relatorios`;
-
-    // ── Ministério individual ──
-    if (isMinistryPage) {
-      if (href === "/list/members")    return `/ministerio/${ministryId}/membros`;
-      if (href === "/list/events")     return `/list/events?ministryId=${ministryId}&roleContext=ministerio`;
-      if (href === "/list/documents")  return `/list/documents?ministryId=${ministryId}&roleContext=ministerio`;
-      if (href === "/list/finance")    return `/list/finance?ministryId=${ministryId}&roleContext=ministerio`;
-      if (href === "/list/attendance") return `/list/attendance?ministryId=${ministryId}&roleContext=ministerio`;
-      if (href === "/list/broadcasts") return `/list/broadcasts?ministryId=${ministryId}&roleContext=ministerio`;
-      if (href === "/galeria")         return `/ministerio/${ministryId}/galeria`;
-      return href;
-    }
-
-    // ── Outras roles (sociedades, diaconia, conselho, etc.) ──
-    if (href === "/list/members") return `/${currentRole}/membros`;
-    if (href === "/galeria")      return `/${currentRole}/galeria`;
-
-    const societyId = societyMap[currentRole];
-    const roleRouteMap: Record<string, string> = {
-      "/list/attendance": "/list/attendance",
-      "/list/events":     "/list/events",
-      "/list/documents":  "/list/documents",
-      "/list/finance":    "/list/finance",
-      "/list/broadcasts": "/list/broadcasts",
-    };
     if (roleRouteMap[href] !== undefined) {
-      if (societyId) return `${roleRouteMap[href]}?societyId=${societyId}&roleContext=${currentRole}`;
-      return `${roleRouteMap[href]}?role=${currentRole}&roleContext=${currentRole}`;
+      const societyId = societyMap[currentRole]
+
+      if (societyId) {
+        // Sociedade clássica (ump, saf, etc.)
+        return `${roleRouteMap[href]}?societyId=${societyId}&roleContext=${currentRole}`
+      }
+
+      if (isGrupoExtra) {
+        // Grupo extra: passa ministryId/councilId se disponível, senão só roleContext
+        const idParam = groupId ? `&ministryId=${groupId}` : ""
+        return `${roleRouteMap[href]}?roleContext=${currentRole}${idParam}`
+      }
+
+      return `${roleRouteMap[href]}?role=${currentRole}&roleContext=${currentRole}`
     }
 
-    return href;
-  };
-
-  // ─────────────────────────────────────────────────────────────────────────
+    return href
+  }
 
   return (
     <div className="mt-4 text-sm">
 
-      {/* BADGE do contexto atual */}
+      {/* BADGE DO ROLE ATUAL */}
       {isRolePage && currentRoleConfig && (
         <div className="flex items-center justify-center px-2 py-4 mb-2 border-b border-green-700">
           <currentRoleConfig.icon size={56} className={currentRoleConfig.color} />
@@ -135,21 +128,22 @@ const MenuContent = () => {
       )}
 
       {menuItems.map((section) => (
-        <div key={section.title} className="flex flex-col gap-1">
-          <span className="text-2xl hidden lg:block text-white font-light my-1">
+        <div key={section.title} className="flex flex-col gap-2">
+          <span className="text-2xl hidden lg:block text-white font-light my-4">
             {section.title}
           </span>
 
           {section.items.map((item) => {
-            if (effectiveIsSociedade && item.hiddenForSociedades)    return null;
-            if (!effectiveIsSociedade && item.showOnlyForSociedades) return null;
+            // Menu reduzido para sociedades E grupos extras
+            if (useReducedMenu && item.hiddenForSociedades) return null;
+            if (!useReducedMenu && item.showOnlyForSociedades) return null;
 
             const hasAccess = isSuperAdmin || item.visible.some((v) => roles.includes(v));
             if (!hasAccess) return null;
 
-            const Icon     = item.icon;
-            const href     = resolveHref(item.href);
-            const isActive = pathname === href.split("?")[0];
+            const Icon = item.icon;
+            const href = resolveHref(item.href)
+            const isActive = pathname === href.split("?")[0]
 
             return (
               <Link
@@ -171,12 +165,14 @@ const MenuContent = () => {
       ))}
     </div>
   );
-};
+}
 
-const Menu = () => (
-  <Suspense fallback={<div className="mt-4 text-white text-sm">Carregando...</div>}>
-    <MenuContent />
-  </Suspense>
-);
+const Menu = () => {
+  return (
+    <Suspense fallback={<div className="mt-4 text-white text-sm">Carregando...</div>}>
+      <MenuContent />
+    </Suspense>
+  )
+}
 
 export default Menu;

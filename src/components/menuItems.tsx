@@ -66,7 +66,7 @@ export const menuItems = [
       {
         icon: Shield,
         label: "Conselho",
-        href: "/list/council",
+        href: "/conselho",          // ✅ corrigido
         visible: allRoles,
         hiddenForSociedades: true,
         showOnlyForSociedades: false,
@@ -74,7 +74,7 @@ export const menuItems = [
       {
         icon: HandHelping,
         label: "Diaconia",
-        href: "/list/diaconate",
+        href: "/diaconia",          // ✅ corrigido
         visible: allRoles,
         hiddenForSociedades: true,
         showOnlyForSociedades: false,
@@ -82,7 +82,7 @@ export const menuItems = [
       {
         icon: Layers,
         label: "Ministérios",
-        href: "/list/ministry",
+        href: "/ministerio",        // ✅ corrigido
         visible: allRoles,
         hiddenForSociedades: true,
         showOnlyForSociedades: false,
@@ -122,7 +122,7 @@ export const menuItems = [
       {
         icon: Megaphone,
         label: "Anúncios",
-        href: "/list/notice",
+        href: "/list/announcements", // ✅ corrigido
         visible: allRoles,
         hiddenForSociedades: false,
         showOnlyForSociedades: false,
@@ -194,7 +194,7 @@ export const menuItems = [
       {
         icon: BarChart2,
         label: "Relatórios",
-        href: "/relatorios",        // ← tratado no resolveHref do Menu.tsx igual ao /galeria
+        href: "/relatorios",
         visible: staffRoles,
         hiddenForSociedades: false,
         showOnlyForSociedades: true,

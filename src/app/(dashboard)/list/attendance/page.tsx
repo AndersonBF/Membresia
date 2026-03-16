@@ -31,7 +31,12 @@ const AttendanceListPage = async ({
     where: whereClause,
     include: {
       society: true,
-      attendances: { select: { isPresent: true } },
+      attendances: {
+        select: { isPresent: true },
+        where: {
+          member: { isActive: true }, // só conta membros ativos
+        },
+      },
     },
     orderBy: { date: "asc" },
     take: 50,

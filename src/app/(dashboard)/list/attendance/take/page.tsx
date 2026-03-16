@@ -1,3 +1,4 @@
+// src/app/(dashboard)/list/attendance/take/page.tsx
 import AttendanceTaker from "@/components/AttendanceTaker";
 import prisma from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
@@ -31,6 +32,14 @@ const TakeAttendancePage = async ({
   if (!selectedEvent) {
     redirect("/list/attendance");
   }
+
+  // Remove registros de presença de membros inativos para manter contagem correta
+  await prisma.attendance.deleteMany({
+    where: {
+      eventId,
+      member: { isActive: false },
+    },
+  });
 
   let members: any[] = [];
 

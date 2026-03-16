@@ -9,7 +9,12 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   const roles = (user.publicMetadata?.roles as string[]) ?? []
   const isSuperAdmin = roles.includes("superadmin")
-  if (!isSuperAdmin && !roles.includes("ministerio")) {
+  const isAdmin = roles.includes("admin")
+
+  const allowedRoles = ["ministerio", "member"]
+  const hasAccess = isSuperAdmin || isAdmin || allowedRoles.some(r => roles.includes(r))
+
+  if (!hasAccess) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 

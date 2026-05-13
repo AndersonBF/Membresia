@@ -64,8 +64,10 @@ model Diaconate {
   id      Int               @id @default(1)
   members MemberDiaconate[]
 
-  documents Document[]
-  albums    GalleryAlbum[]
+  documents  Document[]
+  albums     GalleryAlbum[]
+  tasks      DiaconateTask[]
+  inventory  DiaconateInventory[]
 }
 
 // ===============================================
@@ -345,7 +347,58 @@ model GalleryPhoto {
   album GalleryAlbum @relation(fields: [albumId], references: [id], onDelete: Cascade)
 }
 
-// Adicione este model ao final do seu schema.prisma
+// ===============================================
+// TAREFAS DA DIACONIA
+// ===============================================
+enum TaskPriority {
+  ALTA
+  MEDIA
+  BAIXA
+}
+
+enum TaskStatus {
+  PENDENTE
+  EM_ANDAMENTO
+  CONCLUIDA
+}
+
+model DiaconateTask {
+  id          Int          @id @default(autoincrement())
+  title       String
+  description String?
+  priority    TaskPriority @default(MEDIA)
+  status      TaskStatus   @default(PENDENTE)
+  dueDate     DateTime?
+  completedAt DateTime?
+  createdAt   DateTime     @default(now())
+
+  diaconateId Int
+  diaconate   Diaconate    @relation(fields: [diaconateId], references: [id], onDelete: Cascade)
+}
+
+// ===============================================
+// INVENTÁRIO DA DIACONIA
+// ===============================================
+enum ItemCondition {
+  BOM
+  REGULAR
+  RUIM
+}
+
+model DiaconateInventory {
+  id          Int           @id @default(autoincrement())
+  name        String
+  description String?
+  quantity    Int           @default(1)
+  category    String?
+  condition   ItemCondition @default(BOM)
+  location    String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  diaconateId Int
+  diaconate   Diaconate     @relation(fields: [diaconateId], references: [id], onDelete: Cascade)
+}
 
 // ===============================================
 // CONFIGURAÇÕES DA IGREJA (ChurchSettings)

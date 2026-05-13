@@ -4,7 +4,7 @@ import {
   FileText, User, Settings, LogOut, Key,
   Heart, Info, Image, Youtube, CalendarDays,
   ClipboardList, CalendarRange, MessageSquare,
-  Camera, BarChart2,
+  Camera, BarChart2, Package, CheckSquare,
 } from "lucide-react";
 
 const adminRoles = ["admin", "superadmin"];
@@ -198,6 +198,22 @@ export const menuItems = [
         visible: staffRoles,
         hiddenForSociedades: false,
         showOnlyForSociedades: true,
+      },
+      {
+        icon: Package,
+        label: "Inventário",
+        href: "/diaconia/inventario",
+        visible: ["diaconia", "admin", "superadmin"],
+        hiddenForSociedades: false,
+        showOnlyForSociedades: false,
+      },
+      {
+        icon: CheckSquare,
+        label: "Tarefas",
+        href: "/diaconia/tarefas",
+        visible: ["diaconia", "admin", "superadmin"],
+        hiddenForSociedades: false,
+        showOnlyForSociedades: false,
       },
     ],
   },

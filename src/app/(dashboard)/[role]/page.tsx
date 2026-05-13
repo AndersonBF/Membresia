@@ -6,7 +6,7 @@ import BroadcastFeed from "@/components/BroadcastFeed"
 import prisma from "@/lib/prisma"
 import Image from "next/image"
 import Link from "next/link"
-import { Users, Calendar, FileText, ArrowLeft, Phone, ChevronRight, Clock, Cake, Camera } from "lucide-react"
+import { Users, Calendar, FileText, ArrowLeft, Phone, ChevronRight, Clock, Cake, Camera, Package, CheckSquare } from "lucide-react"
 
 const roleConfig: Record<string, {
   label: string
@@ -196,12 +196,16 @@ const RolePage = async ({
           <div className="w-full lg:w-2/3 flex flex-col gap-8">
 
             {/* QUICK LINKS */}
-            <div className="grid grid-cols-4 gap-3 rp-in d2">
+            <div className={`grid gap-3 rp-in d2 ${role === "diaconia" ? "grid-cols-3 sm:grid-cols-6" : "grid-cols-4"}`}>
               {[
-                { label: "Membros",    icon: Users,    href: `/${role}/membros` },
-                { label: "Galeria",    icon: Camera,   href: `/${role}/galeria` },
-                { label: "Eventos",    icon: Calendar, href: `/list/events?roleContext=${role}` },
-                { label: "Documentos", icon: FileText,  href: `/list/documents?roleContext=${role}` },
+                { label: "Membros",    icon: Users,        href: `/${role}/membros` },
+                { label: "Galeria",    icon: Camera,       href: `/${role}/galeria` },
+                { label: "Eventos",    icon: Calendar,     href: `/list/events?roleContext=${role}` },
+                { label: "Documentos", icon: FileText,     href: `/list/documents?roleContext=${role}` },
+                ...(role === "diaconia" ? [
+                  { label: "Inventário", icon: Package,     href: "/diaconia/inventario" },
+                  { label: "Tarefas",    icon: CheckSquare, href: "/diaconia/tarefas" },
+                ] : []),
               ].map((item) => {
                 const Icon = item.icon
                 return (

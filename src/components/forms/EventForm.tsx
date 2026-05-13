@@ -5,9 +5,10 @@ import { useForm } from "react-hook-form";
 import InputField from "../InputField";
 import { eventSchema, EventSchema } from "@/lib/formValidationSchemas";
 import { createEvent, updateEvent } from "@/lib/actions";
-import { Dispatch, SetStateAction, useTransition } from "react";
+import { Dispatch, SetStateAction, useTransition, useState } from "react";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
+import { Globe, Lock } from "lucide-react";
 
 const EventForm = ({
   type,
@@ -20,9 +21,12 @@ const EventForm = ({
   setOpen: Dispatch<SetStateAction<boolean>>;
   relatedData?: any;
 }) => {
+  const [isPublic, setIsPublic] = useState<boolean>(data?.isPublic ?? false)
+
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<EventSchema>({
     resolver: zodResolver(eventSchema),
@@ -116,6 +120,58 @@ const EventForm = ({
             {errors.description.message.toString()}
           </p>
         )}
+      </div>
+
+      {/* VISIBILIDADE */}
+      <div className="flex flex-col gap-2">
+        <label className="text-xs text-gray-500">Visibilidade</label>
+        <button
+          type="button"
+          onClick={() => {
+            const next = !isPublic
+            setIsPublic(next)
+            setValue("isPublic", next)
+          }}
+          className="flex items-center gap-3 p-3 rounded-lg border transition-colors text-left"
+          style={{
+            borderColor: isPublic ? "#3b82f6" : "#d1d5db",
+            background: isPublic ? "#eff6ff" : "#f9fafb",
+          }}
+        >
+          <div
+            className="flex items-center justify-center w-8 h-8 rounded-full flex-shrink-0"
+            style={{ background: isPublic ? "#3b82f6" : "#6b7280" }}
+          >
+            {isPublic
+              ? <Globe size={15} color="white" />
+              : <Lock size={15} color="white" />
+            }
+          </div>
+          <div>
+            <p className="text-sm font-medium" style={{ color: isPublic ? "#1d4ed8" : "#374151" }}>
+              {isPublic ? "Evento Público" : "Evento Privado"}
+            </p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {isPublic
+                ? "Visível para toda a congregação"
+                : "Visível apenas para membros do grupo"}
+            </p>
+          </div>
+          {/* pill indicator */}
+          <div className="ml-auto flex-shrink-0">
+            <div
+              className="w-10 h-5 rounded-full transition-colors relative"
+              style={{ background: isPublic ? "#3b82f6" : "#d1d5db" }}
+            >
+              <div
+                className="w-4 h-4 bg-white rounded-full absolute top-0.5 transition-all shadow-sm"
+                style={{ left: isPublic ? "calc(100% - 18px)" : "2px" }}
+              />
+            </div>
+          </div>
+        </button>
+        {/* hidden field so react-hook-form tracks the value */}
+        <input type="hidden" {...register("isPublic")} value={isPublic ? "true" : "false"} />
       </div>
 
       {/* HORÁRIO DE INÍCIO */}

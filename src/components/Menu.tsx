@@ -84,6 +84,9 @@ const MenuContent = () => {
   const resolveHref = (href: string) => {
     if (!isRolePage) return href
 
+    // Rotas absolutas de diaconia — nunca reescrever
+    if (href.startsWith("/diaconia/")) return href
+
     if (href === "/member") return "/member"
     if (href === "/admin") return `/${currentRole}`
     if (href === "/list/members") return `/${currentRole}/membros`

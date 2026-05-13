@@ -29,7 +29,23 @@ export default async function FinancePageRoute({
     ? societyMap[roleContext]
     : null
 
-  const where = societyId ? { societyId } : isAdmin ? {} : { societyId: null }
+  // Monta o filtro correto por contexto
+  let where: any
+  if (societyId) {
+    // Sociedade específica (UMP, SAF, etc.)
+    where = { societyId }
+  } else if (roleContext === "conselho") {
+    // Conselho tem councilId próprio
+    where = { councilId: 1 }
+  } else if (roleContext && roleContext !== "conselho") {
+    // Diaconia, Ministério, EBD — sem suporte a finanças separadas ainda
+    where = { id: -1 }
+  } else if (isAdmin) {
+    // Admin sem contexto específico → tudo
+    where = {}
+  } else {
+    where = { societyId: null }
+  }
 
   const finances = await prisma.finance.findMany({
     where,

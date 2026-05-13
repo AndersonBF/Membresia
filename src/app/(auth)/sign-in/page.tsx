@@ -2,11 +2,67 @@
 
 export const dynamic = "force-dynamic";
 
-import * as Clerk from "@clerk/elements/common";
-import * as SignIn from "@clerk/elements/sign-in";
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import MarketingShell from "@/components/MarketingShell";
+
+const features = [
+  {
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="7" r="4" /><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+      </svg>
+    ),
+    label: "Gestão de membros",
+    desc: "Perfis completos com histórico, fotos e vínculos com grupos",
+  },
+  {
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+      </svg>
+    ),
+    label: "Eventos e Calendário",
+    desc: "Agenda geral, eventos por sociedade e controle de datas",
+  },
+  {
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="9 11 12 14 22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+      </svg>
+    ),
+    label: "Controle de Presença",
+    desc: "Frequência por evento com rankings e exportação para Excel",
+  },
+  {
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+      </svg>
+    ),
+    label: "Finanças",
+    desc: "Entradas e saídas por sociedade com gráficos e relatórios",
+  },
+  {
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    ),
+    label: "Sociedades Internas",
+    desc: "UMP, UPA, UPH, SAF, UCP — diretorias e membros por grupo",
+  },
+  {
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      </svg>
+    ),
+    label: "Comunicados",
+    desc: "Transmissões e avisos para grupos específicos ou toda a igreja",
+  },
+];
 
 const LoginPage = () => {
   const { isLoaded, isSignedIn, user } = useUser();
@@ -19,165 +75,130 @@ const LoginPage = () => {
   }, [user, router, isLoaded, isSignedIn]);
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center"
-      style={{
-        background: "linear-gradient(135deg, #030f07, #061a0d, #0a2614, #061a0d, #030f07, #08200f)",
-        backgroundSize: "400% 400%",
-        animation: "breathe 12s ease infinite",
-        fontFamily: "'DM Sans', sans-serif",
-      }}
-    >
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-            @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500&display=swap');
-            @keyframes breathe {
-              0%   { background-position: 0% 50%; }
-              50%  { background-position: 100% 50%; }
-              100% { background-position: 0% 50%; }
-            }
-            @keyframes fadeUp {
-              from { opacity: 0; transform: translateY(24px); }
-              to   { opacity: 1; transform: translateY(0); }
-            }
-            .login-card { animation: fadeUp 0.6s ease forwards; }
-            .login-input::placeholder { color: rgba(255,255,255,0.25); }
-            .login-input:focus {
-              border-color: rgba(74,222,128,0.5) !important;
-              background: rgba(255,255,255,0.12) !important;
-            }
-            .login-btn:hover {
-              opacity: 0.88;
-              transform: translateY(-1px);
-              box-shadow: 0 8px 28px rgba(22,163,74,0.5) !important;
-            }
-            .login-btn:active { transform: scale(0.98); }
-          `,
-        }}
-      />
-
-      <SignIn.Root>
-        <SignIn.Step
-          name="start"
-          className="login-card"
-          style={{
-            background: "#1a3a25",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: 20,
-            padding: "48px 44px",
-            width: "100%",
-            maxWidth: 420,
-            boxShadow: "0 40px 80px rgba(0,0,0,0.6)",
-          }}
-        >
+    <MarketingShell>
+      {/* Ícone + título */}
+      <div style={{ display: "flex", alignItems: "center", gap: 18, marginBottom: 32 }}>
+        <div style={{
+          width: 72, height: 72, flexShrink: 0,
+          background: "#1e3f28",
+          border: "1px solid rgba(74,222,128,0.18)",
+          borderRadius: 18,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          position: "relative",
+        }}>
+          <svg width="38" height="38" viewBox="0 0 24 24" fill="none"
+            stroke="#4ade80" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="7" r="4" />
+            <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+          </svg>
           <div style={{
-            width: 40, height: 3,
-            background: "linear-gradient(90deg, #4ade80, #16a34a)",
-            borderRadius: 99,
-            marginBottom: 28,
-          }} />
-
+            position: "absolute", bottom: -4, right: -4,
+            width: 18, height: 18,
+            background: "#4ade80",
+            borderRadius: "50%",
+            border: "2px solid #162d1e",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <svg width="8" height="8" viewBox="0 0 24 24" fill="none"
+              stroke="#0b140d" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+        </div>
+        <div>
+          <p style={{
+            color: "rgba(74,222,128,0.75)",
+            fontSize: "0.68rem",
+            fontWeight: 500,
+            letterSpacing: "2.5px",
+            textTransform: "uppercase",
+            margin: "0 0 6px 0",
+          }}>Sistema de Gestão de Igreja</p>
           <h1 style={{
             fontFamily: "'Playfair Display', serif",
             fontSize: "2.2rem",
             fontWeight: 700,
-            color: "#ffffff",
-            letterSpacing: "-0.5px",
-            marginBottom: 4,
-            lineHeight: 1.1,
+            color: "#fff",
+            letterSpacing: "-0.8px",
+            lineHeight: 1,
+            margin: 0,
+          }}>Membresia</h1>
+        </div>
+      </div>
+
+      {/* Frase */}
+      <p style={{
+        color: "rgba(255,255,255,0.55)",
+        fontSize: "0.92rem",
+        fontWeight: 300,
+        lineHeight: 1.75,
+        maxWidth: 480,
+        marginBottom: 40,
+        borderLeft: "2px solid rgba(74,222,128,0.35)",
+        paddingLeft: 16,
+      }}>
+        "Uma igreja bem organizada é uma igreja livre para cumprir sua missão — cuide do seu rebanho com excelência."
+      </p>
+
+      {/* Grid de funcionalidades */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        {features.map((f, i) => (
+          <div key={i} className="feat-card" style={{
+            display: "flex",
+            gap: 12,
+            padding: "14px 16px",
+            background: "#1e3f28",
+            border: "1px solid rgba(255,255,255,0.1)",
+            borderRadius: 10,
+            animation: `fadeUp 0.45s ease ${0.05 + i * 0.07}s both`,
+            transition: "border-color 0.2s, background 0.2s",
           }}>
-            Membresia
-          </h1>
-
-          <p style={{
-            color: "rgba(255,255,255,0.55)",
-            fontSize: "0.875rem",
-            fontWeight: 300,
-            marginBottom: 32,
-          }}>
-            Acesse sua conta
-          </p>
-
-          <Clerk.GlobalError style={{ fontSize: "0.75rem", color: "#fca5a5", marginBottom: 16 }} />
-
-          <div style={{ display: "flex", flexDirection: "column", marginBottom: 20 }}>
-            <Clerk.Field name="identifier">
-              <Clerk.Label style={{
-                fontSize: "0.72rem", fontWeight: 500,
-                color: "rgba(255,255,255,0.55)",
-                textTransform: "uppercase", letterSpacing: "1px",
-                marginBottom: 8, display: "block",
-              }}>Usuário</Clerk.Label>
-              <Clerk.Input
-                type="text"
-                required
-                placeholder="seu usuário"
-                className="login-input"
-                style={{
-                  width: "100%", padding: "12px 16px",
-                  background: "rgba(255,255,255,0.08)",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  borderRadius: 10, color: "#ffffff",
-                  fontFamily: "'DM Sans', sans-serif",
-                  fontSize: "0.95rem", outline: "none",
-                  transition: "border-color 0.2s, background 0.2s",
-                  marginBottom: 4, boxSizing: "border-box",
-                }}
-              />
-              <Clerk.FieldError style={{ fontSize: "0.75rem", color: "#fca5a5", marginTop: 4 }} />
-            </Clerk.Field>
+            <div style={{
+              width: 32, height: 32, flexShrink: 0,
+              background: "rgba(74,222,128,0.12)",
+              border: "1px solid rgba(74,222,128,0.18)",
+              borderRadius: 8,
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              {f.icon}
+            </div>
+            <div>
+              <p style={{ color: "rgba(255,255,255,0.9)", fontSize: "0.82rem", fontWeight: 500, margin: "0 0 2px 0" }}>
+                {f.label}
+              </p>
+              <p style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.75rem", margin: 0, lineHeight: 1.4 }}>
+                {f.desc}
+              </p>
+            </div>
           </div>
+        ))}
+      </div>
 
-          <div style={{ display: "flex", flexDirection: "column", marginBottom: 20 }}>
-            <Clerk.Field name="password">
-              <Clerk.Label style={{
-                fontSize: "0.72rem", fontWeight: 500,
-                color: "rgba(255,255,255,0.55)",
-                textTransform: "uppercase", letterSpacing: "1px",
-                marginBottom: 8, display: "block",
-              }}>Senha</Clerk.Label>
-              <Clerk.Input
-                type="password"
-                required
-                placeholder="••••••••"
-                className="login-input"
-                style={{
-                  width: "100%", padding: "12px 16px",
-                  background: "rgba(255,255,255,0.08)",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  borderRadius: 10, color: "#ffffff",
-                  fontFamily: "'DM Sans', sans-serif",
-                  fontSize: "0.95rem", outline: "none",
-                  transition: "border-color 0.2s, background 0.2s",
-                  marginBottom: 4, boxSizing: "border-box",
-                }}
-              />
-              <Clerk.FieldError style={{ fontSize: "0.75rem", color: "#fca5a5", marginTop: 4 }} />
-            </Clerk.Field>
-          </div>
-
-          <SignIn.Action
-            submit
-            className="login-btn"
-            style={{
-              width: "100%", padding: 13, marginTop: 8,
-              background: "linear-gradient(135deg, #16a34a, #15803d)",
-              color: "#ffffff",
-              fontFamily: "'DM Sans', sans-serif",
-              fontSize: "0.95rem", fontWeight: 500,
-              border: "none", borderRadius: 10,
-              cursor: "pointer",
-              transition: "opacity 0.2s, transform 0.15s, box-shadow 0.2s",
-              boxShadow: "0 4px 20px rgba(22,163,74,0.4)",
-              letterSpacing: "0.3px",
-            }}
-          >
-            Entrar
-          </SignIn.Action>
-        </SignIn.Step>
-      </SignIn.Root>
-    </div>
+      {/* Rodapé — sociedades */}
+      <div style={{
+        marginTop: 28,
+        paddingTop: 20,
+        borderTop: "1px solid rgba(255,255,255,0.1)",
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        flexWrap: "wrap",
+      }}>
+        <span style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.72rem" }}>Sociedades suportadas:</span>
+        {["UMP", "UPA", "UPH", "SAF", "UCP", "EBD"].map((s) => (
+          <span key={s} style={{
+            background: "rgba(74,222,128,0.1)",
+            border: "1px solid rgba(74,222,128,0.2)",
+            color: "rgba(74,222,128,0.75)",
+            fontSize: "0.7rem",
+            fontWeight: 500,
+            padding: "2px 9px",
+            borderRadius: 99,
+            letterSpacing: "0.5px",
+          }}>{s}</span>
+        ))}
+      </div>
+    </MarketingShell>
   );
 };
 

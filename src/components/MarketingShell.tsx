@@ -8,7 +8,6 @@ const NAV_LINKS = [
   { label: "Funcionalidades", href: "/funcionalidades" },
   { label: "Preços", href: "/precos" },
   { label: "Sobre", href: "/sobre" },
-  { label: "Blog", href: "/blog" },
   { label: "Contato", href: "/contato" },
 ];
 
@@ -136,31 +135,23 @@ export default function MarketingShell({ children }: { children: React.ReactNode
 
       {/* BODY */}
       <div style={{ flex: 1, display: "flex", paddingTop: 54 }}>
-        {/* LEFT — 67% */}
+        {/* LEFT — 60% */}
         <div className="split-left" style={{
-          width: "67%",
-          background: "#162d1e",
-          borderRight: "1px solid rgba(255,255,255,0.07)",
+          width: "55%",
+          background: "#f5f0e8",
+          borderRight: "1px solid #e0d5c0",
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
-          padding: "60px 72px",
+          padding: "80px 80px",
           position: "relative",
           overflow: "hidden",
           overflowY: "auto",
         }}>
-          {/* glow */}
-          <div style={{
-            position: "absolute", top: "-5%", right: "5%",
-            width: 500, height: 500,
-            borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(22,163,74,0.09) 0%, transparent 65%)",
-            pointerEvents: "none",
-          }} />
           {children}
         </div>
 
-        {/* RIGHT — 33% */}
+        {/* RIGHT — 40% */}
         <LoginPanel />
       </div>
     </div>

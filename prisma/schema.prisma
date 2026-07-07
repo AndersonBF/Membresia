@@ -43,6 +43,7 @@ model Member {
 
   attendances         Attendance[]
   teachingAssignments ClassTeacher[] @relation(name: "TeachingAssignments")
+  scheduleAssignments DiaconateScheduleMember[]
 }
 
 // ===============================================
@@ -68,6 +69,7 @@ model Diaconate {
   albums     GalleryAlbum[]
   tasks      DiaconateTask[]
   inventory  DiaconateInventory[]
+  schedules  DiaconateSchedule[]
 }
 
 // ===============================================
@@ -398,6 +400,41 @@ model DiaconateInventory {
 
   diaconateId Int
   diaconate   Diaconate     @relation(fields: [diaconateId], references: [id], onDelete: Cascade)
+}
+
+// ===============================================
+// ESCALA DA DIACONIA (DiaconateSchedule)
+// ===============================================
+enum ScheduleType {
+  DOMINGO
+  EVENTO
+}
+
+model DiaconateSchedule {
+  id        Int          @id @default(autoincrement())
+  title     String?      // Nome do evento (opcional quando for domingo)
+  type      ScheduleType @default(DOMINGO)
+  date      DateTime
+  notes     String?
+  createdAt DateTime     @default(now())
+
+  diaconateId Int
+  diaconate   Diaconate  @relation(fields: [diaconateId], references: [id], onDelete: Cascade)
+
+  members DiaconateScheduleMember[]
+
+  @@index([diaconateId, date])
+}
+
+model DiaconateScheduleMember {
+  id         Int @id @default(autoincrement())
+  scheduleId Int
+  memberId   Int
+
+  schedule DiaconateSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  member   Member            @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([scheduleId, memberId])
 }
 
 // ===============================================

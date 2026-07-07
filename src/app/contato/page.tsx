@@ -3,7 +3,7 @@ import MarketingShell from "@/components/MarketingShell";
 const channels = [
   {
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#15803d" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
         <polyline points="22,6 12,13 2,6" />
       </svg>
@@ -14,7 +14,7 @@ const channels = [
   },
   {
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#15803d" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
       </svg>
     ),
@@ -24,7 +24,7 @@ const channels = [
   },
   {
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#15803d" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
       </svg>
     ),
@@ -56,28 +56,27 @@ const faqs = [
 export default function ContatoPage() {
   return (
     <MarketingShell>
-      {/* Header */}
       <div style={{ marginBottom: 28 }}>
         <p style={{
-          color: "rgba(74,222,128,0.75)",
-          fontSize: "0.68rem",
-          fontWeight: 500,
+          color: "#15803d",
+          fontSize: "0.75rem",
+          fontWeight: 600,
           letterSpacing: "2.5px",
           textTransform: "uppercase",
-          margin: "0 0 10px 0",
+          margin: "0 0 12px 0",
         }}>Fale conosco</p>
         <h1 style={{
           fontFamily: "'Playfair Display', serif",
-          fontSize: "2rem",
+          fontSize: "clamp(2rem, 4vw, 2.8rem)",
           fontWeight: 700,
-          color: "#fff",
-          letterSpacing: "-0.6px",
+          color: "#14532d",
+          letterSpacing: "-1px",
           lineHeight: 1.15,
           margin: "0 0 12px 0",
         }}>Estamos aqui<br />para ajudar</h1>
         <p style={{
-          color: "rgba(255,255,255,0.45)",
-          fontSize: "0.86rem",
+          color: "#1a4d2e",
+          fontSize: "1rem",
           lineHeight: 1.7,
           margin: 0,
         }}>
@@ -85,48 +84,42 @@ export default function ContatoPage() {
         </p>
       </div>
 
-      {/* Canais de contato */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 22 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 24 }}>
         {channels.map((c, i) => (
           <div key={i} style={{
             padding: "18px 16px",
-            background: "#1e3f28",
-            border: "1px solid rgba(255,255,255,0.1)",
+            background: "#fff",
+            border: "1px solid #d1fae5",
             borderRadius: 10,
             animation: `fadeUp 0.45s ease ${0.08 + i * 0.1}s both`,
           }}>
             <div style={{
               width: 38, height: 38,
-              background: "rgba(74,222,128,0.12)",
-              border: "1px solid rgba(74,222,128,0.18)",
+              background: "#f0fdf4",
               borderRadius: 10,
               display: "flex", alignItems: "center", justifyContent: "center",
               marginBottom: 12,
             }}>
               {c.icon}
             </div>
-            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.7rem", fontWeight: 500, margin: "0 0 4px 0", letterSpacing: "0.5px", textTransform: "uppercase" }}>
+            <p style={{ color: "#2d6a4a", fontSize: "0.72rem", fontWeight: 600, margin: "0 0 4px 0", letterSpacing: "0.5px", textTransform: "uppercase" }}>
               {c.label}
             </p>
-            <p style={{ color: "rgba(255,255,255,0.88)", fontSize: "0.8rem", fontWeight: 500, margin: "0 0 4px 0" }}>
+            <p style={{ color: "#14532d", fontSize: "0.85rem", fontWeight: 600, margin: "0 0 4px 0" }}>
               {c.value}
             </p>
-            <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "0.72rem", margin: 0 }}>
+            <p style={{ color: "#2d6a4a", fontSize: "0.75rem", margin: 0 }}>
               {c.desc}
             </p>
           </div>
         ))}
       </div>
 
-      {/* FAQ */}
-      <div style={{
-        borderTop: "1px solid rgba(255,255,255,0.08)",
-        paddingTop: 20,
-      }}>
+      <div style={{ borderTop: "1px solid #d1fae5", paddingTop: 20 }}>
         <p style={{
-          color: "rgba(255,255,255,0.5)",
+          color: "#15803d",
           fontSize: "0.72rem",
-          fontWeight: 500,
+          fontWeight: 600,
           letterSpacing: "1.5px",
           textTransform: "uppercase",
           marginBottom: 14,
@@ -135,15 +128,15 @@ export default function ContatoPage() {
           {faqs.map((faq, i) => (
             <div key={i} style={{
               padding: "14px 16px",
-              background: "#1e3f28",
-              border: "1px solid rgba(255,255,255,0.1)",
+              background: "#fff",
+              border: "1px solid #d1fae5",
               borderRadius: 10,
               animation: `fadeUp 0.45s ease ${0.35 + i * 0.08}s both`,
             }}>
-              <p style={{ color: "rgba(255,255,255,0.85)", fontSize: "0.8rem", fontWeight: 500, margin: "0 0 5px 0" }}>
+              <p style={{ color: "#14532d", fontSize: "0.88rem", fontWeight: 600, margin: "0 0 5px 0" }}>
                 {faq.q}
               </p>
-              <p style={{ color: "rgba(255,255,255,0.42)", fontSize: "0.76rem", margin: 0, lineHeight: 1.55 }}>
+              <p style={{ color: "#2d6a4a", fontSize: "0.82rem", margin: 0, lineHeight: 1.55 }}>
                 {faq.a}
               </p>
             </div>

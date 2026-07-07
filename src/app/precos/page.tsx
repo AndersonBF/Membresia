@@ -53,47 +53,44 @@ const plans = [
 export default function PrecosPage() {
   return (
     <MarketingShell>
-      {/* Header */}
       <div style={{ marginBottom: 36 }}>
         <p style={{
-          color: "rgba(74,222,128,0.75)",
-          fontSize: "0.68rem",
-          fontWeight: 500,
+          color: "#15803d",
+          fontSize: "0.75rem",
+          fontWeight: 600,
           letterSpacing: "2.5px",
           textTransform: "uppercase",
-          margin: "0 0 10px 0",
+          margin: "0 0 12px 0",
         }}>Planos e preços</p>
         <h1 style={{
           fontFamily: "'Playfair Display', serif",
-          fontSize: "2rem",
+          fontSize: "clamp(2rem, 4vw, 2.8rem)",
           fontWeight: 700,
-          color: "#fff",
-          letterSpacing: "-0.6px",
+          color: "#14532d",
+          letterSpacing: "-1px",
           lineHeight: 1.15,
           margin: "0 0 14px 0",
         }}>Invista na organização<br />da sua congregação</h1>
         <p style={{
-          color: "rgba(255,255,255,0.5)",
-          fontSize: "0.88rem",
+          color: "#1a4d2e",
+          fontSize: "1rem",
           lineHeight: 1.7,
           maxWidth: 460,
           margin: 0,
         }}>
-          Planos acessíveis para igrejas de todos os tamanhos. Sem taxas escondidas, sem surpresas.
+          Planos acessíveis para igrejas de todos os tamanhos. Sem taxas escondidas.
         </p>
       </div>
 
-      {/* Cards de planos */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
         {plans.map((plan, i) => (
           <div key={i} style={{
             padding: "22px 18px",
-            background: plan.highlight ? "rgba(21,128,61,0.2)" : "#1e3f28",
-            border: plan.highlight ? "1px solid rgba(74,222,128,0.4)" : "1px solid rgba(255,255,255,0.1)",
+            background: plan.highlight ? "#14532d" : "#fff",
+            border: plan.highlight ? "none" : "1px solid #d1fae5",
             borderRadius: 12,
             display: "flex",
             flexDirection: "column",
-            gap: 0,
             position: "relative",
             animation: `fadeUp 0.45s ease ${0.1 + i * 0.1}s both`,
           }}>
@@ -114,42 +111,41 @@ export default function PrecosPage() {
               }}>Mais popular</div>
             )}
 
-            <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.75rem", fontWeight: 500, margin: "0 0 8px 0", letterSpacing: "0.5px" }}>
+            <p style={{ color: plan.highlight ? "rgba(255,255,255,0.7)" : "#2d6a4a", fontSize: "0.78rem", fontWeight: 500, margin: "0 0 8px 0" }}>
               {plan.name}
             </p>
             <div style={{ display: "flex", alignItems: "baseline", gap: 2, marginBottom: 10 }}>
-              <span style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.7rem", fontWeight: 700, color: "#fff" }}>
+              <span style={{ fontFamily: "'Playfair Display', serif", fontSize: "1.7rem", fontWeight: 700, color: plan.highlight ? "#fff" : "#14532d" }}>
                 {plan.price}
               </span>
               {plan.period && (
-                <span style={{ color: "rgba(255,255,255,0.35)", fontSize: "0.78rem" }}>{plan.period}</span>
+                <span style={{ color: plan.highlight ? "rgba(255,255,255,0.5)" : "#2d6a4a", fontSize: "0.78rem" }}>{plan.period}</span>
               )}
             </div>
-            <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.73rem", lineHeight: 1.5, marginBottom: 16 }}>
+            <p style={{ color: plan.highlight ? "rgba(255,255,255,0.6)" : "#2d6a4a", fontSize: "0.78rem", lineHeight: 1.5, marginBottom: 16 }}>
               {plan.description}
             </p>
 
-            <ul style={{ listStyle: "none", padding: 0, margin: "0 0 20px 0", display: "flex", flexDirection: "column", gap: 7 }}>
+            <ul style={{ listStyle: "none", padding: 0, margin: "0 0 20px 0", display: "flex", flexDirection: "column", gap: 8 }}>
               {plan.features.map((feat, j) => (
                 <li key={j} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={plan.highlight ? "#4ade80" : "#15803d"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }}>
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
-                  <span style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.73rem", lineHeight: 1.4 }}>{feat}</span>
+                  <span style={{ color: plan.highlight ? "rgba(255,255,255,0.75)" : "#1a4d2e", fontSize: "0.78rem", lineHeight: 1.4 }}>{feat}</span>
                 </li>
               ))}
             </ul>
 
             <div style={{
               marginTop: "auto",
-              padding: "9px 0",
-              background: plan.highlight ? "#15803d" : "rgba(255,255,255,0.07)",
-              border: plan.highlight ? "none" : "1px solid rgba(255,255,255,0.1)",
+              padding: "10px 0",
+              background: plan.highlight ? "rgba(255,255,255,0.15)" : "#14532d",
               borderRadius: 7,
               textAlign: "center",
-              fontSize: "0.78rem",
+              fontSize: "0.82rem",
               fontWeight: 500,
-              color: plan.highlight ? "#fff" : "rgba(255,255,255,0.5)",
+              color: "#fff",
               cursor: "pointer",
             }}>
               {plan.cta}
@@ -158,7 +154,7 @@ export default function PrecosPage() {
         ))}
       </div>
 
-      <p style={{ color: "rgba(255,255,255,0.25)", fontSize: "0.72rem", marginTop: 20, textAlign: "center" }}>
+      <p style={{ color: "#2d6a4a", fontSize: "0.78rem", marginTop: 20, textAlign: "center" }}>
         Todos os planos incluem 14 dias de teste gratuito. Cancele a qualquer momento.
       </p>
     </MarketingShell>

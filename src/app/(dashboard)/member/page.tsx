@@ -19,7 +19,11 @@ export default async function MemberPage({
   const name = user?.firstName ?? "Membro"
   const userRoles = (user?.publicMetadata?.roles as string[]) ?? []
   const isSuperAdmin = userRoles.includes("superadmin")
-  const myGroups = isSuperAdmin ? groupRoles : groupRoles.filter((r) => userRoles.includes(r))
+  // Superintendente da EBD enxerga o card da EBD mesmo sem o papel "ebd"
+  const effectiveRoles = userRoles.includes("superintendente")
+    ? [...userRoles, "ebd"]
+    : userRoles
+  const myGroups = isSuperAdmin ? groupRoles : groupRoles.filter((r) => effectiveRoles.includes(r))
 
   return (
     <div className="p-4 flex gap-4 flex-col md:flex-row">

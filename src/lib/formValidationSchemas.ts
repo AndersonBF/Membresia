@@ -70,6 +70,9 @@ export const eventSchema = z.object({
   isPublic: z.coerce.boolean(),
 
   societyId: z.coerce.number().optional(),
+
+  // Grupo sem InternalSociety (ex.: "ebd"). Vazio => evento de sociedade/geral.
+  category: z.string().optional(),
 });
 
 export type EventSchema = z.infer<typeof eventSchema>;
@@ -92,8 +95,10 @@ export const documentSchema = z.object({
   diaconateId: z.coerce.number().optional(),
   ministryId: z.coerce.number().optional(),
   bibleSchoolClassId: z.coerce.number().optional(),
+  // Documento "EBD geral" (todas as turmas)
+  bibleSchoolGeneral: z.coerce.boolean().optional(),
 
- 
+
   file: z.any().optional(),
 });
 
@@ -107,3 +112,34 @@ export const attendanceSchema = z.object({
 });
 
 export type AttendanceSchema = z.infer<typeof attendanceSchema>;
+
+/* ===================== EBD — TURMAS / CHAMADA ===================== */
+
+export const bibleSchoolClassSchema = z.object({
+  id: z.coerce.number().optional(),
+  name: z.string().min(1, { message: "O nome da turma é obrigatório!" }),
+});
+
+export type BibleSchoolClassSchema = z.infer<typeof bibleSchoolClassSchema>;
+
+export const classTeacherSchema = z.object({
+  classId: z.coerce.number({ message: "Turma é obrigatória!" }),
+  memberId: z.coerce.number({ message: "Membro é obrigatório!" }),
+});
+
+export type ClassTeacherSchema = z.infer<typeof classTeacherSchema>;
+
+export const bibleSchoolAttendanceSchema = z.object({
+  classId: z.coerce.number({ message: "Turma é obrigatória!" }),
+  // Data do domingo no formato "YYYY-MM-DD"
+  date: z.string().min(1, { message: "Data é obrigatória!" }),
+  topic: z.string().optional(),
+  records: z.array(
+    z.object({
+      memberId: z.coerce.number(),
+      isPresent: z.coerce.boolean(),
+    })
+  ),
+});
+
+export type BibleSchoolAttendanceSchema = z.infer<typeof bibleSchoolAttendanceSchema>;

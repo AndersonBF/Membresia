@@ -41,22 +41,32 @@ const TakeAttendancePage = async ({
     },
   });
 
-  let members: any[] = [];
+  // Membros elegíveis para o evento: por sociedade, por grupo (category) ou todos
+  const categoryMemberWhere: Record<string, any> = {
+    ebd: { bibleSchoolClassId: { not: null } },
+    diaconia: { diaconate: { isNot: null } },
+    conselho: { council: { isNot: null } },
+    ministerio: { ministries: { some: {} } },
+  };
+
+  let memberWhere: any = { isActive: true };
 
   if (selectedEvent.societyId) {
-    members = await prisma.member.findMany({
-      where: {
-        societies: { some: { societyId: selectedEvent.societyId } },
-        isActive: true,
-      },
-      orderBy: { name: "asc" },
-    });
-  } else {
-    members = await prisma.member.findMany({
-      where: { isActive: true },
-      orderBy: { name: "asc" },
-    });
+    memberWhere = {
+      societies: { some: { societyId: selectedEvent.societyId } },
+      isActive: true,
+    };
+  } else if (selectedEvent.category && categoryMemberWhere[selectedEvent.category]) {
+    memberWhere = {
+      ...categoryMemberWhere[selectedEvent.category],
+      isActive: true,
+    };
   }
+
+  const members = await prisma.member.findMany({
+    where: memberWhere,
+    orderBy: { name: "asc" },
+  });
 
   const existingAttendance = await prisma.attendance.findMany({
     where: { eventId },

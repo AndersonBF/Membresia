@@ -105,6 +105,25 @@ const EventForm = ({
         )}
       </div>
 
+      {/* GRUPO (sem sociedade — ex.: EBD) */}
+      <div className="flex flex-col gap-2">
+        <label className="text-xs text-gray-500">Grupo (opcional)</label>
+        <select
+          className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
+          {...register("category")}
+          defaultValue={data?.category || ""}
+        >
+          <option value="">Nenhum</option>
+          <option value="ebd">EBD — Escola Bíblica Dominical</option>
+          <option value="diaconia">Diaconia</option>
+          <option value="conselho">Conselho</option>
+          <option value="ministerio">Ministério</option>
+        </select>
+        <p className="text-[11px] text-gray-400">
+          Se selecionar um grupo, o evento aparecerá apenas para esse grupo (ignora a sociedade).
+        </p>
+      </div>
+
       {/* DESCRIÇÃO */}
       <div className="flex flex-col gap-2">
         <label className="text-xs text-gray-500">Descrição</label>

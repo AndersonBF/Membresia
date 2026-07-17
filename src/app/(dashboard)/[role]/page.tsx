@@ -7,6 +7,7 @@ import prisma from "@/lib/prisma"
 import Image from "next/image"
 import Link from "next/link"
 import { Users, Calendar, FileText, ArrowLeft, Phone, ChevronRight, Clock, Cake, Camera, Package, CheckSquare } from "lucide-react"
+import EbdHome from "./EbdHome"
 
 const roleConfig: Record<string, {
   label: string
@@ -66,15 +67,19 @@ async function getDataForRole(role: string) {
   } else if (role === "conselho") {
     memberWhere = { council: { isNot: null } }
     documentWhere = { councilId: 1 }
+    eventWhere = { category: "conselho" }
   } else if (role === "diaconia") {
     memberWhere = { diaconate: { isNot: null } }
     documentWhere = { diaconateId: 1 }
+    eventWhere = { category: "diaconia" }
   } else if (role === "ministerio") {
     memberWhere = { ministries: { some: {} } }
     documentWhere = { ministryId: { not: null } }
+    eventWhere = { category: "ministerio" }
   } else if (role === "ebd") {
     memberWhere = { bibleSchoolClassId: { not: null } }
     documentWhere = { bibleSchoolClassId: { not: null } }
+    eventWhere = { category: "ebd" }
   }
 
   const now = new Date()
@@ -119,8 +124,16 @@ const RolePage = async ({
   const { role } = params
   const config = roleConfig[role]
 
-  if (!config || (!isSuperAdmin && !roles.includes(role))) {
+  // Superintendente tem acesso total à EBD, mesmo sem o papel "ebd"
+  const isEbdSuperintendent = role === "ebd" && roles.includes("superintendente")
+
+  if (!config || (!isSuperAdmin && !isEbdSuperintendent && !roles.includes(role))) {
     notFound()
+  }
+
+  // Hub dedicado da EBD (ciente de turmas)
+  if (role === "ebd") {
+    return <EbdHome />
   }
 
   const isAdmin = roles.includes("admin") || isSuperAdmin
@@ -414,7 +427,14 @@ const RolePage = async ({
 
           {/* SIDEBAR */}
           <div className="w-full lg:w-1/3 flex flex-col gap-6">
-            <EventCalendarContainer searchParams={searchParams} />
+            <EventCalendarContainer
+              searchParams={searchParams}
+              filter={
+                societyMap[role]
+                  ? { societyId: societyMap[role] }
+                  : { category: role }
+              }
+            />
             <Announcements />
           </div>
         </div>

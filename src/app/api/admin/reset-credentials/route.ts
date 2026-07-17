@@ -74,6 +74,7 @@ export async function POST(req: Request) {
         diaconate: true,
         ministries: true,
         bibleSchoolClass: true,
+        teachingAssignments: true,
       },
     })
 
@@ -83,7 +84,8 @@ export async function POST(req: Request) {
     if (memberWithRoles?.council)    roles.push('conselho')
     if (memberWithRoles?.diaconate)  roles.push('diaconia')
     if (memberWithRoles?.ministries?.length) roles.push('ministerio')
-    if (memberWithRoles?.bibleSchoolClass)   roles.push('ebd')
+    // Aluno de turma OU professora (ClassTeacher) recebe acesso à EBD
+    if (memberWithRoles?.bibleSchoolClass || memberWithRoles?.teachingAssignments?.length) roles.push('ebd')
 
     await client.users.createUser({
       username,

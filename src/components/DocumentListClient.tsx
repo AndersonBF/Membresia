@@ -3,6 +3,8 @@
 import { useState } from "react";
 import FormModal from "./FormModal";
 import Image from "next/image";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
 // Tipagem básica para não dar erro no TypeScript
 type DocumentProps = {
@@ -13,32 +15,50 @@ type DocumentProps = {
   society?: { name: string } | null;
   ministry?: { name: string } | null;
   bibleSchoolClass?: { name: string } | null;
+  bibleSchoolGeneral?: boolean | null;
   council?: { id: number } | null;
   diaconate?: { id: number } | null;
 };
 
-const DocumentListClient = ({ 
-  documents, 
-  relatedData 
-}: { 
-  documents: DocumentProps[]; 
-  relatedData: any 
+const DocumentListClient = ({
+  documents,
+  relatedData,
+  defaultClassId,
+  backHref,
+}: {
+  documents: DocumentProps[];
+  relatedData: any;
+  defaultClassId?: number;
+  backHref?: string | null;
 }) => {
-  
+
   // Estado para controlar qual documento está aberto (se null, modal fecha)
   const [selectedDoc, setSelectedDoc] = useState<string | null>(null);
+
+  // Passa a turma-alvo para o formulário pré-selecionar a classe EBD
+  const relatedDataWithClass = { ...relatedData, defaultClassId };
 
   // Função para verificar se é imagem (para renderizar <img> em vez de <iframe>)
   const isImage = (url: string) => /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
 
   return (
     <>
+      {/* VOLTAR */}
+      {backHref && (
+        <Link
+          href={backHref}
+          className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition mb-3"
+        >
+          <ArrowLeft size={16} /> Voltar
+        </Link>
+      )}
+
       {/* CABEÇALHO */}
       <div className="flex items-center justify-between">
         <h1 className="hidden md:block text-lg font-semibold">Documentos e Arquivos</h1>
         <div className="flex flex-col md:flex-row items-center gap-4">
           <div className="flex items-center gap-4 self-end">
-            <FormModal table="document" type="create" relatedData={relatedData} />
+            <FormModal table="document" type="create" relatedData={relatedDataWithClass} />
           </div>
         </div>
       </div>
@@ -52,7 +72,7 @@ const DocumentListClient = ({
                 <div className="flex flex-col">
                   <h2 className="font-bold text-gray-800 text-md truncate pr-2">{doc.title}</h2>
                   <span className="text-[10px] uppercase font-bold text-gray-500 bg-white px-2 py-0.5 rounded-full w-max border border-gray-200 mt-1">
-                     {doc.society?.name || doc.ministry?.name || doc.bibleSchoolClass?.name || (doc.council ? "Conselho" : "") || (doc.diaconate ? "Diaconia" : "Geral")}
+                     {doc.society?.name || doc.ministry?.name || doc.bibleSchoolClass?.name || (doc.bibleSchoolGeneral ? "EBD — Geral" : "") || (doc.council ? "Conselho" : "") || (doc.diaconate ? "Diaconia" : "Geral")}
                   </span>
                 </div>
                 <FormModal table="document" type="delete" id={doc.id} />

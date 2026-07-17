@@ -10,6 +10,14 @@ import { auth } from "@clerk/nextjs/server";
 
 type EventList = Event & { society: InternalSociety | null };
 
+// Grupos que não são InternalSociety — identificados pelo campo Event.category
+const GROUP_CATEGORIES: Record<string, string> = {
+  ebd: "EBD",
+  diaconia: "Diaconia",
+  conselho: "Conselho",
+  ministerio: "Ministério",
+};
+
 const EventListPage = async ({
   searchParams,
 }: {
@@ -48,7 +56,11 @@ const EventListPage = async ({
       <td className="hidden md:table-cell">
         {item.endTime ? item.endTime.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", hour12: false }) : "-"}
       </td>
-      <td className="hidden lg:table-cell">{item.society?.name || <span className="text-gray-400">-</span>}</td>
+      <td className="hidden lg:table-cell">
+        {item.society?.name
+          || (item.category ? GROUP_CATEGORIES[item.category] ?? item.category : null)
+          || <span className="text-gray-400">-</span>}
+      </td>
       <td className="hidden md:table-cell">
         <span className={`px-2 py-1 rounded-full text-xs font-semibold ${item.isPublic ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}>
           {item.isPublic ? "Público" : "Privado"}
@@ -72,6 +84,12 @@ const EventListPage = async ({
 
   const query: Prisma.EventWhereInput = {};
 
+  // Grupo (EBD, diaconia, etc.) vem por roleContext (grupos extras) ou role (legado)
+  const groupContext =
+    (queryParams.roleContext && GROUP_CATEGORIES[queryParams.roleContext] && queryParams.roleContext) ||
+    (queryParams.role && GROUP_CATEGORIES[queryParams.role] && queryParams.role) ||
+    null;
+
   if (queryParams) {
     for (const [key, value] of Object.entries(queryParams)) {
       if (value !== undefined) {
@@ -80,20 +98,21 @@ const EventListPage = async ({
             query.title = { contains: value, mode: "insensitive" };
             break;
           case "societyId":
+            // Evento pertence à sociedade — nunca traz eventos de grupo (category)
             query.societyId = parseInt(value);
-            break;
-          case "role":
-            if (["conselho", "diaconia", "ministerio", "ebd"].includes(value)) {
-              query.isPublic = true;
-            }
             break;
         }
       }
     }
   }
 
-  // Se não é admin e não há filtro de sociedade/role, mostra só públicos
-  if (!isAdmin && !queryParams.societyId && !queryParams.role) {
+  // Contexto de grupo (ex.: EBD): mostra somente os eventos daquele grupo
+  if (groupContext) {
+    query.category = groupContext;
+  }
+
+  // Se não é admin e não há nenhum contexto (sociedade/grupo), mostra só públicos
+  if (!isAdmin && !queryParams.societyId && !groupContext) {
     query.isPublic = true;
   }
 

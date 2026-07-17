@@ -8,8 +8,8 @@ import {
 } from "lucide-react";
 
 const adminRoles = ["admin", "superadmin"];
-const allRoles = ["admin", "superadmin", "ump", "upa", "uph", "saf", "ucp", "diaconia", "conselho", "ministerio", "ebd", "member"];
-const staffRoles = ["admin", "superadmin", "ump", "upa", "uph", "saf", "ucp", "diaconia", "conselho", "ministerio", "ebd"];
+const allRoles = ["admin", "superadmin", "ump", "upa", "uph", "saf", "ucp", "diaconia", "conselho", "ministerio", "ebd", "superintendente", "member"];
+const staffRoles = ["admin", "superadmin", "ump", "upa", "uph", "saf", "ucp", "diaconia", "conselho", "ministerio", "ebd", "superintendente"];
 
 export const menuItems = [
   {

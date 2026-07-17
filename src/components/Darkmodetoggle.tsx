@@ -7,11 +7,9 @@ const DarkModeToggle = () => {
   const [dark, setDark] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem("theme");
-    if (stored === "dark") {
-      document.documentElement.classList.add("dark");
-      setDark(true);
-    }
+    // O script inline no layout já aplicou a classe .dark antes da pintura.
+    // Aqui só sincronizamos o estado do ícone com o que está no <html>.
+    setDark(document.documentElement.classList.contains("dark"));
   }, []);
 
   const toggle = () => {

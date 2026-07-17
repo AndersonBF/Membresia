@@ -4,11 +4,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { memberSchema, MemberSchema } from "@/lib/formValidationSchemas";
 import { updateMember } from "@/lib/actions";
-import { Dispatch, SetStateAction, useTransition, useState } from "react";
+import { Dispatch, SetStateAction, useTransition, useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import InputField from "../InputField";
-import { KeyRound, Copy, RefreshCw } from "lucide-react";
+import { KeyRound, Copy, RefreshCw, ShieldCheck } from "lucide-react";
 
 const roleOptions = [
   { id: "ump", label: "UMP" },
@@ -86,6 +86,18 @@ const MemberForm = ({
 
   const [credentials, setCredentials] = useState<{ username: string; password: string; action?: string } | null>(null)
   const [isResetting, setIsResetting] = useState(false)
+  const [isSuper, setIsSuper] = useState(false)
+
+  // Superintendente é papel Clerk (não vem de relação no banco) — busca ao abrir a edição
+  useEffect(() => {
+    if (type !== "update" || !data?.id) return
+    let active = true
+    fetch(`/api/admin/member-roles?memberId=${data.id}`)
+      .then((r) => (r.ok ? r.json() : { roles: [] }))
+      .then((res) => { if (active) setIsSuper((res.roles ?? []).includes("superintendente")) })
+      .catch(() => {})
+    return () => { active = false }
+  }, [type, data?.id])
 
   const gender = watch("gender")
 
@@ -132,6 +144,7 @@ const MemberForm = ({
 
   const onSubmit = handleSubmit(
     (formData) => {
+      const rolesToSend = isSuper ? [...selectedRoles, "superintendente"] : selectedRoles
       startTransition(async () => {
         if (type === "create") {
           const res = await fetch("/api/admin/create-member", {
@@ -143,7 +156,7 @@ const MemberForm = ({
               phone: formData.phone,
               birthDate: formData.birthDate,
               gender: formData.gender,
-              roles: selectedRoles,
+              roles: rolesToSend,
               cargos,
             }),
           })
@@ -160,7 +173,7 @@ const MemberForm = ({
         } else {
           const result = await updateMember(
             { success: false, error: false },
-            { ...formData, roles: selectedRoles, cargos } as any
+            { ...formData, roles: rolesToSend, cargos } as any
           )
 
           if (result.success) {
@@ -264,6 +277,25 @@ const MemberForm = ({
             </button>
           ))}
         </div>
+
+        {/* SUPERINTENDENTE DA EBD (papel Clerk — acesso total à EBD) */}
+        <button
+          type="button"
+          onClick={() => setIsSuper((v) => !v)}
+          className={`mt-1 py-2 px-3 rounded-md text-sm font-medium border transition flex items-center justify-center gap-2
+            ${isSuper
+              ? "bg-indigo-600 text-white border-indigo-600"
+              : "bg-white text-gray-700 border-gray-300 hover:border-indigo-500"
+            }`}
+        >
+          <ShieldCheck size={15} />
+          Superintendente da EBD
+        </button>
+        {isSuper && (
+          <p className="text-[11px] text-gray-400">
+            Acesso total à EBD (todas as turmas, chamadas e relatórios). Requer credenciais de acesso.
+          </p>
+        )}
       </div>
 
       {/* CARGOS POR SOCIEDADE */}

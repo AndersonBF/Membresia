@@ -47,6 +47,7 @@ interface ReportData {
     transactions: { id: number; description: string; type: string; value: number; date: string; month: number; year: number }[]
   }
   directory: { cargo: string; member: { id: number; name: string; phone: string | null; gender: string } }[]
+  byClass?: { classId: number; name: string; lessons: number; members: number; present: number; total: number; rate: number }[]
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -369,6 +370,41 @@ export default function RelatoriosPage({ params }: { params: { role: string } })
                   icon={Award} color="#f59e0b" light="#fefce8"
                 />
               </div>
+
+              {/* Presença por turma (EBD) */}
+              {data.byClass && data.byClass.length > 0 && (
+                <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                  <SectionTitle icon={Users} title="Presença por Turma" color={ac} />
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-100">
+                          <th className="text-left text-xs font-semibold text-gray-400 pb-2">Turma</th>
+                          <th className="text-center text-xs font-semibold text-gray-400 pb-2">Membros</th>
+                          <th className="text-center text-xs font-semibold text-gray-400 pb-2">Chamadas</th>
+                          <th className="text-center text-xs font-semibold text-gray-400 pb-2">Presentes</th>
+                          <th className="text-center text-xs font-semibold text-gray-400 pb-2">Taxa</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.byClass.map((c) => (
+                          <tr key={c.classId} className="border-b border-gray-50">
+                            <td className="py-2.5 text-gray-800 font-medium">{c.name}</td>
+                            <td className="py-2.5 text-center text-gray-600">{c.members}</td>
+                            <td className="py-2.5 text-center text-gray-600">{c.lessons}</td>
+                            <td className="py-2.5 text-center text-gray-600">{c.present}/{c.total}</td>
+                            <td className="py-2.5 text-center">
+                              <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: al, color: ac }}>
+                                {c.rate}%
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
 
               {/* Presença mensal */}
               <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">

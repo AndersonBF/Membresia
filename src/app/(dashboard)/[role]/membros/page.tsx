@@ -13,6 +13,7 @@ import { Prisma } from "@prisma/client"
 import { ITEM_PER_PAGE } from "@/lib/settings"
 import MemberAvatar from "@/components/MemberAvatar"
 import MemberDrawerWrapper from "@/components/MemberDrawerWrapper"
+import AddExistingMemberButton from "@/components/AddExistingMemberButton"
 
 const roleConfig: Record<string, { label: string; color: string; bg: string }> = {
   ump:        { label: "UMP",        color: "text-blue-700",   bg: "bg-blue-100" },
@@ -55,7 +56,9 @@ export default async function RoleMembrosPage({
   const { role } = params
   const config = roleConfig[role]
 
-  if (!config || (!isSuperAdmin && !roles.includes(role))) notFound()
+  const isEbdSuperintendent = role === "ebd" && roles.includes("superintendente")
+
+  if (!config || (!isSuperAdmin && !isEbdSuperintendent && !roles.includes(role))) notFound()
 
   const p = searchParams.page ? parseInt(searchParams.page) : 1
   const isSociedade = !!societyMap[role]
@@ -191,6 +194,39 @@ export default async function RoleMembrosPage({
     prisma.member.count({ where: memberWhere }),
   ])
 
+  // Botão "Adicionar existente" — membros disponíveis + destinos por grupo
+  let availableMembers: { id: number; name: string }[] = []
+  let targets: { id: number; name: string }[] = []
+  let targetLabel: string | undefined
+
+  if (isAdmin) {
+    // Membros que ainda NÃO pertencem a este grupo
+    let availableWhere: Prisma.MemberWhereInput = {}
+    if (societyMap[role]) {
+      availableWhere = { societies: { none: { societyId: societyMap[role] } } }
+    } else if (role === "conselho") {
+      availableWhere = { council: { is: null } }
+    } else if (role === "diaconia") {
+      availableWhere = { diaconate: { is: null } }
+    }
+    // ministerio e ebd dependem do destino escolhido → lista todos os membros
+
+    availableMembers = await prisma.member.findMany({
+      where: availableWhere,
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    })
+
+    // Destinos (quando o grupo tem vários)
+    if (role === "ministerio") {
+      targets = await prisma.ministry.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } })
+      targetLabel = "Ministério"
+    } else if (role === "ebd") {
+      targets = await prisma.bibleSchoolClass.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } })
+      targetLabel = "Classe"
+    }
+  }
+
   return (
     <div className="p-4 flex flex-col gap-6">
       <Link href={`/${role}`} className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition w-fit">
@@ -210,6 +246,15 @@ export default async function RoleMembrosPage({
           </div>
           <div className="flex items-center gap-4">
             <TableSearch />
+            {isAdmin && (
+              <AddExistingMemberButton
+                role={role}
+                label={config.label}
+                availableMembers={availableMembers}
+                targets={targets}
+                targetLabel={targetLabel}
+              />
+            )}
             {isAdmin && <FormContainer table="member" type="create" />}
           </div>
         </div>

@@ -23,6 +23,8 @@ const DocumentForm = ({
   relatedData,
   setOpen,
 }: DocumentFormProps) => {
+  const defaultClassId: number | undefined = relatedData?.defaultClassId;
+
   const {
     register,
     handleSubmit,
@@ -32,12 +34,13 @@ const DocumentForm = ({
     defaultValues: {
       title: data?.title ?? "",
       description: data?.description ?? "",
+      bibleSchoolClassId: defaultClassId,
     },
   });
 
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [category, setCategory] = useState<string>("");
+  const [category, setCategory] = useState<string>(defaultClassId ? "class" : "");
 
   const onSubmit = handleSubmit((data) => {
     const formData = new FormData();
@@ -53,6 +56,9 @@ const DocumentForm = ({
 
     if (category === "class" && data.bibleSchoolClassId)
       formData.append("bibleSchoolClassId", String(data.bibleSchoolClassId));
+
+    if (category === "ebdGeneral")
+      formData.append("bibleSchoolGeneral", "true");
 
     if (category === "council" && data.councilId)
       formData.append("councilId", String(data.councilId));
@@ -120,12 +126,13 @@ const DocumentForm = ({
         <select
           className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm"
           onChange={(e) => setCategory(e.target.value)}
-          defaultValue=""
+          defaultValue={defaultClassId ? "class" : ""}
         >
           <option value="">Geral (Sem vínculo)</option>
           <option value="society">Sociedade Interna</option>
           <option value="ministry">Ministério</option>
-          <option value="class">Classe EBD</option>
+          <option value="class">Classe EBD (uma turma)</option>
+          <option value="ebdGeneral">EBD — Geral (todas as turmas)</option>
           <option value="council">Conselho</option>
           <option value="diaconate">Diaconia</option>
         </select>

@@ -17,3 +17,82 @@
   color: black !important;
   border-radius: 0.5rem !important;
 }
+
+/* ============================================================
+   MODO ESCURO (global)
+   Como o app usa utilitárias literais do Tailwind (bg-white,
+   text-gray-*, border-gray-*, etc.) sem variantes `dark:`, o
+   dark mode é aplicado remapeando essas classes quando o
+   <html> tem a classe .dark. A especificidade de `html.dark .x`
+   é maior que `.x`, então não precisamos de !important.
+   ============================================================ */
+
+:root {
+  --dk-bg:        #0f172a; /* fundo da página            */
+  --dk-surface:   #1e293b; /* cards / painéis (bg-white) */
+  --dk-surface-2: #334155; /* chips / hover / bordas     */
+  --dk-surface-3: #172033; /* linhas zebradas            */
+  --dk-border:    #334155;
+  --dk-text:      #f1f5f9;
+  --dk-text-2:    #cbd5e1;
+  --dk-text-3:    #94a3b8;
+  --dk-text-4:    #64748b;
+}
+
+/* Controles nativos (scrollbars, date pickers, selects) em dark */
+html.dark { color-scheme: dark; }
+
+html.dark body {
+  background-color: var(--dk-bg);
+  color: var(--dk-text-2);
+}
+
+/* --- Fundos de página --- */
+html.dark .bg-\[\#F7F8FA\],
+html.dark .bg-gray-50,
+html.dark .bg-slate-50 { background-color: var(--dk-bg); }
+
+/* --- Superfícies (cards, modais, inputs) --- */
+html.dark .bg-white { background-color: var(--dk-surface); }
+
+/* --- Superfícies secundárias / chips --- */
+html.dark .bg-gray-100,
+html.dark .bg-gray-200 { background-color: var(--dk-surface-2); }
+
+/* Linhas zebradas de tabela */
+html.dark .even\:bg-slate-50:nth-child(even) { background-color: var(--dk-surface-3); }
+
+/* --- Hovers --- */
+html.dark .hover\:bg-gray-50:hover,
+html.dark .hover\:bg-gray-100:hover,
+html.dark .hover\:bg-lamaPurpleLight:hover { background-color: var(--dk-surface-2); }
+
+/* --- Textos --- */
+html.dark .text-gray-900 { color: #f8fafc; }
+html.dark .text-gray-800 { color: var(--dk-text); }
+html.dark .text-gray-700 { color: var(--dk-text-2); }
+html.dark .text-gray-600 { color: var(--dk-text-2); }
+html.dark .text-gray-500 { color: var(--dk-text-3); }
+html.dark .text-gray-400 { color: var(--dk-text-4); }
+html.dark .text-gray-300 { color: #475569; }
+html.dark .text-black     { color: var(--dk-text); }
+
+/* --- Bordas / divisores --- */
+html.dark .border-gray-100,
+html.dark .border-gray-200,
+html.dark .border-gray-300,
+html.dark .border-gray-50  { border-color: var(--dk-border); }
+html.dark .divide-gray-50 > :not([hidden]) ~ :not([hidden]),
+html.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color: var(--dk-border); }
+
+/* --- Inputs / placeholders --- */
+html.dark input,
+html.dark textarea,
+html.dark select { color: var(--dk-text); }
+html.dark ::placeholder { color: var(--dk-text-4); opacity: 1; }
+
+/* Calendário no dark */
+html.dark .react-calendar { background: transparent !important; color: var(--dk-text-2) !important; }
+html.dark .react-calendar button { color: var(--dk-text-2); }
+html.dark .react-calendar button:enabled:hover,
+html.dark .react-calendar__tile--now { background: var(--dk-surface-2) !important; }

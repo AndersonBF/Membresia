@@ -7,9 +7,19 @@ import {
   EventSchema,
   AttendanceSchema,
   documentSchema,
+  bibleSchoolClassSchema,
+  BibleSchoolClassSchema,
+  classTeacherSchema,
+  ClassTeacherSchema,
+  bibleSchoolAttendanceSchema,
+  BibleSchoolAttendanceSchema,
 } from "./formValidationSchemas";
+import { getEbdAccess, canAccessClass } from "./ebdAccess";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
+
+/** Normaliza "YYYY-MM-DD" para meia-noite UTC (chave estável de BibleSchoolLesson) */
+const normalizeSunday = (dateStr: string) => new Date(`${dateStr.slice(0, 10)}T00:00:00.000Z`);
 
 type CurrentState = {
   success: boolean;
@@ -102,12 +112,23 @@ export const updateMember = async (
       try {
         const { clerkClient } = await import('@clerk/nextjs/server')
         const client = await clerkClient()
-        const clerkUsers = await client.users.getUserList({ username: [data.username ?? ""] })
-        if (clerkUsers.data.length > 0) {
-          const clerkRoles = ["member", ...data.roles]
-          await client.users.updateUserMetadata(clerkUsers.data[0].id, {
-            publicMetadata: { roles: clerkRoles }
-          })
+        // O formulário nem sempre envia username — resolve pelo id como fallback
+        const dbMember = await prisma.member.findUnique({
+          where: { id: data.id },
+          select: { username: true },
+        })
+        const uname = data.username ?? dbMember?.username ?? ""
+        if (uname) {
+          const clerkUsers = await client.users.getUserList({ username: [uname] })
+          if (clerkUsers.data.length > 0) {
+            // Preserva papéis administrativos que não são geridos por este formulário
+            const existing = (clerkUsers.data[0].publicMetadata?.roles as string[]) ?? []
+            const preserved = existing.filter((r) => r === "admin" || r === "superadmin")
+            const clerkRoles = Array.from(new Set(["member", ...preserved, ...data.roles]))
+            await client.users.updateUserMetadata(clerkUsers.data[0].id, {
+              publicMetadata: { roles: clerkRoles }
+            })
+          }
         }
       } catch (e) {
         console.error("Erro ao atualizar Clerk:", e)
@@ -153,7 +174,9 @@ export const createEvent = async (
         startTime: data.startTime || null,
         endTime: data.endTime || null,
         isPublic: data.isPublic,
-        societyId: data.societyId || null,
+        // Um evento pertence a uma sociedade OU a um grupo (category), nunca aos dois.
+        societyId: data.category ? null : (data.societyId || null),
+        category: data.category || null,
       },
     });
 
@@ -181,7 +204,8 @@ export const updateEvent = async (
         startTime: data.startTime || null,
         endTime: data.endTime || null,
         isPublic: data.isPublic,
-        societyId: data.societyId || null,
+        societyId: data.category ? null : (data.societyId || null),
+        category: data.category || null,
       },
     });
 
@@ -241,6 +265,7 @@ export const createDocument = async (
         diaconateId: parsed.data.diaconateId || null,
         ministryId: parsed.data.ministryId || null,
         bibleSchoolClassId: parsed.data.bibleSchoolClassId || null,
+        bibleSchoolGeneral: parsed.data.bibleSchoolGeneral || false,
       },
     });
 
@@ -452,6 +477,194 @@ export const updateFinance = async (
       revalidatePath(`/list/finance?societyId=${societyId}&roleContext=${roleContext}`);
     }
 
+    return { success: true, error: false };
+  } catch (err) {
+    console.error(err);
+    return { success: false, error: true };
+  }
+};
+
+// ===================== EBD — TURMAS =====================
+
+export const createBibleSchoolClass = async (
+  _: CurrentState,
+  data: BibleSchoolClassSchema
+): Promise<CurrentState> => {
+  const parsed = bibleSchoolClassSchema.safeParse(data);
+  if (!parsed.success) return { success: false, error: true };
+
+  const access = await getEbdAccess();
+  if (!access.canSeeAll) return { success: false, error: true };
+
+  try {
+    // Garante o registro raiz BibleSchool (id=1) antes de ligar a turma
+    await prisma.bibleSchool.upsert({
+      where: { id: 1 },
+      update: {},
+      create: { id: 1 },
+    });
+
+    await prisma.bibleSchoolClass.create({
+      data: { name: parsed.data.name, bibleSchoolId: 1 },
+    });
+
+    revalidatePath("/ebd");
+    revalidatePath("/ebd/turmas");
+    return { success: true, error: false };
+  } catch (err) {
+    console.error(err);
+    return { success: false, error: true };
+  }
+};
+
+export const updateBibleSchoolClass = async (
+  _: CurrentState,
+  data: BibleSchoolClassSchema
+): Promise<CurrentState> => {
+  const parsed = bibleSchoolClassSchema.safeParse(data);
+  if (!parsed.success || !parsed.data.id) return { success: false, error: true };
+
+  const access = await getEbdAccess();
+  if (!access.canSeeAll) return { success: false, error: true };
+
+  try {
+    await prisma.bibleSchoolClass.update({
+      where: { id: parsed.data.id },
+      data: { name: parsed.data.name },
+    });
+
+    revalidatePath("/ebd");
+    revalidatePath("/ebd/turmas");
+    revalidatePath(`/ebd/turma/${parsed.data.id}`);
+    return { success: true, error: false };
+  } catch (err) {
+    console.error(err);
+    return { success: false, error: true };
+  }
+};
+
+export const deleteBibleSchoolClass = async (
+  _: CurrentState,
+  data: FormData
+): Promise<CurrentState> => {
+  const access = await getEbdAccess();
+  if (!access.canSeeAll) return { success: false, error: true };
+
+  try {
+    const id = Number(data.get("id"));
+    await prisma.bibleSchoolClass.delete({ where: { id } });
+
+    revalidatePath("/ebd");
+    revalidatePath("/ebd/turmas");
+    return { success: true, error: false };
+  } catch (err) {
+    console.error(err);
+    return { success: false, error: true };
+  }
+};
+
+// ===================== EBD — PROFESSORAS (ClassTeacher) =====================
+
+export const assignClassTeacher = async (
+  _: CurrentState,
+  data: ClassTeacherSchema
+): Promise<CurrentState> => {
+  const parsed = classTeacherSchema.safeParse(data);
+  if (!parsed.success) return { success: false, error: true };
+
+  const access = await getEbdAccess();
+  if (!access.canSeeAll) return { success: false, error: true };
+
+  try {
+    await prisma.classTeacher.upsert({
+      where: {
+        memberId_classId: {
+          memberId: parsed.data.memberId,
+          classId: parsed.data.classId,
+        },
+      },
+      update: {},
+      create: { memberId: parsed.data.memberId, classId: parsed.data.classId },
+    });
+
+    revalidatePath("/ebd/turmas");
+    revalidatePath(`/ebd/turma/${parsed.data.classId}`);
+    return { success: true, error: false };
+  } catch (err) {
+    console.error(err);
+    return { success: false, error: true };
+  }
+};
+
+export const removeClassTeacher = async (
+  _: CurrentState,
+  data: FormData
+): Promise<CurrentState> => {
+  const access = await getEbdAccess();
+  if (!access.canSeeAll) return { success: false, error: true };
+
+  try {
+    const classId = Number(data.get("classId"));
+    const memberId = Number(data.get("memberId"));
+    await prisma.classTeacher.deleteMany({ where: { classId, memberId } });
+
+    revalidatePath("/ebd/turmas");
+    revalidatePath(`/ebd/turma/${classId}`);
+    return { success: true, error: false };
+  } catch (err) {
+    console.error(err);
+    return { success: false, error: true };
+  }
+};
+
+// ===================== EBD — CHAMADA POR TURMA =====================
+
+export const saveBibleSchoolAttendance = async (
+  _: CurrentState,
+  data: BibleSchoolAttendanceSchema
+): Promise<CurrentState> => {
+  const parsed = bibleSchoolAttendanceSchema.safeParse(data);
+  if (!parsed.success) return { success: false, error: true };
+
+  // Professora só grava na própria turma; superintendente/admin em qualquer uma
+  const access = await getEbdAccess();
+  if (!canAccessClass(access, parsed.data.classId)) {
+    return { success: false, error: true };
+  }
+
+  try {
+    const date = normalizeSunday(parsed.data.date);
+
+    // Cria/atualiza a aula (BibleSchoolLesson) desse domingo para a turma
+    const lesson = await prisma.bibleSchoolLesson.upsert({
+      where: { classId_date: { classId: parsed.data.classId, date } },
+      update: { topic: parsed.data.topic || null },
+      create: {
+        classId: parsed.data.classId,
+        date,
+        topic: parsed.data.topic || null,
+      },
+    });
+
+    // Salva a presença de cada membro (upsert idempotente)
+    await Promise.all(
+      parsed.data.records.map((r) =>
+        prisma.bibleSchoolAttendance.upsert({
+          where: {
+            lessonId_memberId: { lessonId: lesson.id, memberId: r.memberId },
+          },
+          update: { isPresent: r.isPresent },
+          create: {
+            lessonId: lesson.id,
+            memberId: r.memberId,
+            isPresent: r.isPresent,
+          },
+        })
+      )
+    );
+
+    revalidatePath(`/ebd/turma/${parsed.data.classId}`);
+    revalidatePath(`/ebd/turma/${parsed.data.classId}/chamada`);
     return { success: true, error: false };
   } catch (err) {
     console.error(err);

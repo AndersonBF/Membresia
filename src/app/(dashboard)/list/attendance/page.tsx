@@ -18,9 +18,16 @@ const AttendanceListPage = async ({
   const roleContext = searchParams.roleContext ?? null
   const societyId   = searchParams.societyId   ?? null
 
+  // Grupos sem InternalSociety (ex.: EBD) — filtrados por Event.category
+  const GROUP_CATEGORIES = ["ebd", "diaconia", "conselho", "ministerio"]
+  const groupContext =
+    roleContext && GROUP_CATEGORIES.includes(roleContext) ? roleContext : null
+
   const whereClause: any = {}
   if (societyId) {
     whereClause.societyId = parseInt(societyId)
+  } else if (groupContext) {
+    whereClause.category = groupContext
   } else if (searchParams.role) {
     whereClause.isPublic = true
   } else if (!isAdmin) {

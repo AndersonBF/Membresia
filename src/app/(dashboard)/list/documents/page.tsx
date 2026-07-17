@@ -1,5 +1,9 @@
+import { notFound } from "next/navigation";
 import prisma from "@/lib/prisma";
 import DocumentListClient from "@/components/DocumentListClient";
+import { getEbdAccess, canAccessClass } from "@/lib/ebdAccess";
+
+export const dynamic = "force-dynamic";
 
 export default async function DocumentListPage({
   searchParams,
@@ -7,14 +11,43 @@ export default async function DocumentListPage({
   searchParams?: { [key: string]: string | undefined };
 }) {
   const societyId = searchParams?.societyId ? parseInt(searchParams.societyId) : null
-  const role = searchParams?.role
+  // Aceita tanto `role` quanto `roleContext` (o menu/atalhos usam roleContext)
+  const roleContext = searchParams?.roleContext
+  const role = searchParams?.role ?? roleContext
+  const classId = searchParams?.classId ? parseInt(searchParams.classId) : null
+
+  // Destino do botão "Voltar" conforme o contexto de origem
+  const backHref = classId
+    ? `/ebd/turma/${classId}`
+    : roleContext
+    ? `/${roleContext}`
+    : null
 
   const whereClause: any = {}
-  if (societyId) whereClause.societyId = societyId
-  else if (role === "conselho") whereClause.councilId = 1
-  else if (role === "diaconia") whereClause.diaconateId = 1
-  else if (role === "ministerio") whereClause.ministryId = { not: null }
-  else if (role === "ebd") whereClause.bibleSchoolClassId = { not: null }
+
+  if (societyId) {
+    whereClause.societyId = societyId
+  } else if (classId) {
+    // Documentos de UMA turma específica + os "EBD geral" (todas as turmas)
+    const access = await getEbdAccess()
+    if (!canAccessClass(access, classId)) notFound()
+    whereClause.OR = [{ bibleSchoolClassId: classId }, { bibleSchoolGeneral: true }]
+  } else if (role === "ebd") {
+    // Visão geral da EBD: superintendente/admin veem todas as turmas + gerais;
+    // professora vê apenas as turmas dela + gerais.
+    const access = await getEbdAccess()
+    if (access.canSeeAll) {
+      whereClause.OR = [{ bibleSchoolClassId: { not: null } }, { bibleSchoolGeneral: true }]
+    } else {
+      whereClause.OR = [{ bibleSchoolClassId: { in: access.teacherClassIds } }, { bibleSchoolGeneral: true }]
+    }
+  } else if (role === "conselho") {
+    whereClause.councilId = 1
+  } else if (role === "diaconia") {
+    whereClause.diaconateId = 1
+  } else if (role === "ministerio") {
+    whereClause.ministryId = { not: null }
+  }
 
   const documents = await prisma.document.findMany({
     where: whereClause,
@@ -38,7 +71,12 @@ export default async function DocumentListPage({
 
   return (
     <div className="bg-white p-4 rounded-md flex-1 m-4 mt-0">
-      <DocumentListClient documents={documents} relatedData={relatedData} />
+      <DocumentListClient
+        documents={documents}
+        relatedData={relatedData}
+        defaultClassId={classId ?? undefined}
+        backHref={backHref}
+      />
     </div>
   );
 }

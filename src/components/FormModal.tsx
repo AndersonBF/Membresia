@@ -228,14 +228,35 @@ const FormModal = ({
       ? "bg-blue-600 hover:bg-blue-700 text-white"
       : "bg-yellow-400 hover:bg-yellow-500 text-black";
 
+  // Rótulo do botão de criação (os de editar/excluir continuam só com ícone)
+  const createLabel: Record<TableType, string> = {
+    member: "Adicionar membro",
+    document: "Adicionar documento",
+    event: "Adicionar evento",
+    announcement: "Adicionar anúncio",
+    attendance: "Adicionar presença",
+    assignment: "Adicionar",
+    result: "Adicionar",
+  };
+
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        className={`w-8 h-8 flex items-center justify-center rounded-full transition ${buttonStyle}`}
-      >
-        <Icon size={16} />
-      </button>
+      {type === "create" ? (
+        <button
+          onClick={() => setOpen(true)}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition ${buttonStyle}`}
+        >
+          <Icon size={15} />
+          {createLabel[table]}
+        </button>
+      ) : (
+        <button
+          onClick={() => setOpen(true)}
+          className={`w-8 h-8 flex items-center justify-center rounded-full transition ${buttonStyle}`}
+        >
+          <Icon size={16} />
+        </button>
+      )}
 
       {open && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center">

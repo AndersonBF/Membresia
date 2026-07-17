@@ -1,7 +1,17 @@
 // src/components/EventList.tsx
 import prisma from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
-const EventList = async ({ dateParam }: { dateParam: string | undefined }) => {
+// Filtro opcional por contexto (sociedade ou grupo). Sem filtro => todos os eventos.
+export type EventListFilter = { societyId?: number; category?: string };
+
+const EventList = async ({
+  dateParam,
+  filter,
+}: {
+  dateParam: string | undefined;
+  filter?: EventListFilter;
+}) => {
 
   // Usa o dateParam como string "YYYY-MM-DD" para evitar problemas de timezone
   const dateStr = dateParam ?? new Date().toISOString().split("T")[0];
@@ -10,8 +20,16 @@ const EventList = async ({ dateParam }: { dateParam: string | undefined }) => {
   const startOfDay = new Date(`${dateStr}T00:00:00.000Z`);
   const endOfDay   = new Date(`${dateStr}T23:59:59.999Z`);
 
+  const contextWhere: Prisma.EventWhereInput =
+    filter?.societyId != null
+      ? { societyId: filter.societyId }
+      : filter?.category != null
+      ? { category: filter.category }
+      : {};
+
   const data = await prisma.event.findMany({
     where: {
+      ...contextWhere,
       OR: [
         // Eventos com startTime preenchido — filtra por startTime
         {

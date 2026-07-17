@@ -44,6 +44,7 @@ model Member {
   attendances         Attendance[]
   teachingAssignments ClassTeacher[] @relation(name: "TeachingAssignments")
   scheduleAssignments DiaconateScheduleMember[]
+  bibleSchoolAttendances BibleSchoolAttendance[]
 }
 
 // ===============================================
@@ -163,12 +164,43 @@ model BibleSchoolClass {
 
   members  Member[]
   teachers ClassTeacher[]
+  lessons  BibleSchoolLesson[]
 
   bibleSchoolId Int?
   bibleSchool   BibleSchool? @relation(name: "BibleSchoolClasses", fields: [bibleSchoolId], references: [id], onDelete: SetNull)
 
   documents Document[]
   albums    GalleryAlbum[]
+}
+
+// ===============================================
+// AULA DA ESCOLA BÍBLICA (chamada por turma / domingo)
+// ===============================================
+model BibleSchoolLesson {
+  id        Int      @id @default(autoincrement())
+  classId   Int
+  date      DateTime // o domingo da aula (normalizado a 00:00)
+  topic     String?  // lição/tema (opcional)
+  notes     String?
+  createdAt DateTime @default(now())
+
+  class       BibleSchoolClass        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  attendances BibleSchoolAttendance[]
+
+  @@unique([classId, date])
+  @@index([classId, date])
+}
+
+model BibleSchoolAttendance {
+  id        Int     @id @default(autoincrement())
+  lessonId  Int
+  memberId  Int
+  isPresent Boolean @default(true)
+
+  lesson BibleSchoolLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  member Member            @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([lessonId, memberId])
 }
 
 // ===============================================
@@ -197,6 +229,10 @@ model Event {
   endTime     DateTime?
   isPublic            Boolean   @default(false)
   requiresAttendance  Boolean   @default(true)   // ← novo
+
+  // Grupos sem InternalSociety (ex.: "ebd", "diaconia", "conselho", "ministerio").
+  // Eventos de sociedade continuam usando societyId; category fica null nesse caso.
+  category  String?
 
   societyId Int?
   society   InternalSociety? @relation(fields: [societyId], references: [id], onDelete: SetNull)
@@ -276,6 +312,9 @@ model Document {
 
   bibleSchoolClassId Int?
   bibleSchoolClass   BibleSchoolClass? @relation(fields: [bibleSchoolClassId], references: [id], onDelete: Cascade)
+
+  // Documento "EBD geral": aparece para todas as turmas da Escola Bíblica
+  bibleSchoolGeneral Boolean @default(false)
 }
 
 // ===============================================

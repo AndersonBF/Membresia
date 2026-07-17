@@ -45,6 +45,7 @@ type Props = {
   societyId: number | null
   roleContext: string | null
   isAdmin: boolean
+  canManage?: boolean
 }
 
 const MONTHS      = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"]
@@ -64,7 +65,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   )
 }
 
-export default function FinancePage({ finances, societies, societyId, roleContext, isAdmin }: Props) {
+export default function FinancePage({ finances, societies, societyId, roleContext, isAdmin, canManage = isAdmin }: Props) {
   const [showForm, setShowForm]             = useState(false)
   const [showSaldoForm, setShowSaldoForm]   = useState(false)
   const [editingFinance, setEditingFinance] = useState<Finance | null>(null)
@@ -291,9 +292,11 @@ export default function FinancePage({ finances, societies, societyId, roleContex
                 <ChevronDown size={13} style={{ position:"absolute", right:10, top:"50%", transform:"translateY(-50%)", color:"#94a3b8", pointerEvents:"none" }}/>
               </div>
               <button onClick={exportToExcel} style={btnG}><Download size={14}/> Exportar</button>
-              <button onClick={() => setShowForm(true)} className="btn-primary-hover" style={btnP}>
-                <Plus size={15}/> Lançamento
-              </button>
+              {canManage && (
+                <button onClick={() => setShowForm(true)} className="btn-primary-hover" style={btnP}>
+                  <Plus size={15}/> Lançamento
+                </button>
+              )}
             </div>
           </div>
 
@@ -520,23 +523,25 @@ export default function FinancePage({ finances, societies, societyId, roleContex
                   <span style={{ fontWeight:800, fontSize:14, whiteSpace:"nowrap", color: f.type === "ENTRADA" ? C.primaryDark : "#dc2626" }}>
                     {f.type === "ENTRADA" ? "+" : "−"} {fmtBRL(f.value)}
                   </span>
-                  <div style={{ display:"flex", gap:4 }}>
-                    <button style={iconBtn} onClick={() => setEditingFinance(f)} title="Editar"
-                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background=C.primarySoft; (e.currentTarget as HTMLElement).style.color=C.primary }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background="#f8fafc"; (e.currentTarget as HTMLElement).style.color="#94a3b8" }}>
-                      <Pencil size={13}/>
-                    </button>
-                    <form action={deleteAction} style={{ display:"contents" }}>
-                      <input type="hidden" name="id" value={f.id}/>
-                      <input type="hidden" name="societyId" value={societyId ?? ""}/>
-                      <input type="hidden" name="roleContext" value={roleContext ?? ""}/>
-                      <button type="submit" style={iconBtn} title="Excluir"
-                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background="#fef2f2"; (e.currentTarget as HTMLElement).style.color="#ef4444" }}
+                  {canManage && (
+                    <div style={{ display:"flex", gap:4 }}>
+                      <button style={iconBtn} onClick={() => setEditingFinance(f)} title="Editar"
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background=C.primarySoft; (e.currentTarget as HTMLElement).style.color=C.primary }}
                         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background="#f8fafc"; (e.currentTarget as HTMLElement).style.color="#94a3b8" }}>
-                        <Trash2 size={13}/>
+                        <Pencil size={13}/>
                       </button>
-                    </form>
-                  </div>
+                      <form action={deleteAction} style={{ display:"contents" }}>
+                        <input type="hidden" name="id" value={f.id}/>
+                        <input type="hidden" name="societyId" value={societyId ?? ""}/>
+                        <input type="hidden" name="roleContext" value={roleContext ?? ""}/>
+                        <button type="submit" style={iconBtn} title="Excluir"
+                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background="#fef2f2"; (e.currentTarget as HTMLElement).style.color="#ef4444" }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background="#f8fafc"; (e.currentTarget as HTMLElement).style.color="#94a3b8" }}>
+                          <Trash2 size={13}/>
+                        </button>
+                      </form>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

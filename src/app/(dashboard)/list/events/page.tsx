@@ -7,6 +7,7 @@ import { ITEM_PER_PAGE } from "@/lib/settings";
 import { Event, InternalSociety, Prisma } from "@prisma/client";
 import Image from "next/image";
 import { auth } from "@clerk/nextjs/server";
+import { getManageableGroups, roleForSocietyId, societyMap } from "@/lib/permissions";
 
 type EventList = Event & { society: InternalSociety | null };
 
@@ -27,10 +28,34 @@ const EventListPage = async ({
   const roles = (sessionClaims?.metadata as { roles?: string[] })?.roles ?? [];
   const isAdmin = roles.includes("admin") || roles.includes("superadmin");
 
-  const societies = await prisma.internalSociety.findMany({
+  // Contexto atual (sociedade ou grupo) a partir dos parâmetros do menu.
+  // A sociedade pode vir por societyId OU por roleContext/role (ex.: "saf"),
+  // pois os atalhos do hub usam apenas roleContext.
+  const ctxRoleParam = searchParams.roleContext || searchParams.role || null;
+  const ctxSocietyId = searchParams.societyId
+    ? parseInt(searchParams.societyId)
+    : (ctxRoleParam && societyMap[ctxRoleParam]) || null;
+  const ctxGroup =
+    (searchParams.roleContext && GROUP_CATEGORIES[searchParams.roleContext] && searchParams.roleContext) ||
+    (searchParams.role && GROUP_CATEGORIES[searchParams.role] && searchParams.role) ||
+    null;
+  const contextRole = ctxSocietyId ? roleForSocietyId(ctxSocietyId) : ctxGroup;
+
+  // Admin gere qualquer evento; líder (com cargo) gere os do seu grupo/sociedade
+  const { isAdmin: isGlobalAdmin, groups } = await getManageableGroups();
+  const canManage = isGlobalAdmin || (!!contextRole && groups.has(contextRole));
+
+  const allSocieties = await prisma.internalSociety.findMany({
     select: { id: true, name: true },
     orderBy: { name: "asc" },
   });
+  // O formulário só oferece as sociedades que o usuário pode gerir
+  const societies = isGlobalAdmin
+    ? allSocieties
+    : allSocieties.filter((s) => {
+        const r = roleForSocietyId(s.id);
+        return !!r && groups.has(r);
+      });
 
   const columns = [
     { header: "Título", accessor: "title" },
@@ -40,7 +65,7 @@ const EventListPage = async ({
     { header: "Fim", accessor: "endTime", className: "hidden md:table-cell" },
     { header: "Sociedade", accessor: "society", className: "hidden lg:table-cell" },
     { header: "Público", accessor: "isPublic", className: "hidden md:table-cell" },
-    ...(isAdmin ? [{ header: "Ações", accessor: "action" }] : []),
+    ...(canManage ? [{ header: "Ações", accessor: "action" }] : []),
   ];
 
   const renderRow = (item: EventList) => (
@@ -68,7 +93,7 @@ const EventListPage = async ({
       </td>
       <td>
         <div className="flex items-center gap-2">
-          {isAdmin && (
+          {canManage && (
             <>
               <FormContainer table="event" type="update" data={item} relatedData={{ societies }} />
               <FormContainer table="event" type="delete" id={item.id} />
@@ -97,13 +122,14 @@ const EventListPage = async ({
           case "search":
             query.title = { contains: value, mode: "insensitive" };
             break;
-          case "societyId":
-            // Evento pertence à sociedade — nunca traz eventos de grupo (category)
-            query.societyId = parseInt(value);
-            break;
         }
       }
     }
+  }
+
+  // Sociedade do contexto (via societyId OU roleContext=saf/ump/...)
+  if (ctxSocietyId) {
+    query.societyId = ctxSocietyId;
   }
 
   // Contexto de grupo (ex.: EBD): mostra somente os eventos daquele grupo
@@ -112,7 +138,7 @@ const EventListPage = async ({
   }
 
   // Se não é admin e não há nenhum contexto (sociedade/grupo), mostra só públicos
-  if (!isAdmin && !queryParams.societyId && !groupContext) {
+  if (!isAdmin && !ctxSocietyId && !groupContext) {
     query.isPublic = true;
   }
 
@@ -140,7 +166,7 @@ const EventListPage = async ({
             <button className="w-8 h-8 flex items-center justify-center rounded-full bg-lamaYellow">
               <Image src="/sort.png" alt="" width={14} height={14} />
             </button>
-            {isAdmin && <FormContainer table="event" type="create" relatedData={{ societies }} />}
+            {canManage && <FormContainer table="event" type="create" relatedData={{ societies }} />}
           </div>
         </div>
       </div>

@@ -19,9 +19,15 @@ export const societyMap: Record<string, number> = {
 }
 
 // societyId → role key (inverso do societyMap)
-const societyIdToRole: Record<number, string> = Object.fromEntries(
+export const societyIdToRole: Record<number, string> = Object.fromEntries(
   Object.entries(societyMap).map(([role, id]) => [id, role])
 )
+
+/** Converte um societyId num role de grupo (ex.: 3 → "saf"). */
+export function roleForSocietyId(societyId: number | null | undefined): string | null {
+  if (!societyId) return null
+  return societyIdToRole[societyId] ?? null
+}
 
 export interface ManageableGroups {
   /** admin ou superadmin — pode gerir qualquer grupo */
@@ -90,4 +96,61 @@ export async function getManageableGroups(): Promise<ManageableGroups> {
 export async function canManageGroup(role: string): Promise<boolean> {
   const { isAdmin, groups } = await getManageableGroups()
   return isAdmin || groups.has(role)
+}
+
+export interface MyMembership {
+  memberId: number | null
+  societyIds: number[]
+  hasCouncil: boolean
+  hasDiaconate: boolean
+  ministryIds: number[]
+  classIds: number[]
+}
+
+/**
+ * Retorna a que grupos o usuário logado PERTENCE (independente de cargo).
+ * Usado para escopar visualizações (ex.: documentos do próprio membro).
+ */
+export async function getMyMembership(): Promise<MyMembership> {
+  const empty: MyMembership = {
+    memberId: null, societyIds: [], hasCouncil: false,
+    hasDiaconate: false, ministryIds: [], classIds: [],
+  }
+
+  const user = await currentUser()
+  if (!user) return empty
+
+  const or: any[] = []
+  if (user.username) or.push({ username: user.username })
+  const email = user.emailAddresses?.[0]?.emailAddress
+  if (email) or.push({ email })
+  if (or.length === 0) return empty
+
+  const member = await prisma.member.findFirst({
+    where: { OR: or },
+    select: {
+      id: true,
+      societies: { select: { societyId: true } },
+      council: { select: { id: true } },
+      diaconate: { select: { id: true } },
+      ministries: { select: { ministryId: true } },
+      bibleSchoolClassId: true,
+      teachingAssignments: { select: { classId: true } },
+    },
+  })
+
+  if (!member) return empty
+
+  const classIds = new Set<number>()
+  if (member.bibleSchoolClassId) classIds.add(member.bibleSchoolClassId)
+  member.teachingAssignments.forEach((t) => classIds.add(t.classId))
+
+  return {
+    memberId: member.id,
+    societyIds: member.societies.map((s) => s.societyId),
+    hasCouncil: !!member.council,
+    hasDiaconate: !!member.diaconate,
+    ministryIds: member.ministries.map((m) => m.ministryId),
+    classIds: [...classIds],
+  }
 }

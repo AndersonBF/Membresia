@@ -10,6 +10,8 @@ import {
 const adminRoles = ["admin", "superadmin"];
 const allRoles = ["admin", "superadmin", "ump", "upa", "uph", "saf", "ucp", "diaconia", "conselho", "ministerio", "ebd", "superintendente", "member"];
 const staffRoles = ["admin", "superadmin", "ump", "upa", "uph", "saf", "ucp", "diaconia", "conselho", "ministerio", "ebd", "superintendente"];
+// Papéis de grupo sem admin (o admin já tem o item "Membros" próprio no contexto de sociedade)
+const groupStaffRoles = ["ump", "upa", "uph", "saf", "ucp", "diaconia", "conselho", "ministerio", "ebd", "superintendente"];
 
 export const menuItems = [
   {
@@ -54,6 +56,15 @@ export const menuItems = [
         visible: adminRoles,
         hiddenForSociedades: false,
         showOnlyForSociedades: false,
+      },
+      {
+        // Versão para o contexto de sociedade/grupo — resolve para /<role>/membros
+        icon: Users,
+        label: "Membros",
+        href: "/list/members",
+        visible: groupStaffRoles,
+        hiddenForSociedades: false,
+        showOnlyForSociedades: true,
       },
       {
         icon: Church,

@@ -2,6 +2,7 @@ import prisma from "@/lib/prisma"
 import { currentUser } from "@clerk/nextjs/server"
 import { cache } from "react"
 import FinancePage from "@/components/FinancePage"
+import { getManageableGroups, roleForSocietyId } from "@/lib/permissions"
 
 export const dynamic = "force-dynamic"
 
@@ -57,6 +58,13 @@ export default async function FinancePageRoute({
     ? await prisma.internalSociety.findMany({ orderBy: { name: "asc" } })
     : []
 
+  // Quem pode lançar/editar: admin, ou líder (com cargo) desta sociedade/conselho
+  const { groups } = await getManageableGroups()
+  const contextRole = societyId
+    ? roleForSocietyId(societyId)
+    : roleContext
+  const canManage = isAdmin || (!!contextRole && groups.has(contextRole))
+
   return (
     <FinancePage
       finances={finances}
@@ -64,6 +72,7 @@ export default async function FinancePageRoute({
       societyId={societyId}
       roleContext={roleContext}
       isAdmin={isAdmin}
+      canManage={canManage}
     />
   )
 }

@@ -15,7 +15,7 @@ import {
   BibleSchoolAttendanceSchema,
 } from "./formValidationSchemas";
 import { getEbdAccess, canAccessClass } from "./ebdAccess";
-import { getManageableGroups } from "./permissions";
+import { getManageableGroups, roleForSocietyId } from "./permissions";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 
@@ -216,11 +216,32 @@ export const deleteMember = async (
 
 // ===================== EVENTS =====================
 
+/** Role de grupo a que um evento pertence (society → role, ou category). */
+function eventGroupRole(societyId?: number | null, category?: string | null): string | null {
+  if (category) return category
+  if (societyId) return roleForSocietyId(societyId)
+  return null
+}
+
+/** Admin, ou líder (com cargo) do grupo do evento. */
+async function canManageEventGroup(societyId?: number | null, category?: string | null): Promise<boolean> {
+  const { isAdmin, groups } = await getManageableGroups()
+  if (isAdmin) return true
+  const role = eventGroupRole(societyId, category)
+  return !!role && groups.has(role)
+}
+
 export const createEvent = async (
   _: CurrentState,
   data: EventSchema
 ): Promise<CurrentState> => {
   try {
+    // Admin cria qualquer evento; líder só cria eventos do seu grupo.
+    const target = data.category ? null : (data.societyId || null)
+    if (!(await canManageEventGroup(target, data.category || null))) {
+      return { success: false, error: true }
+    }
+
     await prisma.event.create({
       data: {
         title: data.title,
@@ -250,6 +271,17 @@ export const updateEvent = async (
   if (!data.id) return { success: false, error: true };
 
   try {
+    // Precisa poder gerir tanto o grupo atual do evento quanto o destino.
+    const existing = await prisma.event.findUnique({
+      where: { id: data.id },
+      select: { societyId: true, category: true },
+    })
+    if (!existing) return { success: false, error: true }
+    const newTarget = data.category ? null : (data.societyId || null)
+    const canOld = await canManageEventGroup(existing.societyId, existing.category)
+    const canNew = await canManageEventGroup(newTarget, data.category || null)
+    if (!canOld || !canNew) return { success: false, error: true }
+
     await prisma.event.update({
       where: { id: data.id },
       data: {
@@ -278,6 +310,16 @@ export const deleteEvent = async (
 ): Promise<CurrentState> => {
   try {
     const id = Number(data.get("id"));
+
+    const existing = await prisma.event.findUnique({
+      where: { id },
+      select: { societyId: true, category: true },
+    })
+    if (!existing) return { success: false, error: true }
+    if (!(await canManageEventGroup(existing.societyId, existing.category))) {
+      return { success: false, error: true }
+    }
+
     await prisma.event.delete({ where: { id } });
 
     revalidatePath("/list/events");
@@ -440,6 +482,14 @@ export const bulkUpdateAttendance = async (
 
 // ===================== FINANCE =====================
 
+/** Admin, ou líder (com cargo) da sociedade/conselho do lançamento. */
+async function canManageFinanceScope(societyId?: number | null, councilId?: number | null): Promise<boolean> {
+  const { isAdmin, groups } = await getManageableGroups()
+  if (isAdmin) return true
+  const role = societyId ? roleForSocietyId(societyId) : (councilId ? "conselho" : null)
+  return !!role && groups.has(role)
+}
+
 export const createFinance = async (
   _: CurrentState,
   data: FormData
@@ -452,6 +502,11 @@ export const createFinance = async (
     const societyId = data.get("societyId") ? Number(data.get("societyId")) : null;
     const councilId = data.get("councilId") ? Number(data.get("councilId")) : null;
     const roleContext = data.get("roleContext") as string | null;
+
+    // Só admin ou líder da sociedade/conselho pode lançar
+    if (!(await canManageFinanceScope(societyId, councilId))) {
+      return { success: false, error: true }
+    }
 
     await prisma.finance.create({
       data: {
@@ -488,6 +543,16 @@ export const deleteFinance = async (
     const roleContext = data.get("roleContext") as string | null;
     const societyId = data.get("societyId") as string | null;
 
+    // Verifica o escopo real do lançamento antes de excluir
+    const existing = await prisma.finance.findUnique({
+      where: { id },
+      select: { societyId: true, councilId: true },
+    })
+    if (!existing) return { success: false, error: true }
+    if (!(await canManageFinanceScope(existing.societyId, existing.councilId))) {
+      return { success: false, error: true }
+    }
+
     await prisma.finance.delete({ where: { id } });
 
     revalidatePath("/list/finance");
@@ -514,6 +579,16 @@ export const updateFinance = async (
     const date = new Date(data.get("date") as string);
     const roleContext = data.get("roleContext") as string | null;
     const societyId = data.get("societyId") ? Number(data.get("societyId")) : null;
+
+    // Verifica o escopo real do lançamento antes de atualizar
+    const existing = await prisma.finance.findUnique({
+      where: { id },
+      select: { societyId: true, councilId: true },
+    })
+    if (!existing) return { success: false, error: true }
+    if (!(await canManageFinanceScope(existing.societyId, existing.councilId))) {
+      return { success: false, error: true }
+    }
 
     await prisma.finance.update({
       where: { id },

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import prisma from "@/lib/prisma";
 import DocumentListClient from "@/components/DocumentListClient";
 import { getEbdAccess, canAccessClass } from "@/lib/ebdAccess";
+import { getManageableGroups, getMyMembership, societyMap } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -10,10 +11,13 @@ export default async function DocumentListPage({
 }: {
   searchParams?: { [key: string]: string | undefined };
 }) {
-  const societyId = searchParams?.societyId ? parseInt(searchParams.societyId) : null
   // Aceita tanto `role` quanto `roleContext` (o menu/atalhos usam roleContext)
   const roleContext = searchParams?.roleContext
   const role = searchParams?.role ?? roleContext
+  // A sociedade pode vir por societyId OU por role/roleContext (ex.: "saf")
+  const societyId = searchParams?.societyId
+    ? parseInt(searchParams.societyId)
+    : (role && societyMap[role]) || null
   const classId = searchParams?.classId ? parseInt(searchParams.classId) : null
 
   // Destino do botão "Voltar" conforme o contexto de origem
@@ -47,6 +51,30 @@ export default async function DocumentListPage({
     whereClause.diaconateId = 1
   } else if (role === "ministerio") {
     whereClause.ministryId = { not: null }
+  } else {
+    // Sem contexto explícito (ex.: menu "Documentos" geral).
+    // Admin vê tudo; demais veem apenas os documentos dos grupos a que
+    // pertencem + os documentos gerais (sem vínculo).
+    const { isAdmin } = await getManageableGroups()
+    if (!isAdmin) {
+      const me = await getMyMembership()
+      const or: any[] = [
+        // Gerais (sem qualquer vínculo)
+        {
+          societyId: null, ministryId: null, councilId: null,
+          diaconateId: null, bibleSchoolClassId: null, bibleSchoolGeneral: false,
+        },
+      ]
+      if (me.societyIds.length) or.push({ societyId: { in: me.societyIds } })
+      if (me.hasCouncil) or.push({ councilId: { not: null } })
+      if (me.hasDiaconate) or.push({ diaconateId: { not: null } })
+      if (me.ministryIds.length) or.push({ ministryId: { in: me.ministryIds } })
+      if (me.classIds.length) {
+        or.push({ bibleSchoolClassId: { in: me.classIds } })
+        or.push({ bibleSchoolGeneral: true })
+      }
+      whereClause.OR = or
+    }
   }
 
   const documents = await prisma.document.findMany({

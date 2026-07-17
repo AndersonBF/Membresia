@@ -80,6 +80,7 @@ model MemberCouncil {
   id        Int @id @default(autoincrement())
   memberId  Int @unique
   councilId Int
+  cargo     String?   // Presidente, Vice-Presidente, Secretário, Tesoureiro, etc.
 
   member  Member  @relation(fields: [memberId], references: [id], onDelete: Cascade)
   council Council @relation(fields: [councilId], references: [id], onDelete: Cascade)
@@ -92,6 +93,7 @@ model MemberDiaconate {
   id          Int @id @default(autoincrement())
   memberId    Int @unique
   diaconateId Int
+  cargo       String?   // Presidente, Vice-Presidente, Secretário, Tesoureiro, etc.
 
   member    Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
   diaconate Diaconate @relation(fields: [diaconateId], references: [id], onDelete: Cascade)

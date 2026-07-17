@@ -2,6 +2,7 @@ import { clerkClient } from '@clerk/nextjs/server'
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { getManageableGroups } from '@/lib/permissions'
 
 const societyMap: Record<string, number> = {
   saf: 3,
@@ -30,13 +31,26 @@ export async function POST(req: Request) {
     if (!adminId) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
     const client = await clerkClient()
-    const adminUser = await client.users.getUser(adminId)
-    const adminRoles = (adminUser.publicMetadata?.roles as string[]) ?? []
-    if (!adminRoles.includes('admin') && !adminRoles.includes('superadmin')) {
+
+    // Admin/superadmin criam qualquer membro com qualquer papel.
+    // Um líder (com cargo) pode criar membros, mas os papéis ficam restritos
+    // aos grupos que ele gere (sem admin/superadmin/superintendente).
+    const { isAdmin, groups } = await getManageableGroups()
+    if (!isAdmin && groups.size === 0) {
       return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
     }
 
-    const { name, email, phone, birthDate, gender, roles, cargos } = await req.json()
+    const body = await req.json()
+    const { name, email, phone, birthDate, gender, cargos } = body
+    let roles: string[] = Array.isArray(body.roles) ? body.roles : []
+
+    if (!isAdmin) {
+      // Filtra: mantém apenas grupos que o líder gere; remove papéis privilegiados.
+      roles = roles.filter((r: string) => groups.has(r))
+      if (roles.length === 0) {
+        return NextResponse.json({ error: 'Sem permissão para os grupos selecionados' }, { status: 403 })
+      }
+    }
 
     const baseUsername = generateUsername(name)
     const password = generatePassword()
@@ -90,14 +104,14 @@ export async function POST(req: Request) {
     // Cria relação com conselho
     if (roles.includes("conselho")) {
       await prisma.memberCouncil.create({
-        data: { memberId: member.id, councilId: 1 },
+        data: { memberId: member.id, councilId: 1, cargo: cargos?.["conselho"] ?? null },
       })
     }
 
     // Cria relação com diaconia
     if (roles.includes("diaconia")) {
       await prisma.memberDiaconate.create({
-        data: { memberId: member.id, diaconateId: 1 },
+        data: { memberId: member.id, diaconateId: 1, cargo: cargos?.["diaconia"] ?? null },
       })
     }
 

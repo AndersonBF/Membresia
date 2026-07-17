@@ -1,16 +1,18 @@
 // src/app/api/members/[id]/route.ts
-import { auth } from "@clerk/nextjs/server"
 import { NextRequest, NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
+import { getManageableGroups } from "@/lib/permissions"
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const { sessionClaims } = await auth()
-  const roles = (sessionClaims?.metadata as { roles?: string[] })?.roles ?? []
-  const isAdmin = roles.includes("admin") || roles.includes("superadmin")
-  if (!isAdmin) return NextResponse.json({ error: "Sem permissão" }, { status: 403 })
+  // Admin, superintendente ou qualquer líder de grupo (com cargo) pode ver o
+  // detalhe de um membro para geri-lo.
+  const { isAdmin, groups } = await getManageableGroups()
+  if (!isAdmin && groups.size === 0) {
+    return NextResponse.json({ error: "Sem permissão" }, { status: 403 })
+  }
 
   const id = parseInt(params.id)
   if (isNaN(id)) return NextResponse.json({ error: "ID inválido" }, { status: 400 })

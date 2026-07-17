@@ -14,6 +14,7 @@ import { ITEM_PER_PAGE } from "@/lib/settings"
 import MemberAvatar from "@/components/MemberAvatar"
 import MemberDrawerWrapper from "@/components/MemberDrawerWrapper"
 import AddExistingMemberButton from "@/components/AddExistingMemberButton"
+import { getManageableGroups } from "@/lib/permissions"
 
 const roleConfig: Record<string, { label: string; color: string; bg: string }> = {
   ump:        { label: "UMP",        color: "text-blue-700",   bg: "bg-blue-100" },
@@ -51,7 +52,6 @@ export default async function RoleMembrosPage({
   const user = await currentUser()
   const roles = (user?.publicMetadata?.roles as string[]) ?? []
   const isSuperAdmin = roles.includes("superadmin")
-  const isAdmin = isSuperAdmin || roles.includes("admin")
 
   const { role } = params
   const config = roleConfig[role]
@@ -59,6 +59,11 @@ export default async function RoleMembrosPage({
   const isEbdSuperintendent = role === "ebd" && roles.includes("superintendente")
 
   if (!config || (!isSuperAdmin && !isEbdSuperintendent && !roles.includes(role))) notFound()
+
+  // Pode gerir membros deste grupo? Admin/superadmin sempre; caso contrário,
+  // quem ocupa um cargo (Presidente, Vice-Presidente, etc.) neste grupo.
+  const { isAdmin: isGlobalAdmin, groups } = await getManageableGroups()
+  const isAdmin = isGlobalAdmin || groups.has(role)
 
   const p = searchParams.page ? parseInt(searchParams.page) : 1
   const isSociedade = !!societyMap[role]

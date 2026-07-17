@@ -15,8 +15,36 @@ import {
   BibleSchoolAttendanceSchema,
 } from "./formValidationSchemas";
 import { getEbdAccess, canAccessClass } from "./ebdAccess";
+import { getManageableGroups } from "./permissions";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
+
+// societyId → role key (inverso do societyMap), usado para saber a que grupos
+// um membro pertence.
+const societyIdToRole: Record<number, string> = {
+  3: "saf", 4: "uph", 5: "ump", 6: "upa", 7: "ucp",
+}
+
+/** Grupos (roles) a que um membro pertence, a partir das suas relações. */
+async function getMemberGroups(memberId: number): Promise<Set<string>> {
+  const m = await prisma.member.findUnique({
+    where: { id: memberId },
+    select: {
+      societies: { select: { societyId: true } },
+      council: { select: { id: true } },
+      diaconate: { select: { id: true } },
+      ministries: { select: { id: true } },
+      bibleSchoolClassId: true,
+    },
+  })
+  const g = new Set<string>()
+  m?.societies.forEach((s) => { if (societyIdToRole[s.societyId]) g.add(societyIdToRole[s.societyId]) })
+  if (m?.council) g.add("conselho")
+  if (m?.diaconate) g.add("diaconia")
+  if (m?.ministries.length) g.add("ministerio")
+  if (m?.bibleSchoolClassId) g.add("ebd")
+  return g
+}
 
 /** Normaliza "YYYY-MM-DD" para meia-noite UTC (chave estável de BibleSchoolLesson) */
 const normalizeSunday = (dateStr: string) => new Date(`${dateStr.slice(0, 10)}T00:00:00.000Z`);
@@ -60,6 +88,20 @@ export const updateMember = async (
   if (!data.id) return { success: false, error: true };
 
   try {
+    // Permissões: admin/superadmin editam qualquer membro e seus papéis.
+    // Líder (com cargo) edita apenas o perfil básico de membros do seu grupo,
+    // sem alterar papéis/cargos (evita escalonamento de privilégio).
+    const { isAdmin, groups } = await getManageableGroups()
+    if (!isAdmin && groups.size === 0) return { success: false, error: true }
+
+    let allowRoleChanges = isAdmin
+    if (!isAdmin) {
+      const targetGroups = await getMemberGroups(data.id)
+      const shares = [...targetGroups].some((g) => groups.has(g))
+      if (!shares) return { success: false, error: true }
+      allowRoleChanges = false
+    }
+
     await prisma.member.update({
       where: { id: data.id },
       data: {
@@ -70,7 +112,7 @@ export const updateMember = async (
       },
     });
 
-    if (data.roles !== undefined) {
+    if (allowRoleChanges && data.roles !== undefined) {
       // Atualiza sociedades com cargo
       await prisma.memberSociety.deleteMany({ where: { memberId: data.id } })
       const societyRoles = data.roles.filter((r) => societyMap[r])
@@ -88,7 +130,7 @@ export const updateMember = async (
       await prisma.memberCouncil.deleteMany({ where: { memberId: data.id } })
       if (data.roles.includes("conselho")) {
         await prisma.memberCouncil.create({
-          data: { memberId: data.id, councilId: 1 }
+          data: { memberId: data.id, councilId: 1, cargo: data.cargos?.["conselho"] ?? null }
         })
       }
 
@@ -96,7 +138,7 @@ export const updateMember = async (
       await prisma.memberDiaconate.deleteMany({ where: { memberId: data.id } })
       if (data.roles.includes("diaconia")) {
         await prisma.memberDiaconate.create({
-          data: { memberId: data.id, diaconateId: 1 }
+          data: { memberId: data.id, diaconateId: 1, cargo: data.cargos?.["diaconia"] ?? null }
         })
       }
 
@@ -149,6 +191,19 @@ export const deleteMember = async (
 ): Promise<CurrentState> => {
   try {
     const id = Number(data.get("id"));
+
+    // Permissões: admin/superadmin removem qualquer membro. Um líder (com cargo)
+    // só pode remover um membro cujos grupos estejam TODOS dentro dos grupos que
+    // ele gere — evita apagar cadastros de outros grupos.
+    const { isAdmin, groups } = await getManageableGroups()
+    if (!isAdmin) {
+      if (groups.size === 0) return { success: false, error: true }
+      const targetGroups = await getMemberGroups(id)
+      if (targetGroups.size === 0) return { success: false, error: true }
+      const withinScope = [...targetGroups].every((g) => groups.has(g))
+      if (!withinScope) return { success: false, error: true }
+    }
+
     await prisma.member.delete({ where: { id } });
 
     revalidatePath("/list/members");

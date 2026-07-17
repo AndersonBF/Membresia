@@ -24,6 +24,13 @@ const roleOptions = [
 
 const sociedades = ["ump", "upa", "uph", "saf", "ucp"]
 
+// Grupos que possuem cargos de diretoria (além das sociedades)
+const cargoRoles = [...sociedades, "diaconia", "conselho"]
+
+const cargoGroupLabels: Record<string, string> = {
+  diaconia: "Diaconia", conselho: "Conselho",
+}
+
 const cargoOptions = [
   "Presidente",
   "Vice-Presidente",
@@ -74,13 +81,16 @@ const MemberForm = ({
   })
 
   const [cargos, setCargos] = useState<Record<string, string>>(() => {
-    if (!data?.societies) return {}
-    const societyIdMap: Record<number, string> = { 3: "saf", 4: "uph", 5: "ump", 6: "upa", 7: "ucp" }
     const result: Record<string, string> = {}
-    data.societies.forEach((s: any) => {
-      const roleKey = societyIdMap[s.societyId]
-      if (roleKey && s.cargo) result[roleKey] = s.cargo
-    })
+    const societyIdMap: Record<number, string> = { 3: "saf", 4: "uph", 5: "ump", 6: "upa", 7: "ucp" }
+    if (data?.societies) {
+      data.societies.forEach((s: any) => {
+        const roleKey = societyIdMap[s.societyId]
+        if (roleKey && s.cargo) result[roleKey] = s.cargo
+      })
+    }
+    if (data?.diaconate?.cargo) result["diaconia"] = data.diaconate.cargo
+    if (data?.council?.cargo) result["conselho"] = data.council.cargo
     return result
   })
 
@@ -105,7 +115,7 @@ const MemberForm = ({
     setSelectedRoles((prev) =>
       prev.includes(roleId) ? prev.filter((r) => r !== roleId) : [...prev, roleId]
     )
-    if (selectedRoles.includes(roleId) && sociedades.includes(roleId)) {
+    if (selectedRoles.includes(roleId) && cargoRoles.includes(roleId)) {
       setCargos((prev) => {
         const next = { ...prev }
         delete next[roleId]
@@ -224,6 +234,7 @@ const MemberForm = ({
   }
 
   const selectedSociedades = selectedRoles.filter((r) => sociedades.includes(r))
+  const selectedCargoGroups = selectedRoles.filter((r) => r === "diaconia" || r === "conselho")
 
   return (
     <form className="flex flex-col gap-4" onSubmit={onSubmit}>
@@ -319,6 +330,33 @@ const MemberForm = ({
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* CARGOS — DIACONIA / CONSELHO */}
+      {selectedCargoGroups.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <span className="text-sm text-gray-600 font-medium">Cargos na Diretoria</span>
+          <div className="flex flex-col gap-2">
+            {selectedCargoGroups.map((grp) => (
+              <div key={grp} className="flex items-center gap-3">
+                <span className="text-xs font-semibold text-gray-500 uppercase w-20">{cargoGroupLabels[grp]}</span>
+                <select
+                  value={cargos[grp] ?? ""}
+                  onChange={(e) => setCargos((prev) => ({ ...prev, [grp]: e.target.value }))}
+                  className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-700 focus:outline-none focus:border-green-500"
+                >
+                  <option value="">Sem cargo</option>
+                  {cargoOptions.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+          <p className="text-[11px] text-gray-400">
+            Quem tem cargo na Diaconia/Conselho pode gerir os membros do grupo (adicionar, editar). Requer credenciais de acesso.
+          </p>
         </div>
       )}
 

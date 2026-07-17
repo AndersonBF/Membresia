@@ -1,19 +1,17 @@
 // src/app/api/members/add-to-group/route.ts
 import { NextRequest, NextResponse } from "next/server"
-import { currentUser } from "@clerk/nextjs/server"
 import prisma from "@/lib/prisma"
+import { getManageableGroups } from "@/lib/permissions"
 
 const societyMap: Record<string, number> = { saf: 3, uph: 4, ump: 5, upa: 6, ucp: 7 }
 
 export async function POST(req: NextRequest) {
-  const user = await currentUser()
-  const roles = (user?.publicMetadata?.roles as string[]) ?? []
-  const isAdmin = roles.includes("admin") || roles.includes("superadmin")
-
   const { role, memberId, memberIds, targetId } = await req.json()
 
-  // Admin gere qualquer grupo; superintendente pode gerir membros das turmas da EBD
-  const canManage = isAdmin || (role === "ebd" && roles.includes("superintendente"))
+  // Admin gere qualquer grupo; superintendente gere a EBD; e quem ocupa um cargo
+  // (Presidente, Vice-Presidente, etc.) num grupo pode gerir os membros daquele grupo.
+  const { isAdmin, groups } = await getManageableGroups()
+  const canManage = isAdmin || groups.has(role)
   if (!canManage) {
     return NextResponse.json({ error: "Sem permissão" }, { status: 403 })
   }

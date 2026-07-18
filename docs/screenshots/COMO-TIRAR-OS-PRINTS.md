@@ -13,6 +13,7 @@ O `README.md` já referencia os arquivos abaixo. Basta salvar cada print com o n
 
 | Arquivo | Tela | Rota |
 |---|---|---|
+| `login.png` | Tela de login / entrada | `/` |
 | `dashboard-admin.png` | Painel administrativo (print de destaque, topo do README) | `/admin` |
 | `membros.png` | Listagem de membros | `/list/members` |
 | `presenca-take.png` | Tomada de presença | `/list/attendance/take` |

@@ -2,8 +2,11 @@
 
 Sistema de gestão de membresia para igrejas presbiterianas. Centraliza cadastro de membros, controle de presença, agenda de eventos, finanças, diaconia e as sociedades internas (UMP, UPA, UPH, SAF, UCP e EBD) em um único painel, com acesso separado por papel.
 
-<!-- Substitua pelo print da tela principal do painel administrativo -->
 ![Painel administrativo do Membresia](docs/screenshots/dashboard-admin.png)
+
+Tela de entrada com login por usuário e senha — acesso restrito a membros autorizados.
+
+![Tela de login do Membresia](docs/screenshots/login.png)
 
 ## Índice
 
@@ -18,15 +21,9 @@ Sistema de gestão de membresia para igrejas presbiterianas. Centraliza cadastro
 
 Cadastro completo com foto, dados de contato, histórico de frequência e vínculos com conselho, diaconia, ministérios e sociedades internas.
 
-![Listagem de membros](docs/screenshots/membros.png)
-
 ### Controle de presença
 
 Registro de frequência por evento, com ranking individual e exportação para Excel.
-
-| Tomada de presença | Relatório de frequência |
-|---|---|
-| ![Tela de tomada de presença](docs/screenshots/presenca-take.png) | ![Relatório de presença](docs/screenshots/presenca-relatorio.png) |
 
 ### Eventos e calendário
 
@@ -37,10 +34,6 @@ Agenda centralizada por sociedade, com cultos, reuniões e controle de inscriç�
 ### Diaconia
 
 Módulo próprio com escala de trabalho, inventário de bens (com estado de conservação) e quadro de tarefas com prioridade e status.
-
-| Escala | Inventário | Tarefas |
-|---|---|---|
-| ![Escala da diaconia](docs/screenshots/diaconia-escala.png) | ![Inventário](docs/screenshots/diaconia-inventario.png) | ![Tarefas](docs/screenshots/diaconia-tarefas.png) |
 
 ### Sociedades internas
 

@@ -128,20 +128,30 @@ const MenuContent = () => {
             {section.title}
           </span>
 
-          {section.items.map((item) => {
-            if (useReducedMenu && item.hiddenForSociedades) return null;
-            if (!useReducedMenu && item.showOnlyForSociedades) return null;
-
-            const hasAccess = isSuperAdmin || item.visible.some((v) => roles.includes(v));
-            if (!hasAccess) return null;
-
+          {(() => {
+            const seen = new Set<string>();
+            return section.items
+              .filter((item) => {
+                if (useReducedMenu && item.hiddenForSociedades) return false;
+                if (!useReducedMenu && item.showOnlyForSociedades) return false;
+                return isSuperAdmin || item.visible.some((v) => roles.includes(v));
+              })
+              .map((item) => ({ item, href: resolveHref(item.href) }))
+              // Remove itens repetidos (mesmo rótulo + rota resolvida),
+              // ex.: superadmin veria "Membros" duas vezes numa sociedade.
+              .filter(({ item, href }) => {
+                const dedupKey = `${item.label}|${href}`;
+                if (seen.has(dedupKey)) return false;
+                seen.add(dedupKey);
+                return true;
+              })
+              .map(({ item, href }, index) => {
             const Icon = item.icon;
-            const href = resolveHref(item.href)
             const isActive = pathname === href.split("?")[0]
 
             return (
               <Link
-                key={item.label + item.href}
+                key={`${item.label}-${href}-${index}`}
                 href={href}
                 className={`flex items-center justify-center lg:justify-start gap-4
                   py-2 md:px-2 rounded-md transition
@@ -154,7 +164,8 @@ const MenuContent = () => {
                 <span className="hidden lg:block">{item.label}</span>
               </Link>
             );
-          })}
+          });
+          })()}
         </div>
       ))}
     </div>

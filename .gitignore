@@ -20,6 +20,9 @@
 .DS_Store
 *.pem
 
+# pasta de trabalho para prints (fontes sem anonimizar) — só as imagens tratadas em docs/screenshots vão para o repo
+/imagens
+
 # debug
 npm-debug.log*
 yarn-debug.log*

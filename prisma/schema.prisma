@@ -126,9 +126,9 @@ model MemberMinistry {
 // SOCIEDADES INTERNAS (InternalSociety)
 // ===============================================
 model InternalSociety {
-  id         Int             @id @default(autoincrement())
-  name       String
-  members    MemberSociety[]
+  id            Int             @id @default(autoincrement())
+  name          String
+  members       MemberSociety[]
   finances   Finance[]
   events     Event[]
   broadcasts Broadcast[]
@@ -479,6 +479,36 @@ model DiaconateScheduleMember {
 }
 
 // ===============================================
+// CAPA DOS GRUPOS (GroupCover)
+// Imagem de fundo/capa personalizável de cada grupo (sociedades, diaconia,
+// conselho, ministério, EBD). Chaveado pela "role" do grupo.
+// ===============================================
+model GroupCover {
+  role          String   @id  // "ump","upa","uph","saf","ucp","diaconia","conselho","ministerio","ebd"
+  coverImageUrl String
+  updatedAt     DateTime @updatedAt
+}
+
+// ===============================================
+// DIÁRIO DO PASTOR (PastorDiaryEntry)
+// Registro pessoal do pastor: visitas, aconselhamentos, cultos, reuniões.
+// authorId = Clerk userId do pastor autor da entrada.
+// ===============================================
+model PastorDiaryEntry {
+  id          Int      @id @default(autoincrement())
+  authorId    String   // Clerk userId do pastor
+  authorName  String
+  category    String   // "Visita" | "Aconselhamento" | "Culto" | "Reunião" | "Outro"
+  title       String
+  description String?
+  visits      Int      @default(0)
+  date        DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([authorId, date])
+}
+
+// ===============================================
 // CONFIGURAÇÕES DA IGREJA (ChurchSettings)
 // ===============================================
 model ChurchSettings {
@@ -497,6 +527,7 @@ model ChurchSettings {
   about             String?  // Texto de apresentação
   photoUrl          String?  // Foto da igreja (futuramente upload)
   mapsUrl           String?  // Link do Google Maps
+  pastorCoverUrl    String?  // Capa/imagem do card do Painel do Pastor
   updatedAt         DateTime @updatedAt
 }
 

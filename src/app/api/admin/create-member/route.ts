@@ -40,9 +40,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
     }
 
+    // Só admin/superadmin real podem conceder a função Pastor (pastor tem isAdmin, mas não pode propagá-la).
+    const adminUser = await client.users.getUser(adminId)
+    const actorRoles = (adminUser.publicMetadata?.roles as string[]) ?? []
+    const isRealAdmin = actorRoles.includes('admin') || actorRoles.includes('superadmin')
+
     const body = await req.json()
     const { name, email, phone, birthDate, gender, cargos } = body
     let roles: string[] = Array.isArray(body.roles) ? body.roles : []
+
+    if (!isRealAdmin) {
+      roles = roles.filter((r: string) => r !== 'pastor')
+    }
 
     if (!isAdmin) {
       // Filtra: mantém apenas grupos que o líder gere; remove papéis privilegiados.

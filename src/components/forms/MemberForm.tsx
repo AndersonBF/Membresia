@@ -8,7 +8,8 @@ import { Dispatch, SetStateAction, useTransition, useState, useEffect } from "re
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import InputField from "../InputField";
-import { KeyRound, Copy, RefreshCw, ShieldCheck } from "lucide-react";
+import { KeyRound, Copy, RefreshCw, ShieldCheck, Cross } from "lucide-react";
+import { useUser } from "@clerk/nextjs";
 
 const roleOptions = [
   { id: "ump", label: "UMP" },
@@ -97,14 +98,25 @@ const MemberForm = ({
   const [credentials, setCredentials] = useState<{ username: string; password: string; action?: string } | null>(null)
   const [isResetting, setIsResetting] = useState(false)
   const [isSuper, setIsSuper] = useState(false)
+  const [isPastor, setIsPastor] = useState(false)
 
-  // Superintendente é papel Clerk (não vem de relação no banco) — busca ao abrir a edição
+  // Só admin/superadmin podem atribuir a função Pastor.
+  const { user: currentClerkUser } = useUser()
+  const myRoles = (currentClerkUser?.publicMetadata?.roles as string[]) ?? []
+  const canAssignPastor = myRoles.includes("admin") || myRoles.includes("superadmin")
+
+  // Superintendente/Pastor são papéis Clerk (não vêm de relação no banco) — busca ao abrir a edição
   useEffect(() => {
     if (type !== "update" || !data?.id) return
     let active = true
     fetch(`/api/admin/member-roles?memberId=${data.id}`)
       .then((r) => (r.ok ? r.json() : { roles: [] }))
-      .then((res) => { if (active) setIsSuper((res.roles ?? []).includes("superintendente")) })
+      .then((res) => {
+        if (!active) return
+        const r = res.roles ?? []
+        setIsSuper(r.includes("superintendente"))
+        setIsPastor(r.includes("pastor"))
+      })
       .catch(() => {})
     return () => { active = false }
   }, [type, data?.id])
@@ -154,7 +166,11 @@ const MemberForm = ({
 
   const onSubmit = handleSubmit(
     (formData) => {
-      const rolesToSend = isSuper ? [...selectedRoles, "superintendente"] : selectedRoles
+      const rolesToSend = [
+        ...selectedRoles,
+        ...(isSuper ? ["superintendente"] : []),
+        ...(canAssignPastor && isPastor ? ["pastor"] : []),
+      ]
       startTransition(async () => {
         if (type === "create") {
           const res = await fetch("/api/admin/create-member", {
@@ -306,6 +322,29 @@ const MemberForm = ({
           <p className="text-[11px] text-gray-400">
             Acesso total à EBD (todas as turmas, chamadas e relatórios). Requer credenciais de acesso.
           </p>
+        )}
+
+        {/* PASTOR (papel Clerk — acesso total + Diário) — só admin/superadmin atribuem */}
+        {canAssignPastor && (
+          <>
+            <button
+              type="button"
+              onClick={() => setIsPastor((v) => !v)}
+              className={`mt-1 py-2 px-3 rounded-md text-sm font-medium border transition flex items-center justify-center gap-2
+                ${isPastor
+                  ? "bg-slate-800 text-white border-slate-800"
+                  : "bg-white text-gray-700 border-gray-300 hover:border-slate-600"
+                }`}
+            >
+              <Cross size={15} />
+              Pastor
+            </button>
+            {isPastor && (
+              <p className="text-[11px] text-gray-400">
+                Acesso total a todos os grupos, membros e relatórios, além do Diário do Pastor. Requer credenciais de acesso.
+              </p>
+            )}
+          </>
         )}
       </div>
 

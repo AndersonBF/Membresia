@@ -5,6 +5,8 @@ import Link from "next/link"
 import Image from "next/image"
 import { roleConfig } from "@/lib/roleConfig"
 import Aniversariantes from "@/components/Aniversariantes"
+import prisma from "@/lib/prisma"
+import { getAllGroupCovers } from "@/lib/groupCovers"
 
 export const dynamic = "force-dynamic"
 
@@ -23,7 +25,18 @@ export default async function MemberPage({
   const effectiveRoles = userRoles.includes("superintendente")
     ? [...userRoles, "ebd"]
     : userRoles
-  const myGroups = isSuperAdmin ? groupRoles : groupRoles.filter((r) => effectiveRoles.includes(r))
+  // Pastor (ou superadmin, para teste) vê o card do Painel do Pastor no topo.
+  const canPastor = userRoles.includes("pastor") || isSuperAdmin
+  const myGroups = [
+    ...(canPastor ? ["pastor"] : []),
+    ...(isSuperAdmin ? groupRoles : groupRoles.filter((r) => effectiveRoles.includes(r))),
+  ]
+
+  // Imagens personalizadas dos cards (definidas pelo sistema), se houver.
+  const pastorCover = canPastor
+    ? (await prisma.churchSettings.findFirst({ select: { pastorCoverUrl: true } }))?.pastorCoverUrl ?? null
+    : null
+  const covers = await getAllGroupCovers()
 
   return (
     <div className="p-4 flex gap-4 flex-col md:flex-row">
@@ -44,23 +57,27 @@ export default async function MemberPage({
                 const config = roleConfig[role]
                 if (!config) return null
                 const Icon = config.icon
+                const image =
+                  role === "pastor"
+                    ? (pastorCover ?? config.image)
+                    : (covers[role] ?? config.image)
                 return (
                   <Link
                     key={role}
                     href={`/${role}`}
                     className="group relative w-full h-28 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 ease-out"
                   >
-                    {config.image.startsWith("/") ? (
+                    {image.startsWith("/") ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={config.image}
+                        src={image}
                         alt={config.label}
                         className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-110"
                         style={{ display: "block" }}
                       />
                     ) : (
                       <Image
-                        src={config.image}
+                        src={image}
                         alt={config.label}
                         fill
                         sizes="(max-width: 768px) 100vw, 66vw"

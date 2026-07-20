@@ -47,7 +47,8 @@ export async function getManageableGroups(): Promise<ManageableGroups> {
   if (!user) return { isAdmin: false, groups: new Set(), memberId: null }
 
   const roles = (user.publicMetadata?.roles as string[]) ?? []
-  const isAdmin = roles.includes("admin") || roles.includes("superadmin")
+  // Pastor tem gestão total (leitura + escrita) de todos os grupos, como admin.
+  const isAdmin = roles.includes("admin") || roles.includes("superadmin") || roles.includes("pastor")
 
   const groups = new Set<string>()
 

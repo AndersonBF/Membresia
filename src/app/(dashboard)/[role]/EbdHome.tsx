@@ -1,6 +1,9 @@
 import Link from "next/link"
 import prisma from "@/lib/prisma"
 import { getEbdAccess } from "@/lib/ebdAccess"
+import { canManageGroup } from "@/lib/permissions"
+import { getGroupCover } from "@/lib/groupCovers"
+import GroupCoverEditor from "@/components/GroupCoverEditor"
 import {
   ArrowLeft, Users, GraduationCap, FileText, Camera,
   BarChart2, Settings, ClipboardCheck, ChevronRight, UserCheck,
@@ -36,13 +39,26 @@ export default async function EbdHome() {
 
   const totalMembers = classes.reduce((s, c) => s + c._count.members, 0)
 
+  const cover = await getGroupCover("ebd")
+  const canManageCover = await canManageGroup("ebd")
+  const heroStyle = cover
+    ? {
+        backgroundImage: `linear-gradient(${AD}cc, ${AD}f2), url(${cover})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }
+    : { background: AD }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* HERO */}
-      <div style={{ background: AD }} className="px-6 md:px-10 pt-6 pb-10">
-        <Link href="/member" className="inline-flex items-center gap-1.5 text-white/40 hover:text-white/70 text-xs transition mb-8">
-          <ArrowLeft size={13} /> Voltar
-        </Link>
+      <div style={heroStyle} className="px-6 md:px-10 pt-6 pb-10">
+        <div className="flex items-center justify-between gap-4 mb-8">
+          <Link href="/member" className="inline-flex items-center gap-1.5 text-white/40 hover:text-white/70 text-xs transition">
+            <ArrowLeft size={13} /> Voltar
+          </Link>
+          {canManageCover && <GroupCoverEditor role="ebd" />}
+        </div>
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
             <h1 className="text-white font-bold leading-[0.9]" style={{ fontSize: "clamp(3rem,8vw,5rem)" }}>EBD</h1>

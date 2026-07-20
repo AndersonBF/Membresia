@@ -34,7 +34,7 @@ export async function GET(req: NextRequest, { params }: { params: { role: string
 
   const roles = (user.publicMetadata?.roles as string[]) ?? []
   const isSuperAdmin = roles.includes("superadmin")
-  const isAdmin = isSuperAdmin || roles.includes("admin")
+  const isAdmin = isSuperAdmin || roles.includes("admin") || roles.includes("pastor")
 
   const { role } = params
   const isEbdSuperintendent = role === "ebd" && roles.includes("superintendente")

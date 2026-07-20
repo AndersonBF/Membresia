@@ -8,6 +8,9 @@ import Image from "next/image"
 import Link from "next/link"
 import { Users, Calendar, FileText, ArrowLeft, Phone, ChevronRight, Clock, Cake, Camera, Package, CheckSquare } from "lucide-react"
 import EbdHome from "./EbdHome"
+import { canManageGroup } from "@/lib/permissions"
+import { getGroupCover } from "@/lib/groupCovers"
+import GroupCoverEditor from "@/components/GroupCoverEditor"
 
 const roleConfig: Record<string, {
   label: string
@@ -126,8 +129,10 @@ const RolePage = async ({
 
   // Superintendente tem acesso total à EBD, mesmo sem o papel "ebd"
   const isEbdSuperintendent = role === "ebd" && roles.includes("superintendente")
+  // Pastor tem acesso total a todos os grupos
+  const isPastor = roles.includes("pastor")
 
-  if (!config || (!isSuperAdmin && !isEbdSuperintendent && !roles.includes(role))) {
+  if (!config || (!isSuperAdmin && !isPastor && !isEbdSuperintendent && !roles.includes(role))) {
     notFound()
   }
 
@@ -145,6 +150,17 @@ const RolePage = async ({
   const ac = config.accentColor
   const al = config.accentLight
   const ad = config.accentDark
+
+  // Capa personalizável do grupo (imagem de fundo do topo).
+  const cover = await getGroupCover(role)
+  const canManageCover = await canManageGroup(role)
+  const heroStyle = cover
+    ? {
+        backgroundImage: `linear-gradient(${ad}cc, ${ad}f2), url(${cover})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }
+    : { background: ad }
 
   const hoje = new Date()
   const mesAtual = mesesPT[hoje.getMonth()]
@@ -172,12 +188,15 @@ const RolePage = async ({
       <div className="rp bg-gray-50 min-h-screen">
 
         {/* HERO */}
-        <div className="rp-in d1" style={{ background: ad }}>
+        <div className="rp-in d1" style={heroStyle}>
           <div className="px-6 md:px-10 pt-6 pb-10">
-            <Link href={backHref}
-              className="inline-flex items-center gap-1.5 text-white/40 hover:text-white/70 text-xs transition mb-8">
-              <ArrowLeft size={13} /> Voltar
-            </Link>
+            <div className="flex items-center justify-between gap-4 mb-8">
+              <Link href={backHref}
+                className="inline-flex items-center gap-1.5 text-white/40 hover:text-white/70 text-xs transition">
+                <ArrowLeft size={13} /> Voltar
+              </Link>
+              {canManageCover && <GroupCoverEditor role={role} />}
+            </div>
 
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
               <div>

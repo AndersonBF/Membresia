@@ -10,6 +10,8 @@ import Link from "next/link"
 import Image from "next/image"
 import { roleConfig } from "@/lib/roleConfig"
 import Aniversariantes from "@/components/Aniversariantes"
+import prisma from "@/lib/prisma"
+import { getAllGroupCovers } from "@/lib/groupCovers"
 
 const getCachedUser = cache(async () => {
   return await currentUser()
@@ -29,6 +31,11 @@ const AdminPage = async ({
     ? allRoles
     : roles.filter((r) => r !== "member" && r !== "superadmin")
 
+  const pastorCover = visibleRoles.includes("pastor")
+    ? (await prisma.churchSettings.findFirst({ select: { pastorCoverUrl: true } }))?.pastorCoverUrl ?? null
+    : null
+  const covers = await getAllGroupCovers()
+
   return (
     <div className='p-4 flex gap-4 flex-col md:flex-row'>
       <div className="w-full lg:w-2/3 flex flex-col gap-8">
@@ -42,22 +49,26 @@ const AdminPage = async ({
                 const config = roleConfig[role]
                 if (!config) return null
                 const Icon = config.icon  // ícone normal, com cores originais
+                const image =
+                  role === "pastor"
+                    ? (pastorCover ?? config.image)
+                    : (covers[role] ?? config.image)
                 return (
                   <Link
                     key={role}
                     href={`/${role}`}
                     className="group relative w-full h-28 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 ease-out"
                   >
-                    {config.image.startsWith("/") ? (
+                    {image.startsWith("/") ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={config.image}
+                        src={image}
                         alt={config.label}
                         className="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-700 ease-out"
                       />
                     ) : (
                       <Image
-                        src={config.image}
+                        src={image}
                         alt={config.label}
                         fill
                         sizes="(max-width: 768px) 100vw, 66vw"

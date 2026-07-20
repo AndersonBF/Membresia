@@ -60,7 +60,8 @@ export default clerkMiddleware(async (auth, req) => {
   ];
 
   const isMember     = roles.includes("member");
-  const isAdmin      = roles.includes("admin") || roles.includes("superadmin");
+  const isPastor     = roles.includes("pastor");
+  const isAdmin      = roles.includes("admin") || roles.includes("superadmin") || isPastor;
   const hasGroupRole = roles.some((r) => groupRoles.includes(r));
 
   // ============================
@@ -77,6 +78,7 @@ export default clerkMiddleware(async (auth, req) => {
   // 🔥 REDIRECT INICIAL (só na raiz "/")
   // ============================
   if (pathname === "/") {
+    if (isPastor)     return NextResponse.redirect(new URL("/pastor", req.url));
     if (isAdmin)      return NextResponse.redirect(new URL("/admin", req.url));
     if (isMember)     return NextResponse.redirect(new URL("/member", req.url));
     if (hasGroupRole) {
@@ -94,6 +96,14 @@ export default clerkMiddleware(async (auth, req) => {
       const hasAccess = allowedRoles.some((r) => roles.includes(r));
 
       if (!hasAccess) {
+        // Pastor bypass → hub do pastor
+        if (isPastor) {
+          if (pathname !== "/pastor") {
+            return NextResponse.redirect(new URL("/pastor", req.url));
+          }
+          return NextResponse.next();
+        }
+
         // Admin bypass
         if (isAdmin) {
           if (pathname !== "/admin") {
@@ -136,6 +146,7 @@ export const config = {
     "/",
     "/member(.*)",
     "/admin(.*)",
+    "/pastor(.*)",
     "/ump(.*)",
     "/upa(.*)",
     "/uph(.*)",

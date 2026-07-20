@@ -5,11 +5,14 @@ import {
   Heart, Info, Image, Youtube, CalendarDays,
   ClipboardList, CalendarRange, MessageSquare,
   Camera, BarChart2, Package, CheckSquare, CalendarCheck,
+  BookOpen, Cross,
 } from "lucide-react";
 
-const adminRoles = ["admin", "superadmin"];
-const allRoles = ["admin", "superadmin", "ump", "upa", "uph", "saf", "ucp", "diaconia", "conselho", "ministerio", "ebd", "superintendente", "member"];
-const staffRoles = ["admin", "superadmin", "ump", "upa", "uph", "saf", "ucp", "diaconia", "conselho", "ministerio", "ebd", "superintendente"];
+const pastorRoles = ["pastor", "superadmin"];
+
+const adminRoles = ["admin", "superadmin", "pastor"];
+const allRoles = ["admin", "superadmin", "pastor", "ump", "upa", "uph", "saf", "ucp", "diaconia", "conselho", "ministerio", "ebd", "superintendente", "member"];
+const staffRoles = ["admin", "superadmin", "pastor", "ump", "upa", "uph", "saf", "ucp", "diaconia", "conselho", "ministerio", "ebd", "superintendente"];
 // Papéis de grupo sem admin (o admin já tem o item "Membros" próprio no contexto de sociedade)
 const groupStaffRoles = ["ump", "upa", "uph", "saf", "ucp", "diaconia", "conselho", "ministerio", "ebd", "superintendente"];
 
@@ -22,6 +25,22 @@ export const menuItems = [
         label: "Início",
         href: "/member",
         visible: allRoles,
+        hiddenForSociedades: false,
+        showOnlyForSociedades: false,
+      },
+      {
+        icon: Cross,
+        label: "Painel do Pastor",
+        href: "/pastor",
+        visible: pastorRoles,
+        hiddenForSociedades: false,
+        showOnlyForSociedades: false,
+      },
+      {
+        icon: BookOpen,
+        label: "Diário",
+        href: "/pastor/diario",
+        visible: pastorRoles,
         hiddenForSociedades: false,
         showOnlyForSociedades: false,
       },

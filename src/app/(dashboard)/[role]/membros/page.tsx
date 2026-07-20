@@ -57,8 +57,9 @@ export default async function RoleMembrosPage({
   const config = roleConfig[role]
 
   const isEbdSuperintendent = role === "ebd" && roles.includes("superintendente")
+  const isPastor = roles.includes("pastor")
 
-  if (!config || (!isSuperAdmin && !isEbdSuperintendent && !roles.includes(role))) notFound()
+  if (!config || (!isSuperAdmin && !isPastor && !isEbdSuperintendent && !roles.includes(role))) notFound()
 
   // Pode gerir membros deste grupo? Admin/superadmin sempre; caso contrário,
   // quem ocupa um cargo (Presidente, Vice-Presidente, etc.) neste grupo.

@@ -16,6 +16,7 @@ import {
 } from "./formValidationSchemas";
 import { getEbdAccess, canAccessClass } from "./ebdAccess";
 import { getManageableGroups, roleForSocietyId } from "./permissions";
+import { currentUser } from "@clerk/nextjs/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 
@@ -163,10 +164,22 @@ export const updateMember = async (
         if (uname) {
           const clerkUsers = await client.users.getUserList({ username: [uname] })
           if (clerkUsers.data.length > 0) {
-            // Preserva papéis administrativos que não são geridos por este formulário
+            // Só admin/superadmin real podem conceder/remover a função Pastor.
+            const actorRoles = ((await currentUser())?.publicMetadata?.roles as string[]) ?? []
+            const isRealAdmin = actorRoles.includes("admin") || actorRoles.includes("superadmin")
+
+            // Papéis recebidos do formulário — descarta "pastor" se o ator não for admin real.
+            const incomingRoles = isRealAdmin
+              ? data.roles
+              : data.roles.filter((r) => r !== "pastor")
+
+            // Preserva papéis administrativos que não são geridos por este formulário.
+            // "pastor" no alvo só é preservado quando o ator não pode geri-lo (evita remoção indevida).
             const existing = (clerkUsers.data[0].publicMetadata?.roles as string[]) ?? []
-            const preserved = existing.filter((r) => r === "admin" || r === "superadmin")
-            const clerkRoles = Array.from(new Set(["member", ...preserved, ...data.roles]))
+            const preserved = existing.filter(
+              (r) => r === "admin" || r === "superadmin" || (!isRealAdmin && r === "pastor")
+            )
+            const clerkRoles = Array.from(new Set(["member", ...preserved, ...incomingRoles]))
             await client.users.updateUserMetadata(clerkUsers.data[0].id, {
               publicMetadata: { roles: clerkRoles }
             })

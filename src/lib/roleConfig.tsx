@@ -1,5 +1,5 @@
 import Image from "next/image"
-import { Shield, HandHelping, Music, Baby, UserCircle, GraduationCap } from "lucide-react"
+import { Shield, HandHelping, Music, Baby, UserCircle, GraduationCap, Cross } from "lucide-react"
 
 // Ícones normais (para os cards da página inicial)
 const UMPIcon = ({ size }: { size?: number }) => (
@@ -38,6 +38,7 @@ export const roleConfig: Record<string, {
   image: string
 }> = {
   admin:      { label: "Admin",      icon: UserCircle,    iconWhite: UserCircle,    bg: "bg-gray-700",   bgHex: "#374151", image: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80" },
+  pastor:     { label: "Pastor",     icon: Cross,         iconWhite: Cross,         bg: "bg-slate-800",  bgHex: "#1e293b", image: "https://images.unsplash.com/photo-1504052434569-70ad5836ab65?w=800&q=80" },
   ump:        { label: "UMP",        icon: UMPIcon,       iconWhite: UMPIconWhite,  bg: "bg-blue-400",   bgHex: "#60a5fa", image: "/ump_fundo.jpg" },
   upa:        { label: "UPA",        icon: UPAIcon,       iconWhite: UPAIconWhite,  bg: "bg-yellow-500", bgHex: "#eab308", image: "https://images.unsplash.com/photo-1544928147-79a2dbc1f389?w=800&q=80" },
   uph:        { label: "UPH",        icon: UPHIcon,       iconWhite: UPHIconWhite,  bg: "bg-orange-500", bgHex: "#f97316", image: "https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?w=800&q=80" },

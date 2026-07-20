@@ -34,9 +34,25 @@ export async function GET(req: NextRequest) {
     where.date = { gte: new Date(y, m - 1, 1), lt: new Date(y, m, 1) }
   }
 
-  const entries = await prisma.pastorDiaryEntry.findMany({
+  const rows = await prisma.pastorDiaryEntry.findMany({
     where,
     orderBy: { date: "desc" },
+  })
+
+  // Entradas confidenciais: título e relato só aparecem para o próprio autor.
+  // Para qualquer outro (inclusive superadmin), o conteúdo é ocultado.
+  const entries = rows.map((e) => {
+    const mine = e.authorId === user.id
+    if (e.isPrivate && !mine) {
+      return {
+        ...e,
+        title: "Registro confidencial",
+        description: null,
+        redacted: true,
+        mine,
+      }
+    }
+    return { ...e, redacted: false, mine }
   })
 
   return NextResponse.json({ entries })
@@ -54,7 +70,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null)
   if (!body) return NextResponse.json({ error: "Corpo inválido" }, { status: 400 })
 
-  const { category, title, description, visits, date } = body
+  const { category, title, description, visits, date, isPrivate } = body
 
   if (!CATEGORIES.includes(category)) {
     return NextResponse.json({ error: "Categoria inválida" }, { status: 400 })
@@ -84,6 +100,7 @@ export async function POST(req: NextRequest) {
       title: title.trim(),
       description: description?.trim() || null,
       visits: Math.floor(visitsNum),
+      isPrivate: Boolean(isPrivate),
       date: new Date(date),
     },
   })

@@ -26,10 +26,13 @@ export default async function MemberPage({
     ? [...userRoles, "ebd"]
     : userRoles
   // Pastor (ou superadmin, para teste) vê o card do Painel do Pastor no topo.
-  const canPastor = userRoles.includes("pastor") || isSuperAdmin
+  const isPastor = userRoles.includes("pastor")
+  const canPastor = isPastor || isSuperAdmin
+  // Pastor tem gestão total → enxerga TODOS os grupos, como o superadmin.
+  const seeAllGroups = isSuperAdmin || isPastor
   const myGroups = [
     ...(canPastor ? ["pastor"] : []),
-    ...(isSuperAdmin ? groupRoles : groupRoles.filter((r) => effectiveRoles.includes(r))),
+    ...(seeAllGroups ? groupRoles : groupRoles.filter((r) => effectiveRoles.includes(r))),
   ]
 
   // Imagens personalizadas dos cards (definidas pelo sistema), se houver.

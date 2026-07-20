@@ -502,6 +502,7 @@ model PastorDiaryEntry {
   title       String
   description String?
   visits      Int      @default(0)
+  isPrivate   Boolean  @default(false)  // confidencial: só o autor vê título e relato
   date        DateTime
   createdAt   DateTime @default(now())
 

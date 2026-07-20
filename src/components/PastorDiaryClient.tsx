@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { toast } from "react-toastify"
 import {
-  BookOpen, Plus, Pencil, Trash2, X, MapPin, Filter, BarChart3, Loader2, ArrowLeft,
+  BookOpen, Plus, Pencil, Trash2, X, MapPin, Filter, BarChart3, Loader2, ArrowLeft, Lock,
 } from "lucide-react"
 
 const CATEGORIES = ["Visita", "Aconselhamento", "Culto", "Reunião", "Outro"] as const
@@ -28,8 +28,11 @@ type Entry = {
   title: string
   description: string | null
   visits: number
+  isPrivate: boolean
   date: string
   createdAt: string
+  redacted?: boolean
+  mine?: boolean
 }
 
 type FormState = {
@@ -39,6 +42,7 @@ type FormState = {
   description: string
   visits: string
   date: string
+  isPrivate: boolean
 }
 
 function todayISO() {
@@ -53,6 +57,7 @@ const emptyForm: FormState = {
   description: "",
   visits: "0",
   date: todayISO(),
+  isPrivate: false,
 }
 
 export default function PastorDiaryClient({ isSuperAdmin }: { isSuperAdmin: boolean }) {
@@ -100,6 +105,7 @@ export default function PastorDiaryClient({ isSuperAdmin }: { isSuperAdmin: bool
       description: e.description ?? "",
       visits: String(e.visits),
       date: new Date(e.date).toISOString().slice(0, 10),
+      isPrivate: e.isPrivate,
     })
     setModalOpen(true)
   }
@@ -115,6 +121,7 @@ export default function PastorDiaryClient({ isSuperAdmin }: { isSuperAdmin: bool
         description: form.description.trim() || null,
         visits: Number(form.visits) || 0,
         date: form.date,
+        isPrivate: form.isPrivate,
       }
       const res = form.id
         ? await fetch(`/api/pastor/diary/${form.id}`, {
@@ -290,15 +297,28 @@ export default function PastorDiaryClient({ isSuperAdmin }: { isSuperAdmin: bool
                             >
                               {e.category}
                             </span>
+                            {e.isPrivate && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-800 text-white inline-flex items-center gap-1">
+                                <Lock size={9} /> Confidencial
+                              </span>
+                            )}
                             {e.visits > 0 && (
                               <span className="text-[11px] text-gray-500 inline-flex items-center gap-1">
                                 <MapPin size={11} /> {e.visits} visita{e.visits > 1 ? "s" : ""}
                               </span>
                             )}
                           </div>
-                          <p className="font-semibold text-gray-800 text-sm mt-1">{e.title}</p>
-                          {e.description && (
-                            <p className="text-sm text-gray-500 mt-1 whitespace-pre-wrap">{e.description}</p>
+                          {e.redacted ? (
+                            <p className="text-sm text-gray-400 italic mt-1 inline-flex items-center gap-1.5">
+                              <Lock size={12} /> Conteúdo confidencial — visível apenas para o pastor
+                            </p>
+                          ) : (
+                            <>
+                              <p className="font-semibold text-gray-800 text-sm mt-1">{e.title}</p>
+                              {e.description && (
+                                <p className="text-sm text-gray-500 mt-1 whitespace-pre-wrap">{e.description}</p>
+                              )}
+                            </>
                           )}
                           {isSuperAdmin && (
                             <p className="text-[11px] text-gray-400 mt-1">por {e.authorName}</p>
@@ -306,12 +326,14 @@ export default function PastorDiaryClient({ isSuperAdmin }: { isSuperAdmin: bool
                         </div>
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0">
-                        <button
-                          onClick={() => openEdit(e)}
-                          className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition"
-                        >
-                          <Pencil size={14} />
-                        </button>
+                        {!e.redacted && (
+                          <button
+                            onClick={() => openEdit(e)}
+                            className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                        )}
                         <button
                           onClick={() => remove(e.id)}
                           disabled={deletingId === e.id}
@@ -481,6 +503,30 @@ export default function PastorDiaryClient({ isSuperAdmin }: { isSuperAdmin: bool
                   className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-teal-500 resize-none"
                 />
               </div>
+
+              {/* Confidencial */}
+              <button
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, isPrivate: !f.isPrivate }))}
+                className={`flex items-center gap-3 rounded-md border px-3 py-2.5 text-left transition
+                  ${form.isPrivate
+                    ? "bg-slate-800 text-white border-slate-800"
+                    : "bg-white text-gray-700 border-gray-300 hover:border-slate-500"}`}
+              >
+                <Lock size={16} className="flex-shrink-0" />
+                <span className="flex flex-col">
+                  <span className="text-sm font-medium">Confidencial</span>
+                  <span className={`text-[11px] ${form.isPrivate ? "text-white/70" : "text-gray-400"}`}>
+                    Só você vê o título e o relato. Nem o administrador vê o conteúdo.
+                  </span>
+                </span>
+                <span
+                  className={`ml-auto w-9 h-5 rounded-full flex items-center px-0.5 transition flex-shrink-0
+                    ${form.isPrivate ? "bg-white/30 justify-end" : "bg-gray-300 justify-start"}`}
+                >
+                  <span className="w-4 h-4 rounded-full bg-white shadow" />
+                </span>
+              </button>
 
               <button
                 onClick={save}

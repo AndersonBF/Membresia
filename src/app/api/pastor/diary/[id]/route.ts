@@ -37,7 +37,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const body = await req.json().catch(() => null)
   if (!body) return NextResponse.json({ error: "Corpo inválido" }, { status: 400 })
 
-  const { category, title, description, visits, date } = body
+  const { category, title, description, visits, date, isPrivate } = body
 
   if (category !== undefined && !CATEGORIES.includes(category)) {
     return NextResponse.json({ error: "Categoria inválida" }, { status: 400 })
@@ -63,6 +63,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       ...(title !== undefined ? { title: title.trim() } : {}),
       ...(description !== undefined ? { description: description?.trim() || null } : {}),
       ...(visitsNum !== undefined ? { visits: Math.floor(visitsNum) } : {}),
+      ...(isPrivate !== undefined ? { isPrivate: Boolean(isPrivate) } : {}),
       ...(date !== undefined ? { date: new Date(date) } : {}),
     },
   })

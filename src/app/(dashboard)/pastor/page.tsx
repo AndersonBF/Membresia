@@ -5,7 +5,7 @@ import prisma from "@/lib/prisma"
 import PastorCoverEditor from "@/components/PastorCoverEditor"
 import {
   Users, Church, GraduationCap, Layers, Shield, HandHelping,
-  BookOpen, Cross, ChevronRight, MapPin, ClipboardList, CalendarDays, ArrowLeft,
+  BookOpen, Cross, ChevronRight, MapPin, ClipboardList, CalendarDays, ArrowLeft, Lock,
 } from "lucide-react"
 
 const mesesPT = [
@@ -179,6 +179,8 @@ export default async function PastorHomePage() {
               recent.map((e, i) => {
                 const st = categoryStyle[e.category] ?? categoryStyle["Outro"]
                 const d = new Date(e.date)
+                // Entrada confidencial: título só aparece para o próprio autor.
+                const redacted = e.isPrivate && e.authorId !== user.id
                 return (
                   <div
                     key={e.id}
@@ -194,7 +196,13 @@ export default async function PastorHomePage() {
                     </div>
                     <div className="w-px h-8 bg-gray-100 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-800 text-sm truncate">{e.title}</p>
+                      {redacted ? (
+                        <p className="font-medium text-gray-400 italic text-sm truncate inline-flex items-center gap-1">
+                          <Lock size={12} /> Registro confidencial
+                        </p>
+                      ) : (
+                        <p className="font-medium text-gray-800 text-sm truncate">{e.title}</p>
+                      )}
                       {isSuperAdmin && (
                         <p className="text-[11px] text-gray-400 truncate">por {e.authorName}</p>
                       )}

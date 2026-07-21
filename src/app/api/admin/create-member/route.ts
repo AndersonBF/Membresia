@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { getManageableGroups } from '@/lib/permissions'
+import { resolveTenant } from '@/lib/tenant-server'
 
 const societyMap: Record<string, number> = {
   saf: 3,
@@ -79,10 +80,13 @@ export async function POST(req: Request) {
       username = `${baseUsername}${suffix++}`
     }
 
+    // Igreja (tenant) atual — amarra o usuário ao seu subdomínio.
+    const church = resolveTenant().slug
+
     const clerkUser = await client.users.createUser({
       username,
       password,
-      publicMetadata: { roles: ["member", ...roles] },
+      publicMetadata: { roles: ["member", ...roles], church },
     })
 
     // Cria o membro no Prisma

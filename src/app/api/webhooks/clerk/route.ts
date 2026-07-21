@@ -38,10 +38,15 @@ export async function POST(req: Request) {
     const { id } = evt.data
     const client = await clerkClient()
 
-    // Entra apenas como member — grupos ficam pendentes no unsafeMetadata
-    await client.users.updateUserMetadata(id, {
-      publicMetadata: { roles: ["member"] }
-    })
+    // Preenche o papel padrão "member" SOMENTE se ainda não houver papéis —
+    // sem sobrescrever roles/church já definidos (ex.: pelo create-member).
+    const user = await client.users.getUser(id)
+    const meta = (user.publicMetadata ?? {}) as { roles?: string[]; church?: string }
+    if (!meta.roles || meta.roles.length === 0) {
+      await client.users.updateUserMetadata(id, {
+        publicMetadata: { ...meta, roles: ["member"] },
+      })
+    }
   }
 
   return new Response('OK', { status: 200 })

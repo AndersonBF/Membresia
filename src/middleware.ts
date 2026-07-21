@@ -1,6 +1,7 @@
 // src/middleware.ts
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { routeAccessMap } from "./lib/settings";
+import { getSubdomainFromHost, isKnownTenant, getDemoTenants, listTenants } from "./lib/tenant";
 import { NextResponse } from "next/server";
 
 const matchers = Object.keys(routeAccessMap).map((route) => ({
@@ -18,9 +19,35 @@ export default clerkMiddleware(async (auth, req) => {
   const pathname = req.nextUrl.pathname;
 
   // ============================
+  // 🔥 MULTI-IGREJA POR SUBDOMÍNIO
+  // ============================
+  const host = req.headers.get("host");
+  const sub = getSubdomainFromHost(host);
+  const tenantsConfigured = listTenants().length > 0;
+
+  // Subdomínio não cadastrado → página "em breve".
+  // (Só entra em ação quando há tenants configurados; sem env, comporta-se como antes.)
+  if (
+    tenantsConfigured &&
+    sub &&
+    !isKnownTenant(sub) &&
+    !getDemoTenants().includes(sub) &&
+    pathname !== "/em-breve"
+  ) {
+    return NextResponse.rewrite(new URL("/em-breve", req.url));
+  }
+
+  // ============================
   // 🔥 API MOBILE PÚBLICA
   // ============================
   if (pathname.startsWith("/api/mobile")) {
+    return NextResponse.next();
+  }
+
+  // ============================
+  // 🔥 API PÚBLICA: "Quero visitar"
+  // ============================
+  if (pathname.startsWith("/api/visit")) {
     return NextResponse.next();
   }
 
@@ -48,11 +75,33 @@ export default clerkMiddleware(async (auth, req) => {
   // 🔥 WEB PROTEGIDA
   // ============================
   if (!userId) {
+    // Home pública (visitante) — acessível sem login
+    if (pathname === "/") {
+      return NextResponse.next();
+    }
     return NextResponse.redirect(new URL("/sign-in", req.url));
   }
 
   const roles =
     (sessionClaims?.metadata as { roles?: string[] })?.roles ?? [];
+
+  // ============================
+  // 🔥 ISOLAMENTO ENTRE IGREJAS
+  // Usuário só acessa o subdomínio da própria igreja. Superadmin é isento.
+  // Usuários sem `church` (ainda não marcados) não são bloqueados (compatibilidade).
+  // ============================
+  const userChurch = (sessionClaims?.metadata as { church?: string })?.church;
+  if (
+    tenantsConfigured &&
+    sub &&
+    isKnownTenant(sub) &&
+    userChurch &&
+    userChurch !== sub &&
+    !roles.includes("superadmin") &&
+    pathname !== "/acesso-negado"
+  ) {
+    return NextResponse.redirect(new URL("/acesso-negado", req.url));
+  }
 
   const groupRoles = [
     "ump", "upa", "uph", "saf", "ucp",

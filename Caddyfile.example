@@ -1,0 +1,35 @@
+# Caddyfile.example — proxy reverso para o modelo híbrido (1 app, vários subdomínios)
+#
+# Todos os subdomínios de *.membrese.com vão para o MESMO container do app.
+# O app decide a igreja pelo Host (subdomínio). O Caddy cuida do HTTPS.
+#
+# Requisito: wildcard *.membrese.com apontando para o IP deste servidor (feito na Hostinger).
+
+# ── Opção A: certificado wildcard via DNS-challenge (recomendado) ──
+# Precisa do plugin de DNS da Hostinger/Cloudflare no Caddy e de um token de API.
+# *.membrese.com, membrese.com {
+#   tls {
+#     dns <provedor> <TOKEN>
+#   }
+#   reverse_proxy app:3000
+# }
+
+# ── Opção B: on-demand TLS (mais simples; emite cert por subdomínio acessado) ──
+{
+  on_demand_tls {
+    # Opcional: restrinja a emissão a subdomínios conhecidos consultando um endpoint.
+    # ask http://app:3000/api/tenant-allowed
+  }
+}
+
+*.membrese.com, membrese.com {
+  tls {
+    on_demand
+  }
+  reverse_proxy app:3000
+}
+
+# Observações:
+# - "app:3000" é o nome/porta do container do Next (ajuste conforme seu docker-compose).
+# - O Next lê o Host automaticamente; nada a configurar no app além das variáveis TENANT_*.
+# - Subdomínio não cadastrado abre a página "em breve" (tratado pelo próprio app).

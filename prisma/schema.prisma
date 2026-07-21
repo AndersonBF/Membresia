@@ -479,6 +479,21 @@ model DiaconateScheduleMember {
 }
 
 // ===============================================
+// CONTATO DE VISITANTE (VisitorContact)
+// Interessados que usaram o "Quero conhecer/visitar" na home pública.
+// ===============================================
+model VisitorContact {
+  id        Int      @id @default(autoincrement())
+  name      String
+  phone     String?
+  message   String?
+  handled   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// ===============================================
 // CAPA DOS GRUPOS (GroupCover)
 // Imagem de fundo/capa personalizável de cada grupo (sociedades, diaconia,
 // conselho, ministério, EBD). Chaveado pela "role" do grupo.
@@ -529,6 +544,8 @@ model ChurchSettings {
   photoUrl          String?  // Foto da igreja (futuramente upload)
   mapsUrl           String?  // Link do Google Maps
   pastorCoverUrl    String?  // Capa/imagem do card do Painel do Pastor
+  whatsapp          String?  // Número de WhatsApp p/ o "Quero visitar" (só dígitos, com DDD)
+  slug              String?  // Identificador da igreja (base do subdomínio), ex.: "ipbtoledo"
   updatedAt         DateTime @updatedAt
 }
 

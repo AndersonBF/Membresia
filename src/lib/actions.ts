@@ -180,8 +180,10 @@ export const updateMember = async (
               (r) => r === "admin" || r === "superadmin" || (!isRealAdmin && r === "pastor")
             )
             const clerkRoles = Array.from(new Set(["member", ...preserved, ...incomingRoles]))
+            // Preserva a igreja (tenant) já amarrada ao usuário.
+            const existingChurch = (clerkUsers.data[0].publicMetadata as { church?: string })?.church
             await client.users.updateUserMetadata(clerkUsers.data[0].id, {
-              publicMetadata: { roles: clerkRoles }
+              publicMetadata: { roles: clerkRoles, ...(existingChurch ? { church: existingChurch } : {}) }
             })
           }
         }

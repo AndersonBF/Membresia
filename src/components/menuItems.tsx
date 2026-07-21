@@ -5,7 +5,7 @@ import {
   Heart, Info, Image, Youtube, CalendarDays,
   ClipboardList, CalendarRange, MessageSquare,
   Camera, BarChart2, Package, CheckSquare, CalendarCheck,
-  BookOpen, Cross,
+  BookOpen, Cross, Inbox,
 } from "lucide-react";
 
 const pastorRoles = ["pastor", "superadmin"];
@@ -74,6 +74,14 @@ export const menuItems = [
         href: "/list/members",
         visible: adminRoles,
         hiddenForSociedades: false,
+        showOnlyForSociedades: false,
+      },
+      {
+        icon: Inbox,
+        label: "Visitantes",
+        href: "/list/visitantes",
+        visible: adminRoles,
+        hiddenForSociedades: true,
         showOnlyForSociedades: false,
       },
       {

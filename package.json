@@ -12,6 +12,9 @@
     "prisma:generate": "docker exec membresia-app npx prisma generate",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
+    "seed:demo": "npx tsx prisma/seed-demo.ts",
+    "migrate:all": "node scripts/migrate-all.mjs",
+    "backfill:church": "node scripts/backfill-church.mjs",
     "postinstall": "prisma generate"
   },
   "dependencies": {

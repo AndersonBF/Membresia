@@ -4,9 +4,10 @@ import {
   Megaphone, BarChart3, BookMarked, Check,
 } from "lucide-react"
 
-// Homepage do produto Membresia — renderizada no subdomínio de demonstração.
+// Homepage do produto Membresia — renderizada no domínio raiz (e no subdomínio demo).
 // Copy específica (módulos reais do sistema), identidade verde, CTA "Experimentar".
-export default function MembresiaLanding() {
+// `demoLoginUrl` leva o visitante ao ambiente de demonstração (dados fictícios).
+export default function MembresiaLanding({ demoLoginUrl = "/sign-in" }: { demoLoginUrl?: string }) {
   const modulos = [
     { icon: Users, titulo: "Membros e famílias", texto: "Cadastro completo com contato, aniversários, foto e histórico. Filtre por sociedade, gênero, faixa etária ou situação." },
     { icon: Church, titulo: "Sociedades internas", texto: "UMP, UPA, UPH, SAF e UCP com diretoria, cargos e eventos próprios. Cada líder gerencia o seu grupo." },
@@ -45,9 +46,9 @@ export default function MembresiaLanding() {
         </nav>
         <div className="flex items-center gap-2">
           <Link href="/sign-in" className="text-sm text-white/60 hover:text-white transition px-3 py-2">Entrar</Link>
-          <Link href="/sign-in" className="m-btn text-sm font-semibold px-4 py-2 rounded-lg" style={{ background: "#f5f0e8", color: "#0b3d24" }}>
+          <a href={demoLoginUrl} className="m-btn text-sm font-semibold px-4 py-2 rounded-lg" style={{ background: "#f5f0e8", color: "#0b3d24" }}>
             Experimentar
-          </Link>
+          </a>
         </div>
       </header>
 
@@ -68,9 +69,9 @@ export default function MembresiaLanding() {
               do jeito que uma igreja funciona de verdade, com conselho, diaconia e as sociedades internas.
             </p>
             <div className="flex flex-wrap items-center gap-6 mt-10">
-              <Link href="/sign-in" className="m-btn font-semibold px-7 py-3.5 rounded-lg" style={{ background: "#f5f0e8", color: "#0b3d24" }}>
+              <a href={demoLoginUrl} className="m-btn font-semibold px-7 py-3.5 rounded-lg" style={{ background: "#f5f0e8", color: "#0b3d24" }}>
                 Experimentar o sistema
-              </Link>
+              </a>
               <Link href="/precos" className="text-white/70 hover:text-white transition underline underline-offset-4 decoration-white/25 hover:decoration-white/70">
                 Ver planos
               </Link>
@@ -180,9 +181,9 @@ export default function MembresiaLanding() {
             a gente configura o espaço da sua congregação.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-6 mt-9">
-            <Link href="/sign-in" className="m-btn font-semibold px-7 py-3.5 rounded-lg" style={{ background: "#f5f0e8", color: "#0b3d24" }}>
+            <a href={demoLoginUrl} className="m-btn font-semibold px-7 py-3.5 rounded-lg" style={{ background: "#f5f0e8", color: "#0b3d24" }}>
               Experimentar o sistema
-            </Link>
+            </a>
             <Link href="/contato" className="text-white/70 hover:text-white transition underline underline-offset-4 decoration-white/25 hover:decoration-white/70">
               Falar com a gente
             </Link>

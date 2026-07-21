@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
 import { auth } from "@clerk/nextjs/server"
+import { headers } from "next/headers"
 import Link from "next/link"
 import fs from "fs"
 import path from "path"
@@ -56,10 +57,19 @@ export default async function RootPage() {
     redirect("/member")
   }
 
-  // ── Subdomínio de demonstração → homepage do produto Membresia ──
+  // ── Domínio raiz (sem subdomínio) OU subdomínio demo → homepage do produto Membresia ──
   const sub = getCurrentSubdomain()
-  if (sub && getDemoTenants().includes(sub)) {
-    return <MembresiaLanding />
+  if (!sub || getDemoTenants().includes(sub)) {
+    // "Experimentar" deve entrar no ambiente demo (subdomínio) para carregar os
+    // dados fictícios — senão o login cairia no banco padrão.
+    const demoSlug = getDemoTenants()[0]
+    const host = (headers().get("host") ?? "").toLowerCase()
+    const onDemo = !!demoSlug && host.startsWith(`${demoSlug}.`)
+    const demoLoginUrl =
+      demoSlug && !onDemo && host && !host.includes("localhost")
+        ? `https://${demoSlug}.${host.replace(/^www\./, "")}/sign-in`
+        : "/sign-in"
+    return <MembresiaLanding demoLoginUrl={demoLoginUrl} />
   }
 
   // ── Deslogado: home pública (visitante da igreja) ──

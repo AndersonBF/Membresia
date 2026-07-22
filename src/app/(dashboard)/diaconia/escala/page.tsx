@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import {
   ArrowLeft, Plus, Trash2, X,
-  Users, Search, Pencil, Check, CalendarDays,
+  Users, Search, Pencil, Check, CalendarDays, Sparkles, CalendarX, Printer,
 } from "lucide-react"
 
 type ScheduleType = "DOMINGO" | "EVENTO"
@@ -25,6 +25,12 @@ interface Diacono {
   id: number
   name: string
   profileImageUrl: string | null
+}
+interface Unavailability {
+  id: number
+  date: string
+  reason: string | null
+  member: { id: number; name: string; profileImageUrl: string | null }
 }
 
 const AC = "#0d9488"
@@ -84,14 +90,35 @@ export default function EscalaPage() {
   const [memberSearch, setMemberSearch] = useState("")
   const [saving, setSaving]       = useState(false)
 
+  // Escala automática
+  const [showAuto, setShowAuto]   = useState(false)
+  const [autoWeeks, setAutoWeeks] = useState(4)
+  const [autoPer, setAutoPer]     = useState(2)
+  const [autoStart, setAutoStart] = useState(nextSunday())
+  const [autoRunning, setAutoRunning] = useState(false)
+  const [autoResult, setAutoResult]   = useState<string | null>(null)
+
+  // Indisponibilidade
+  const [showUnav, setShowUnav]   = useState(false)
+  const [unavs, setUnavs]         = useState<Unavailability[]>([])
+  const [unavMember, setUnavMember] = useState<number | "">("")
+  const [unavDate, setUnavDate]   = useState(nextSunday())
+  const [unavReason, setUnavReason] = useState("")
+  const [unavSaving, setUnavSaving] = useState(false)
+
+  // Exportação PDF
+  const [exporting, setExporting] = useState(false)
+
   async function load() {
     setLoading(true)
-    const [sRes, mRes] = await Promise.all([
+    const [sRes, mRes, uRes] = await Promise.all([
       fetch("/api/diaconia/schedules"),
       fetch("/api/diaconia/members"),
+      fetch("/api/diaconia/unavailability"),
     ])
     setSchedules(await sRes.json())
     setDiaconos(await mRes.json())
+    setUnavs(await uRes.json())
     setLoading(false)
   }
   useEffect(() => { load() }, [])
@@ -160,6 +187,124 @@ export default function EscalaPage() {
     await fetch(`/api/diaconia/schedules/${id}`, { method: "DELETE" })
   }
 
+  function openAuto() {
+    setAutoWeeks(4)
+    setAutoPer(2)
+    setAutoStart(nextSunday())
+    setAutoResult(null)
+    setShowAuto(true)
+  }
+
+  async function runAuto(e: React.FormEvent) {
+    e.preventDefault()
+    setAutoRunning(true)
+    setAutoResult(null)
+    const res = await fetch("/api/diaconia/schedules/auto", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ weeks: autoWeeks, perSunday: autoPer, startDate: autoStart }),
+    })
+    setAutoRunning(false)
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      setAutoResult(err.error || "Não foi possível gerar a escala.")
+      return
+    }
+    const data = await res.json()
+    const n = data.created?.length ?? 0
+    const skipped = data.skipped ?? 0
+    setAutoResult(
+      n === 0
+        ? "Nenhuma escala nova criada (os domingos já estavam preenchidos)."
+        : `${n} domingo${n !== 1 ? "s" : ""} escalado${n !== 1 ? "s" : ""} automaticamente${skipped ? ` · ${skipped} já existia${skipped !== 1 ? "m" : ""}` : ""}.`
+    )
+    load()
+  }
+
+  async function addUnav(e: React.FormEvent) {
+    e.preventDefault()
+    if (!unavMember || !unavDate) return
+    setUnavSaving(true)
+    const res = await fetch("/api/diaconia/unavailability", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ memberId: unavMember, date: unavDate, reason: unavReason }),
+    })
+    setUnavSaving(false)
+    if (res.ok) {
+      setUnavReason("")
+      const uRes = await fetch("/api/diaconia/unavailability")
+      setUnavs(await uRes.json())
+    }
+  }
+
+  async function removeUnav(id: number) {
+    setUnavs(prev => prev.filter(u => u.id !== id))
+    await fetch(`/api/diaconia/unavailability?id=${id}`, { method: "DELETE" })
+  }
+
+  async function exportPdf() {
+    if (!schedules.length) return
+    setExporting(true)
+    try {
+      const { jsPDF } = await import("jspdf")
+      const autoTable = (await import("jspdf-autotable")).default
+
+      const doc = new jsPDF({ unit: "pt", format: "a4" })
+      const teal: [number, number, number] = [13, 148, 136]
+
+      // Cabeçalho
+      doc.setFontSize(18)
+      doc.setTextColor(17, 24, 39)
+      doc.text("Escala da Diaconia", 40, 46)
+      doc.setFontSize(10)
+      doc.setTextColor(107, 114, 128)
+      doc.text(
+        `Gerado em ${new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}`,
+        40, 62,
+      )
+
+      // Agrupa por mês (mantém ordem por data)
+      const byMonth: { label: string; items: Schedule[] }[] = []
+      for (const s of schedules) {
+        const key = monthKey(s.date)
+        let g = byMonth.find(x => x.label === monthLabel(s.date))
+        if (!g) { g = { label: monthLabel(s.date), items: [] }; byMonth.push(g) }
+        g.items.push(s)
+      }
+
+      const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1)
+      let y = 84
+      for (const g of byMonth) {
+        doc.setFontSize(12)
+        doc.setTextColor(...teal)
+        doc.text(cap(g.label), 40, y)
+        y += 8
+
+        autoTable(doc, {
+          startY: y,
+          head: [["Data", "Culto/Evento", "Diáconos escalados"]],
+          body: g.items.map(s => [
+            cap(formatDate(s.date)),
+            s.type === "EVENTO" ? (s.title || "Evento") : "Culto de Domingo",
+            s.members.length ? s.members.map(m => m.member.name).join(", ") : "—",
+          ]),
+          styles: { fontSize: 9, cellPadding: 6, valign: "middle", textColor: [55, 65, 81] },
+          headStyles: { fillColor: teal, textColor: [255, 255, 255], fontStyle: "bold" },
+          columnStyles: { 0: { cellWidth: 150 }, 1: { cellWidth: 120 } },
+          margin: { left: 40, right: 40 },
+          theme: "grid",
+        })
+        // @ts-ignore — lastAutoTable é adicionado pelo plugin
+        y = (doc as any).lastAutoTable.finalY + 22
+      }
+
+      doc.save(`escala-diaconia-${new Date().toISOString().slice(0, 10)}.pdf`)
+    } finally {
+      setExporting(false)
+    }
+  }
+
   const filteredMembers = useMemo(() => {
     const q = memberSearch.trim().toLowerCase()
     if (!q) return diaconos
@@ -202,10 +347,25 @@ export default function EscalaPage() {
             <h1 className="text-2xl font-bold text-gray-900">Escala</h1>
             <p className="text-sm text-gray-400 mt-0.5">Diáconos escalados para os cultos de domingo e eventos</p>
           </div>
-          <button onClick={openCreate} style={{ background: AC }}
-            className="inline-flex items-center gap-2 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm hover:opacity-90 transition mt-7 flex-shrink-0">
-            <Plus size={15} /> Nova escala
-          </button>
+          <div className="flex items-center gap-2 mt-7 flex-shrink-0">
+            <button onClick={exportPdf} disabled={exporting || schedules.length === 0}
+              className="inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg border border-gray-200 text-gray-600 bg-white transition hover:bg-gray-50 disabled:opacity-50">
+              <Printer size={15} /> {exporting ? "Gerando…" : "PDF"}
+            </button>
+            <button onClick={() => setShowUnav(true)}
+              className="inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg border border-gray-200 text-gray-600 bg-white transition hover:bg-gray-50">
+              <CalendarX size={15} /> Indisponibilidade
+            </button>
+            <button onClick={openAuto}
+              className="inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg border transition hover:bg-teal-50"
+              style={{ color: AC, borderColor: "#99f6e4", background: "#f0fdfa" }}>
+              <Sparkles size={15} /> Escala automática
+            </button>
+            <button onClick={openCreate} style={{ background: AC }}
+              className="inline-flex items-center gap-2 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm hover:opacity-90 transition">
+              <Plus size={15} /> Nova escala
+            </button>
+          </div>
         </div>
 
         {/* List */}
@@ -218,9 +378,9 @@ export default function EscalaPage() {
             <p className="text-gray-400 text-sm mt-1">Crie a primeira escala para começar.</p>
           </div>
         ) : (
-          <div className="columns-1 lg:columns-2 gap-6 max-w-6xl [column-fill:balance]">
+          <div className="flex flex-col gap-8 max-w-6xl">
             {groups.map((group, gi) => (
-              <div key={group.key} className="mb-8 break-inside-avoid inline-block w-full align-top">
+              <div key={group.key}>
                 {/* Cabeçalho do mês */}
                 <div className="ep-in flex items-center gap-3 mb-4 py-1"
                   style={{ animationDelay: `${gi * 0.04}s` }}>
@@ -231,26 +391,20 @@ export default function EscalaPage() {
                   </span>
                 </div>
 
-                {/* Timeline vertical */}
-                <div className="relative flex flex-col gap-4">
-                  <span className="absolute left-[15px] top-4 bottom-4 w-0.5 bg-gray-200" />
+                {/* Domingos lado a lado */}
+                <div className="print-grid grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
                   {group.items.map((s, i) => {
                     const isEvent = s.type === "EVENTO"
                     return (
-                      <div key={s.id} className="relative flex gap-3 md:gap-4 items-start ep-in"
+                      <div key={s.id}
+                        className="sched-card bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden min-w-0 ep-in"
                         style={{ animationDelay: `${i * 0.03}s` }}>
-                        {/* Nó da timeline com o dia */}
-                        <div className="w-8 flex-shrink-0 flex justify-center pt-4 z-10">
-                          <span className="w-8 h-8 rounded-full border-2 border-gray-50 flex items-center justify-center text-[11px] font-bold text-white shadow-sm"
-                            style={{ background: isEvent ? "#7c3aed" : AC }}>
-                            {dayNum(s.date)}
-                          </span>
-                        </div>
-
-                        {/* Card da escala */}
-                        <div className="sched-card bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex-1 min-w-0">
                   {/* Card header */}
                   <div className="flex items-start gap-3 px-5 pt-4 pb-3 border-b border-gray-100">
+                    <span className="w-9 h-9 rounded-full flex items-center justify-center text-[12px] font-bold text-white shadow-sm flex-shrink-0"
+                      style={{ background: isEvent ? "#7c3aed" : AC }}>
+                      {dayNum(s.date)}
+                    </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
@@ -303,7 +457,6 @@ export default function EscalaPage() {
                       <p className="text-xs text-gray-400 mt-3 border-t border-gray-50 pt-2.5">{s.notes}</p>
                     )}
                   </div>
-                        </div>
                       </div>
                     )
                   })}
@@ -316,7 +469,7 @@ export default function EscalaPage() {
 
       {/* Modal */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.4)" }}>
+        <div className="no-print fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.4)" }}>
           <div className="ep bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col"
             style={{ animation: "ep-in 0.2s ease both" }}>
             <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100">
@@ -423,6 +576,147 @@ export default function EscalaPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal — Escala automática */}
+      {showAuto && (
+        <div className="no-print fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.4)" }}>
+          <div className="ep bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col"
+            style={{ animation: "ep-in 0.2s ease both" }}>
+            <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100">
+              <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                <Sparkles size={17} style={{ color: AC }} /> Escala automática
+              </h2>
+              <button onClick={() => setShowAuto(false)} className="text-gray-400 hover:text-gray-600 transition">
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={runAuto} className="px-6 py-5 flex flex-col gap-4">
+              <p className="text-sm text-gray-500 -mt-1">
+                O sistema escolhe os diáconos automaticamente, distribuindo de forma equilibrada e evitando repetir a mesma pessoa em domingos seguidos.
+              </p>
+
+              <div>
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide block mb-1.5">A partir de</label>
+                <input type="date" value={autoStart} onChange={e => setAutoStart(e.target.value)} required
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-teal-400 transition" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wide block mb-1.5">Quantos domingos</label>
+                  <input type="number" min={1} max={26} value={autoWeeks}
+                    onChange={e => setAutoWeeks(parseInt(e.target.value, 10) || 1)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-teal-400 transition" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wide block mb-1.5">Diáconos por domingo</label>
+                  <input type="number" min={1} max={20} value={autoPer}
+                    onChange={e => setAutoPer(parseInt(e.target.value, 10) || 1)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-teal-400 transition" />
+                </div>
+              </div>
+
+              {autoResult && (
+                <p className="text-sm rounded-lg px-3 py-2.5"
+                  style={{ background: "#f0fdfa", color: AC, border: "1px solid #99f6e4" }}>
+                  {autoResult}
+                </p>
+              )}
+
+              <div className="flex gap-2 pt-1">
+                <button type="button" onClick={() => setShowAuto(false)}
+                  className="flex-1 border border-gray-200 text-gray-600 text-sm font-medium py-2.5 rounded-lg hover:bg-gray-50 transition">
+                  Fechar
+                </button>
+                <button type="submit" disabled={autoRunning} style={{ background: AC }}
+                  className="flex-1 inline-flex items-center justify-center gap-2 text-white text-sm font-medium py-2.5 rounded-lg hover:opacity-90 transition disabled:opacity-60">
+                  <Sparkles size={15} /> {autoRunning ? "Gerando…" : "Gerar escala"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Modal — Indisponibilidade */}
+      {showUnav && (
+        <div className="no-print fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.4)" }}>
+          <div className="ep bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col"
+            style={{ animation: "ep-in 0.2s ease both" }}>
+            <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100">
+              <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                <CalendarX size={17} className="text-gray-500" /> Indisponibilidade
+              </h2>
+              <button onClick={() => setShowUnav(false)} className="text-gray-400 hover:text-gray-600 transition">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="px-6 py-5 flex flex-col gap-4 overflow-y-auto">
+              <p className="text-sm text-gray-500 -mt-1">
+                Marque quando um diácono <strong>não pode</strong> servir. A escala automática não vai escalá-lo nessas datas.
+              </p>
+
+              <form onSubmit={addUnav} className="flex flex-col gap-3 bg-gray-50 rounded-xl p-3 border border-gray-100">
+                <div>
+                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wide block mb-1.5">Diácono</label>
+                  <select value={unavMember} onChange={e => setUnavMember(e.target.value ? Number(e.target.value) : "")} required
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-teal-400 transition bg-white">
+                    <option value="">Selecione…</option>
+                    {diaconos.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 uppercase tracking-wide block mb-1.5">Data</label>
+                    <input type="date" value={unavDate} onChange={e => setUnavDate(e.target.value)} required
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-teal-400 transition bg-white" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 uppercase tracking-wide block mb-1.5">Motivo (opcional)</label>
+                    <input value={unavReason} onChange={e => setUnavReason(e.target.value)} placeholder="Ex: viagem"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-teal-400 transition bg-white" />
+                  </div>
+                </div>
+                <button type="submit" disabled={unavSaving} style={{ background: AC }}
+                  className="inline-flex items-center justify-center gap-2 text-white text-sm font-medium py-2.5 rounded-lg hover:opacity-90 transition disabled:opacity-60">
+                  <Plus size={15} /> {unavSaving ? "Salvando…" : "Adicionar indisponibilidade"}
+                </button>
+              </form>
+
+              <div>
+                <div className="text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-2">
+                  Indisponibilidades futuras
+                </div>
+                {unavs.length === 0 ? (
+                  <p className="text-xs text-gray-300 py-4 text-center">Nenhuma indisponibilidade registrada</p>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {unavs.map(u => (
+                      <div key={u.id} className="flex items-center gap-3 border border-gray-100 rounded-lg px-3 py-2">
+                        <span className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0"
+                          style={{ background: AC }}>
+                          {initials(u.member.name)}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm text-gray-800 truncate">{u.member.name}</p>
+                          <p className="text-xs text-gray-400 capitalize">
+                            {formatDate(u.date)}{u.reason ? ` · ${u.reason}` : ""}
+                          </p>
+                        </div>
+                        <button onClick={() => removeUnav(u.id)}
+                          className="text-gray-300 hover:text-red-400 transition p-1 flex-shrink-0">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}

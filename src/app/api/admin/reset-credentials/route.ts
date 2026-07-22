@@ -3,6 +3,7 @@ import { clerkClient } from '@clerk/nextjs/server'
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { getManageableGroups, roleForSocietyId } from '@/lib/permissions'
 
 function generateUsername(name: string): string {
   return name
@@ -23,14 +24,41 @@ export async function POST(req: Request) {
     if (!adminId) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
     const client = await clerkClient()
-    const adminUser = await client.users.getUser(adminId)
-    const adminRoles = (adminUser.publicMetadata?.roles as string[]) ?? []
-    if (!adminRoles.includes('admin') && !adminRoles.includes('superadmin')) {
-      return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
-    }
 
     const { memberId } = await req.json()
     if (!memberId) return NextResponse.json({ error: 'memberId obrigatório' }, { status: 400 })
+
+    // Permissão: admin/superadmin/pastor gerem qualquer um; um líder de grupo
+    // (quem tem cargo na Diaconia/Conselho/Sociedade) só pode gerar credenciais
+    // para membros que pertençam a um grupo que ele gerencia.
+    const { isAdmin, groups } = await getManageableGroups()
+    if (!isAdmin) {
+      if (groups.size === 0) {
+        return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
+      }
+      const target = await prisma.member.findUnique({
+        where: { id: memberId },
+        select: {
+          societies: { select: { societyId: true } },
+          diaconate: { select: { id: true } },
+          council: { select: { id: true } },
+        },
+      })
+      if (!target) return NextResponse.json({ error: 'Membro não encontrado' }, { status: 404 })
+
+      const targetGroups = new Set<string>()
+      for (const s of target.societies) {
+        const role = roleForSocietyId(s.societyId)
+        if (role) targetGroups.add(role)
+      }
+      if (target.diaconate) targetGroups.add('diaconia')
+      if (target.council) targetGroups.add('conselho')
+
+      const shares = [...targetGroups].some(g => groups.has(g))
+      if (!shares) {
+        return NextResponse.json({ error: 'Sem permissão para este membro' }, { status: 403 })
+      }
+    }
 
     const member = await prisma.member.findUnique({ where: { id: memberId } })
     if (!member) return NextResponse.json({ error: 'Membro não encontrado' }, { status: 404 })

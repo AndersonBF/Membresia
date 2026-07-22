@@ -44,6 +44,7 @@ model Member {
   attendances         Attendance[]
   teachingAssignments ClassTeacher[] @relation(name: "TeachingAssignments")
   scheduleAssignments DiaconateScheduleMember[]
+  unavailabilities    DiaconateUnavailability[]
   bibleSchoolAttendances BibleSchoolAttendance[]
 }
 
@@ -476,6 +477,21 @@ model DiaconateScheduleMember {
   member   Member            @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
   @@unique([scheduleId, memberId])
+}
+
+// Indisponibilidade de um diácono para uma data (domingo).
+// Usada pela escala automática para não escalar quem não pode.
+model DiaconateUnavailability {
+  id       Int      @id @default(autoincrement())
+  memberId Int
+  date     DateTime // dia "puro" (meia-noite UTC)
+  reason   String?
+  createdAt DateTime @default(now())
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, date])
+  @@index([date])
 }
 
 // ===============================================

@@ -14,6 +14,7 @@ import { ITEM_PER_PAGE } from "@/lib/settings"
 import MemberAvatar from "@/components/MemberAvatar"
 import MemberDrawerWrapper from "@/components/MemberDrawerWrapper"
 import AddExistingMemberButton from "@/components/AddExistingMemberButton"
+import BulkAddMembersButton from "@/components/BulkAddMembersButton"
 import { getManageableGroups } from "@/lib/permissions"
 import { getPreferences } from "@/lib/appSettings"
 
@@ -267,7 +268,15 @@ export default async function RoleMembrosPage({
                 targetLabel={targetLabel}
               />
             )}
-            {isAdmin && <FormContainer table="member" type="create" />}
+            {isAdmin && (
+              <BulkAddMembersButton
+                role={role}
+                label={config.label}
+                targets={targets}
+                targetLabel={targetLabel}
+              />
+            )}
+            {isAdmin && <FormContainer table="member" type="create" shortcutKey="n" />}
           </div>
         </div>
 

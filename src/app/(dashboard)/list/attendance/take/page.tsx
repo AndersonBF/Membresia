@@ -3,6 +3,7 @@ import AttendanceTaker from "@/components/AttendanceTaker";
 import prisma from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { visitorWhereForEvent } from "@/lib/visitorScope";
 
 const TakeAttendancePage = async ({
   searchParams,
@@ -72,6 +73,18 @@ const TakeAttendancePage = async ({
     where: { eventId },
   });
 
+  // Visitantes do escopo do evento (sociedade/grupo) + presenças já gravadas
+  const visitors = await prisma.visitor.findMany({
+    where: visitorWhereForEvent(selectedEvent),
+    select: { id: true, name: true, phone: true },
+    orderBy: { name: "asc" },
+  });
+
+  const existingVisitorAttendance = await prisma.visitorAttendance.findMany({
+    where: { eventId },
+    select: { visitorId: true, isPresent: true },
+  });
+
   // Monta o redirect de volta baseado no contexto
   const backUrl = roleContext && societyId
     ? `/list/attendance?societyId=${societyId}&roleContext=${roleContext}`
@@ -85,6 +98,8 @@ const TakeAttendancePage = async ({
         event={selectedEvent}
         members={members}
         existingAttendance={existingAttendance}
+        visitors={visitors}
+        existingVisitorAttendance={existingVisitorAttendance}
         backUrl={backUrl}
       />
     </div>

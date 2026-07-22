@@ -1,6 +1,7 @@
 import { Webhook } from 'svix'
 import { headers } from 'next/headers'
 import { WebhookEvent, clerkClient } from '@clerk/nextjs/server'
+import { logLogin } from '@/lib/accessLog'
 
 export async function POST(req: Request) {
   const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET
@@ -46,6 +47,27 @@ export async function POST(req: Request) {
       await client.users.updateUserMetadata(id, {
         publicMetadata: { ...meta, roles: ["member"] },
       })
+    }
+  }
+
+  // Login: o Clerk dispara session.created quando o usuário entra.
+  if (evt.type === 'session.created') {
+    try {
+      const userId = (evt.data as any).user_id as string
+      const client = await clerkClient()
+      const u = await client.users.getUser(userId)
+      const meta = (u.publicMetadata ?? {}) as { roles?: string[]; church?: string }
+      const userName =
+        u.fullName || [u.firstName, u.lastName].filter(Boolean).join(' ') || u.username || userId
+
+      await logLogin({
+        userId,
+        userName,
+        roles: meta.roles ?? [],
+        church: meta.church ?? null,
+      })
+    } catch {
+      // não bloqueia o webhook
     }
   }
 

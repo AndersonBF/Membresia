@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useCallback, useState, useTransition } from "react";
 import dynamic from "next/dynamic";
 import { 
   deleteMember, 
@@ -11,6 +11,8 @@ import {
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import { Plus, Pencil, Trash2, X } from "lucide-react";
+import Kbd from "./Kbd";
+import { useHotkey } from "@/hooks/useHotkey";
 
 const MemberForm = dynamic(() => import("./forms/MemberForm"), {
   loading: () => <p>Carregando...</p>,
@@ -32,6 +34,8 @@ type FormModalProps = {
   data?: any;
   id?: number | string;
   relatedData?: any;
+  /** Tecla de atalho que abre este formulário (ex.: "n"). Só para type="create". */
+  shortcutKey?: string;
 };
 
 const FormModal = ({
@@ -40,10 +44,19 @@ const FormModal = ({
   data,
   id,
   relatedData,
+  shortcutKey,
 }: FormModalProps) => {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+
+  const close = useCallback(() => setOpen(false), []);
+
+  // Atalho de abertura (só no botão de criar) e Esc para fechar.
+  useHotkey(shortcutKey ?? "", () => setOpen(true), {
+    enabled: !!shortcutKey && type === "create" && !open,
+  });
+  useHotkey("Escape", close, { enabled: open, allowWhileTyping: true });
 
   const handleDelete = () => {
     // ✅ Debug detalhado
@@ -244,10 +257,12 @@ const FormModal = ({
       {type === "create" ? (
         <button
           onClick={() => setOpen(true)}
+          title={shortcutKey ? `${createLabel[table]} (${shortcutKey.toUpperCase()})` : undefined}
           className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition ${buttonStyle}`}
         >
           <Icon size={15} />
           {createLabel[table]}
+          {shortcutKey && <Kbd className="border-black/25 bg-black/10">{shortcutKey.toUpperCase()}</Kbd>}
         </button>
       ) : (
         <button
@@ -262,7 +277,7 @@ const FormModal = ({
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center">
           <div className="bg-white p-6 rounded-md relative w-[90%] max-w-lg max-h-[90vh] overflow-y-auto">
             <button
-              onClick={() => setOpen(false)}
+              onClick={close}
               className="absolute top-3 right-3 text-gray-600 hover:text-black transition"
             >
               <X size={20} />

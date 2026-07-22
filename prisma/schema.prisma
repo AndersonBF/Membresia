@@ -130,6 +130,7 @@ model InternalSociety {
   id            Int             @id @default(autoincrement())
   name          String
   members       MemberSociety[]
+  visitors      Visitor[]
   finances   Finance[]
   events     Event[]
   broadcasts Broadcast[]
@@ -241,6 +242,7 @@ model Event {
   society   InternalSociety? @relation(fields: [societyId], references: [id], onDelete: SetNull)
 
   attendances Attendance[]
+  visitorAttendances VisitorAttendance[]
 }
 
 // ===============================================
@@ -255,6 +257,50 @@ model Attendance {
   event  Event? @relation(fields: [eventId], references: [id], onDelete: SetNull)
 
   isPresent Boolean @default(true)
+}
+
+// ===============================================
+// VISITANTE (Visitor)
+// Pessoa que frequenta sem ser membro. Escopo igual ao de Event:
+// societyId (sociedades internas) OU category ("ebd","diaconia",
+// "conselho","ministerio"). Ambos nulos = visitante geral da igreja.
+// ===============================================
+model Visitor {
+  id        Int       @id @default(autoincrement())
+  name      String
+  phone     String?
+  email     String?
+  gender    Gender?
+  birthDate DateTime?
+  notes     String?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+
+  societyId Int?
+  society   InternalSociety? @relation(fields: [societyId], references: [id], onDelete: SetNull)
+  category  String?
+
+  attendances VisitorAttendance[]
+
+  @@index([societyId])
+  @@index([category])
+}
+
+// ===============================================
+// PRESENÇA DE VISITANTE (VisitorAttendance)
+// ===============================================
+model VisitorAttendance {
+  id        Int @id @default(autoincrement())
+  visitorId Int
+  eventId   Int?
+
+  visitor Visitor @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  event   Event?  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  isPresent Boolean @default(true)
+
+  @@unique([visitorId, eventId])
+  @@index([eventId])
 }
 
 // ===============================================
@@ -518,6 +564,51 @@ model GroupCover {
   role          String   @id  // "ump","upa","uph","saf","ucp","diaconia","conselho","ministerio","ebd"
   coverImageUrl String
   updatedAt     DateTime @updatedAt
+}
+
+// ===============================================
+// REGISTRO DE ACESSOS (AccessLog)
+// Quem entrou no sistema, quando e em qual página. `event`:
+//   "login"    → sessão iniciada (vem do webhook do Clerk)
+//   "pageview" → abertura de uma página do painel
+// ===============================================
+model AccessLog {
+  id        Int      @id @default(autoincrement())
+  event     String
+  userId    String?
+  userName  String?
+  roles     String[]
+  path      String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([event, createdAt])
+  @@index([userId, createdAt])
+}
+
+// ===============================================
+// SERMÕES (Sermon)
+// Espaço de escrita PESSOAL do pastor: rascunhos e sermões prontos.
+// Sempre privado ao autor (authorId = Clerk userId). O campo `status` já
+// prepara uma futura publicação.
+// ===============================================
+model Sermon {
+  id         Int       @id @default(autoincrement())
+  authorId   String    // Clerk userId do autor
+  authorName String
+  title      String
+  passage    String?   // texto base, ex.: "Hebreus 13:8"
+  content    String?   // corpo em texto (compatibilidade / busca)
+  blocks     Json?     // estrutura do sermão: [{ id, type, text }]
+  date       DateTime? // data prevista/da pregação
+  series     String?   // série de pregações, ex.: "Efésios"
+  tags       String[]  // ocasião/tema: "evangelístico", "funeral", "ceia"...
+  preachedAt DateTime[] // histórico: quando este sermão já foi pregado
+  status     String    @default("rascunho") // "rascunho" | "pronto"
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([authorId, updatedAt])
 }
 
 // ===============================================

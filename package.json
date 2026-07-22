@@ -15,6 +15,7 @@
     "seed:demo": "npx tsx prisma/seed-demo.ts",
     "migrate:all": "node scripts/migrate-all.mjs",
     "backfill:church": "node scripts/backfill-church.mjs",
+    "seed:sermon": "node scripts/seed-sermon.mjs",
     "postinstall": "prisma generate"
   },
   "dependencies": {

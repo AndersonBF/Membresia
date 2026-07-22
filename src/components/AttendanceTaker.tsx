@@ -4,14 +4,20 @@ import { bulkUpdateAttendance } from "@/lib/actions";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
-import { ClipboardX } from "lucide-react";
+import { ClipboardX, Plus, X } from "lucide-react";
 import { Document, Packer, Paragraph, Table, TableCell, TableRow, TextRun, WidthType, AlignmentType } from "docx";
 import { saveAs } from "file-saver";
+
+type VisitorOption = { id: number; name: string; phone?: string | null };
 
 type AttendanceTakerProps = {
   event: any;
   members: any[];
   existingAttendance: any[];
+  /** Visitantes já cadastrados no escopo do evento */
+  visitors?: VisitorOption[];
+  /** Presenças de visitantes já gravadas para este evento */
+  existingVisitorAttendance?: { visitorId: number; isPresent: boolean }[];
   backUrl?: string;
 };
 
@@ -19,14 +25,30 @@ const AttendanceTaker = ({
   event,
   members,
   existingAttendance,
+  visitors = [],
+  existingVisitorAttendance = [],
   backUrl = "/list/attendance",
 }: AttendanceTakerProps) => {
   const router = useRouter();
   const [attendance, setAttendance] = useState<{ [key: number]: boolean }>({});
   const [excludedMembers, setExcludedMembers] = useState<Set<number>>(new Set());
-  const [visitors, setVisitors] = useState<number>(0);
+  // Visitantes já cadastrados → marcados/desmarcados nesta chamada
+  const [visitorAttendance, setVisitorAttendance] = useState<{ [key: number]: boolean }>({});
+  // Visitantes digitados na hora → criados ao salvar
+  const [newVisitors, setNewVisitors] = useState<{ name: string; phone: string }[]>([]);
+  const [visitorName, setVisitorName] = useState("");
+  const [visitorPhone, setVisitorPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
+
+  useEffect(() => {
+    const map: { [key: number]: boolean } = {};
+    existingVisitorAttendance.forEach((va) => {
+      map[va.visitorId] = va.isPresent;
+    });
+    setVisitorAttendance(map);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(existingVisitorAttendance)]);
 
   useEffect(() => {
     if (existingAttendance.length > 0) {
@@ -93,19 +115,52 @@ const AttendanceTaker = ({
     setAttendance(m);
   };
 
+  // ── Visitantes ──────────────────────────────────────────────────────────────
+  const toggleVisitor = (visitorId: number) => {
+    setVisitorAttendance((prev) => ({ ...prev, [visitorId]: !prev[visitorId] }));
+  };
+
+  const addNewVisitor = () => {
+    const name = visitorName.trim();
+    if (!name) {
+      toast.error("Digite o nome do visitante");
+      return;
+    }
+    // Se já existe cadastrado com esse nome, apenas marca presença
+    const existing = visitors.find((v) => v.name.trim().toLowerCase() === name.toLowerCase());
+    if (existing) {
+      setVisitorAttendance((prev) => ({ ...prev, [existing.id]: true }));
+      toast.info(`${existing.name} já é cadastrado — marcado como presente.`);
+    } else {
+      setNewVisitors((prev) => [...prev, { name, phone: visitorPhone.trim() }]);
+    }
+    setVisitorName("");
+    setVisitorPhone("");
+  };
+
+  const removeNewVisitor = (index: number) => {
+    setNewVisitors((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     const formData = new FormData();
     formData.append("eventId", event.id.toString());
-    formData.append("visitors", visitors.toString());
 
     const attendanceData = members
       .filter((member) => !excludedMembers.has(member.id))
       .map((member) => ({ memberId: member.id, isPresent: attendance[member.id] || false }));
 
     formData.append("attendanceData", JSON.stringify(attendanceData));
+    formData.append(
+      "visitorData",
+      JSON.stringify(
+        visitors.map((v) => ({ visitorId: v.id, isPresent: visitorAttendance[v.id] || false }))
+      )
+    );
+    formData.append("newVisitors", JSON.stringify(newVisitors));
 
     const result = await bulkUpdateAttendance({ success: false, error: false }, formData);
     setLoading(false);
@@ -124,7 +179,11 @@ const AttendanceTaker = ({
   const presentCount         = activeMembers.filter((m) => attendance[m.id]).length;
   const absentCount          = activeMembers.length - presentCount;
   const attendancePercentage = activeMembers.length > 0 ? ((presentCount / activeMembers.length) * 100).toFixed(1) : 0;
-  const totalParticipants    = presentCount + visitors;
+
+  const presentVisitors      = visitors.filter((v) => visitorAttendance[v.id]);
+  const visitorCount         = presentVisitors.length + newVisitors.length;
+  const presentVisitorNames  = [...presentVisitors.map((v) => v.name), ...newVisitors.map((v) => v.name)];
+  const totalParticipants    = presentCount + visitorCount;
 
   const exportToWord = async () => {
     setExporting(true);
@@ -144,13 +203,17 @@ const AttendanceTaker = ({
             ...(excludedMembersList.length > 0 ? [new Paragraph({ children: [new TextRun({ text: `Membros Excluídos: `, bold: true, color: "999999" }), new TextRun({ text: `${excludedMembersList.length}`, color: "999999" })], spacing: { after: 100 } })] : []),
             new Paragraph({ children: [new TextRun({ text: `Presentes: `, bold: true, color: "008000" }), new TextRun({ text: `${presentCount}`, color: "008000" })], spacing: { after: 100 } }),
             new Paragraph({ children: [new TextRun({ text: `Ausentes: `, bold: true, color: "FF0000" }), new TextRun({ text: `${absentCount}`, color: "FF0000" })], spacing: { after: 100 } }),
-            new Paragraph({ children: [new TextRun({ text: `Visitas: `, bold: true, color: "0000FF" }), new TextRun({ text: `${visitors}`, color: "0000FF" })], spacing: { after: 100 } }),
+            new Paragraph({ children: [new TextRun({ text: `Visitas: `, bold: true, color: "0000FF" }), new TextRun({ text: `${visitorCount}`, color: "0000FF" })], spacing: { after: 100 } }),
             new Paragraph({ children: [new TextRun({ text: `Total de Participantes: `, bold: true }), new TextRun({ text: `${totalParticipants}` })], spacing: { after: 100 } }),
             new Paragraph({ children: [new TextRun({ text: `Percentual de Presença: `, bold: true }), new TextRun({ text: `${attendancePercentage}%` })], spacing: { after: 400 } }),
             new Paragraph({ text: "MEMBROS PRESENTES", heading: "Heading2", spacing: { before: 400, after: 200 } }),
             new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [new TableRow({ children: [new TableCell({ children: [new Paragraph({ text: "Nome" })], shading: { fill: "D3D3D3" } }), new TableCell({ children: [new Paragraph({ text: "Email" })], shading: { fill: "D3D3D3" } })] }), ...presentMembers.map((member) => new TableRow({ children: [new TableCell({ children: [new Paragraph(member.name)] }), new TableCell({ children: [new Paragraph(member.email || "-")] })] }))] }),
             new Paragraph({ text: "MEMBROS AUSENTES", heading: "Heading2", spacing: { before: 400, after: 200 } }),
             new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [new TableRow({ children: [new TableCell({ children: [new Paragraph({ text: "Nome" })], shading: { fill: "D3D3D3" } }), new TableCell({ children: [new Paragraph({ text: "Email" })], shading: { fill: "D3D3D3" } })] }), ...absentMembers.map((member) => new TableRow({ children: [new TableCell({ children: [new Paragraph(member.name)] }), new TableCell({ children: [new Paragraph(member.email || "-")] })] }))] }),
+            ...(presentVisitorNames.length > 0 ? [
+              new Paragraph({ text: "VISITANTES PRESENTES", heading: "Heading2", spacing: { before: 400, after: 200 } }),
+              new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [new TableRow({ children: [new TableCell({ children: [new Paragraph({ text: "Nome" })], shading: { fill: "D3D3D3" } })] }), ...presentVisitorNames.map((name) => new TableRow({ children: [new TableCell({ children: [new Paragraph(name)] })] }))] }),
+            ] : []),
             ...(excludedMembersList.length > 0 ? [
               new Paragraph({ text: "MEMBROS EXCLUÍDOS (NÃO ERAM MEMBROS NESTA DATA)", heading: "Heading2", spacing: { before: 400, after: 200 } }),
               new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [new TableRow({ children: [new TableCell({ children: [new Paragraph({ text: "Nome" })], shading: { fill: "D3D3D3" } }), new TableCell({ children: [new Paragraph({ text: "Email" })], shading: { fill: "D3D3D3" } })] }), ...excludedMembersList.map((member) => new TableRow({ children: [new TableCell({ children: [new Paragraph(member.name)] }), new TableCell({ children: [new Paragraph(member.email || "-")] })] }))] }),
@@ -203,13 +266,6 @@ const AttendanceTaker = ({
               ✗ Marcar Todos Ausentes
             </button>
 
-            <div className="flex items-center gap-2 ml-4">
-              <label htmlFor="visitors" className="text-sm font-semibold text-gray-700">👤 Visitas:</label>
-              <input id="visitors" type="number" min="0" value={visitors}
-                onChange={(e) => setVisitors(Math.max(0, parseInt(e.target.value) || 0))}
-                className="w-20 px-3 py-2 border border-gray-300 rounded-md text-center font-semibold focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-            </div>
-
             <div className="ml-auto flex gap-6 items-center">
               <div className="text-right">
                 <div className="text-2xl font-bold text-blue-600">{attendancePercentage}%</div>
@@ -218,7 +274,7 @@ const AttendanceTaker = ({
               <div className="text-sm font-semibold">
                 <span className="text-green-600">Presentes: {presentCount}</span>{" | "}
                 <span className="text-red-600">Ausentes: {absentCount}</span>{" | "}
-                <span className="text-blue-600">Visitas: {visitors}</span>{" | "}
+                <span className="text-blue-600">Visitas: {visitorCount}</span>{" | "}
                 <span className="text-gray-600">Total: {totalParticipants}</span>
               </div>
             </div>
@@ -267,6 +323,82 @@ const AttendanceTaker = ({
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* ── VISITANTES ─────────────────────────────────────────────────── */}
+          <div className="border rounded-md">
+            <div className="bg-blue-50 p-3 border-b flex items-center justify-between">
+              <h2 className="font-semibold text-blue-900">👤 Visitantes ({visitorCount} presente(s))</h2>
+              <span className="text-xs text-blue-700">Marque quem veio ou adicione novos pelo nome</span>
+            </div>
+
+            {/* Adicionar visitante pelo nome */}
+            <div className="p-3 border-b bg-white flex flex-wrap gap-2 items-center">
+              <input
+                type="text"
+                value={visitorName}
+                onChange={(e) => setVisitorName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addNewVisitor(); } }}
+                placeholder="Nome do visitante"
+                className="flex-1 min-w-[180px] px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <input
+                type="text"
+                value={visitorPhone}
+                onChange={(e) => setVisitorPhone(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addNewVisitor(); } }}
+                placeholder="Telefone (opcional)"
+                className="w-[170px] px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <button type="button" onClick={addNewVisitor}
+                className="px-4 py-2 bg-blue-500 text-white rounded-md text-sm hover:bg-blue-600 flex items-center gap-1.5">
+                <Plus size={15} /> Adicionar
+              </button>
+            </div>
+
+            {/* Novos visitantes desta chamada */}
+            {newVisitors.length > 0 && (
+              <div className="p-3 border-b bg-blue-50/40 flex flex-wrap gap-2">
+                {newVisitors.map((v, i) => (
+                  <span key={`${v.name}-${i}`}
+                    className="px-3 py-1.5 bg-blue-100 text-blue-800 rounded-full text-sm flex items-center gap-1.5">
+                    {v.name}{v.phone && <span className="text-blue-500 text-xs">· {v.phone}</span>}
+                    <button type="button" onClick={() => removeNewVisitor(i)} className="hover:text-blue-950">
+                      <X size={13} />
+                    </button>
+                  </span>
+                ))}
+                <span className="text-xs text-blue-600 self-center ml-1">
+                  serão cadastrados na lista de visitantes ao salvar
+                </span>
+              </div>
+            )}
+
+            {/* Visitantes já cadastrados no grupo */}
+            {visitors.length > 0 ? (
+              <div className="max-h-[300px] overflow-y-auto">
+                {visitors.map((v) => (
+                  <div key={v.id} className="flex items-center justify-between p-4 border-b hover:bg-gray-50">
+                    <div className="flex items-center gap-4 flex-1">
+                      <input type="checkbox" checked={visitorAttendance[v.id] || false}
+                        onChange={() => toggleVisitor(v.id)}
+                        className="w-6 h-6 cursor-pointer accent-blue-500" />
+                      <div className="flex-1">
+                        <div className="font-medium text-base">{v.name}</div>
+                        {v.phone && <div className="text-xs text-gray-500">{v.phone}</div>}
+                      </div>
+                    </div>
+                    <span className={`px-4 py-2 rounded-full text-sm font-semibold ${visitorAttendance[v.id] ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-500"}`}>
+                      {visitorAttendance[v.id] ? "✓ Presente" : "Ausente"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-4 text-sm text-gray-400 text-center">
+                Nenhum visitante cadastrado ainda neste grupo.
+              </div>
+            )}
           </div>
 
           <div className="flex gap-4 sticky bottom-0 bg-white pt-4 border-t">

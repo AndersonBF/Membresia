@@ -6,11 +6,12 @@ import BroadcastFeed from "@/components/BroadcastFeed"
 import prisma from "@/lib/prisma"
 import Image from "next/image"
 import Link from "next/link"
-import { Users, Calendar, FileText, ArrowLeft, Phone, ChevronRight, Clock, Cake, Camera, Package, CheckSquare } from "lucide-react"
+import { Users, Calendar, FileText, ArrowLeft, Phone, ChevronRight, Clock, Cake, Camera, Package, CheckSquare, UserRound } from "lucide-react"
 import EbdHome from "./EbdHome"
 import { canManageGroup } from "@/lib/permissions"
 import { getGroupCover } from "@/lib/groupCovers"
 import GroupCoverEditor from "@/components/GroupCoverEditor"
+import { scopeForRole, visitorWhereForScope } from "@/lib/visitorScope"
 
 const roleConfig: Record<string, {
   label: string
@@ -87,8 +88,9 @@ async function getDataForRole(role: string) {
 
   const now = new Date()
 
-  const [totalMembers, totalEvents, totalDocuments, recentMembers, upcomingEvents, allMembers] = await Promise.all([
+  const [totalMembers, totalVisitors, totalEvents, totalDocuments, recentMembers, upcomingEvents, allMembers] = await Promise.all([
     prisma.member.count({ where: memberWhere }),
+    prisma.visitor.count({ where: visitorWhereForScope(scopeForRole(role)) }),
     prisma.event.count({ where: eventWhere }),
     prisma.document.count({ where: documentWhere }),
     prisma.member.findMany({ where: memberWhere, orderBy: { name: "asc" }, take: 8 }),
@@ -110,7 +112,7 @@ async function getDataForRole(role: string) {
     })
     .sort((a, b) => new Date(a.birthDate!).getDate() - new Date(b.birthDate!).getDate())
 
-  return { totalMembers, totalEvents, totalDocuments, recentMembers, directoryMembers, upcomingEvents, birthdaysThisMonth }
+  return { totalMembers, totalVisitors, totalEvents, totalDocuments, recentMembers, directoryMembers, upcomingEvents, birthdaysThisMonth }
 }
 
 const RolePage = async ({
@@ -144,7 +146,7 @@ const RolePage = async ({
   const isAdmin = roles.includes("admin") || isSuperAdmin
   const backHref = isAdmin ? "/admin" : roles.includes("member") ? "/member" : "/admin"
 
-  const { totalMembers, totalEvents, totalDocuments, recentMembers, directoryMembers, upcomingEvents, birthdaysThisMonth } =
+  const { totalMembers, totalVisitors, totalEvents, totalDocuments, recentMembers, directoryMembers, upcomingEvents, birthdaysThisMonth } =
     await getDataForRole(role)
 
   const ac = config.accentColor
@@ -209,6 +211,7 @@ const RolePage = async ({
               <div className="flex divide-x divide-white/10 overflow-hidden rounded-xl" style={{ background: "rgba(255,255,255,0.06)" }}>
                 {[
                   { n: totalMembers, l: "Membros" },
+                  { n: totalVisitors, l: "Visitantes" },
                   { n: totalEvents, l: "Eventos" },
                   { n: totalDocuments, l: "Docs" },
                 ].map((s, i) => (
@@ -228,9 +231,10 @@ const RolePage = async ({
           <div className="w-full lg:w-2/3 flex flex-col gap-8">
 
             {/* QUICK LINKS */}
-            <div className={`grid gap-3 rp-in d2 ${role === "diaconia" ? "grid-cols-3 sm:grid-cols-6" : "grid-cols-4"}`}>
+            <div className={`grid gap-3 rp-in d2 ${role === "diaconia" ? "grid-cols-3 sm:grid-cols-7" : "grid-cols-3 sm:grid-cols-5"}`}>
               {[
                 { label: "Membros",    icon: Users,        href: `/${role}/membros` },
+                { label: "Visitantes", icon: UserRound,    href: `/${role}/visitantes` },
                 { label: "Galeria",    icon: Camera,       href: `/${role}/galeria` },
                 { label: "Eventos",    icon: Calendar,     href: `/list/events?roleContext=${role}` },
                 { label: "Documentos", icon: FileText,     href: `/list/documents?roleContext=${role}` },

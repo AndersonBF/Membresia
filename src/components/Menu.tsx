@@ -94,6 +94,7 @@ const MenuContent = () => {
     if (href === "/list/members") return `/${currentRole}/membros`
 
     // Rotas que sempre ficam dentro de /<role>/
+    if (href === "/visitantes") return `/${currentRole}/visitantes`
     if (href === "/galeria")    return `/${currentRole}/galeria`
     if (href === "/relatorios") return `/${currentRole}/relatorios`
 
@@ -131,6 +132,10 @@ const MenuContent = () => {
             if ((item as any).showOnlyInPastor && !isPastorContext) return false;
             if (useReducedMenu && item.hiddenForSociedades) return false;
             if (!useReducedMenu && item.showOnlyForSociedades) return false;
+            // Itens exclusivos de um grupo (ex.: Inventário/Tarefas/Escala da
+            // Diaconia) não devem vazar para o menu das outras sociedades.
+            const onlyFor = (item as any).onlyForRoleContext as string[] | undefined;
+            if (onlyFor && !onlyFor.includes(currentRole)) return false;
             return isSuperAdmin || item.visible.some((v) => roles.includes(v));
           })
           .map((item) => ({ item, href: resolveHref(item.href) }))
@@ -183,6 +188,16 @@ const MenuContent = () => {
                       )}
                       <Icon size={19} className={isActive ? "text-emerald-300" : "text-white/60 group-hover:text-white"} />
                       <span className="hidden lg:block text-sm">{item.label}</span>
+                      {(item as any).beta && (
+                        <>
+                          {/* etiqueta completa no menu expandido */}
+                          <span className="hidden lg:inline ml-auto text-[9px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">
+                            BETA
+                          </span>
+                          {/* pontinho no menu recolhido */}
+                          <span className="lg:hidden absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-300" />
+                        </>
+                      )}
                     </Link>
                   );
                 })}

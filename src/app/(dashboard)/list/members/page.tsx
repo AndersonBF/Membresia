@@ -11,6 +11,7 @@ import { ITEM_PER_PAGE } from "@/lib/settings"
 import { getMembersPerPage } from "@/lib/appSettings"
 import { auth } from "@clerk/nextjs/server"
 import MemberAvatar from "@/components/MemberAvatar"
+import BulkAddMembersButton from "@/components/BulkAddMembersButton"
 
 export const dynamic = "force-dynamic"
 
@@ -182,7 +183,8 @@ const MemberListPage = async ({
             <button className="w-8 h-8 rounded-full bg-lamaYellow flex items-center justify-center">
               <Image src="/sort.png" alt="" width={14} height={14} />
             </button>
-            {isAdmin && <FormContainer table="member" type="create" />}
+            {isAdmin && <BulkAddMembersButton />}
+            {isAdmin && <FormContainer table="member" type="create" shortcutKey="n" />}
           </div>
         </div>
       </div>

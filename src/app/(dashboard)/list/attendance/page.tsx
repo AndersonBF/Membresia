@@ -44,20 +44,31 @@ const AttendanceListPage = async ({
           member: { isActive: true }, // só conta membros ativos
         },
       },
+      visitorAttendances: {
+        select: { isPresent: true, visitor: { select: { name: true } } },
+        where: { isPresent: true },
+      },
     },
     orderBy: { date: "asc" },
     take: 50,
   })
 
+  // Nº de visitantes presentes por evento (usado nos relatórios/Excel)
+  const eventsWithVisitors = events.map((e) => ({
+    ...e,
+    visitors: e.visitorAttendances.length,
+    visitorNames: e.visitorAttendances.map((va) => va.visitor.name),
+  }))
+
   return (
     <div className="bg-white p-4 rounded-md flex-1 m-4 mt-0">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-semibold">Presenças</h1>
-        <AttendanceExcelButton events={events} />
+        <AttendanceExcelButton events={eventsWithVisitors} />
       </div>
 
       <AttendanceListClient
-        events={events.map(e => ({
+        events={eventsWithVisitors.map(e => ({
           ...e,
           date: e.date.toISOString(),
           startTime: e.startTime?.toISOString() ?? null,

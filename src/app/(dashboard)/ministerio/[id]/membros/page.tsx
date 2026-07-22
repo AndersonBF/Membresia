@@ -172,7 +172,7 @@ export default async function MinistryMembrosPage({
                   availableMembers={availableMembers}
                 />
                 {/* Criar novo membro */}
-                <FormContainer table="member" type="create" />
+                <FormContainer table="member" type="create" shortcutKey="n" />
               </>
             )}
           </div>

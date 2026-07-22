@@ -16,6 +16,7 @@ import {
 } from "./formValidationSchemas";
 import { getEbdAccess, canAccessClass } from "./ebdAccess";
 import { getManageableGroups, roleForSocietyId } from "./permissions";
+import { scopeForEvent } from "./visitorScope";
 import { currentUser } from "@clerk/nextjs/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
@@ -477,6 +478,18 @@ export const bulkUpdateAttendance = async (
       isPresent: boolean;
     }[] = JSON.parse(data.get("attendanceData") as string);
 
+    // Visitantes já cadastrados marcados nesta chamada
+    const visitorData: {
+      visitorId: number;
+      isPresent: boolean;
+    }[] = JSON.parse((data.get("visitorData") as string) || "[]");
+
+    // Visitantes digitados na hora — criados com o escopo do evento
+    const newVisitors: {
+      name: string;
+      phone?: string | null;
+    }[] = JSON.parse((data.get("newVisitors") as string) || "[]");
+
     await prisma.attendance.deleteMany({ where: { eventId } });
 
     await prisma.attendance.createMany({
@@ -486,6 +499,46 @@ export const bulkUpdateAttendance = async (
         isPresent: item.isPresent,
       })),
     });
+
+    // ── Visitantes ────────────────────────────────────────────────────────────
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      select: { societyId: true, category: true },
+    });
+
+    if (event) {
+      const scope = scopeForEvent(event);
+
+      const created = await Promise.all(
+        newVisitors
+          .filter((v) => v.name?.trim())
+          .map((v) =>
+            prisma.visitor.create({
+              data: {
+                name: v.name.trim(),
+                phone: v.phone?.trim() || null,
+                societyId: scope.societyId,
+                category: scope.category,
+              },
+              select: { id: true },
+            })
+          )
+      );
+
+      await prisma.visitorAttendance.deleteMany({ where: { eventId } });
+
+      await prisma.visitorAttendance.createMany({
+        data: [
+          ...visitorData.map((item) => ({
+            eventId,
+            visitorId: item.visitorId,
+            isPresent: item.isPresent,
+          })),
+          ...created.map((v) => ({ eventId, visitorId: v.id, isPresent: true })),
+        ],
+        skipDuplicates: true,
+      });
+    }
 
     revalidatePath("/list/attendance");
     return { success: true, error: false };

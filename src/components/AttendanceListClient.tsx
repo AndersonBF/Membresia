@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ClipboardCheck, ClipboardX, Eye } from "lucide-react"
+import { CalendarDays, ClipboardCheck, ClipboardList, ClipboardX, Clock, Pencil, UserRound, Users } from "lucide-react"
 import { toast } from "react-toastify"
 
 type Event = {
@@ -15,6 +15,8 @@ type Event = {
   requiresAttendance: boolean
   society: { name: string } | null
   attendances: { isPresent: boolean }[]
+  /** Visitantes presentes neste evento */
+  visitors?: number
 }
 
 type Props = {
@@ -63,11 +65,14 @@ export default function AttendanceListClient({ events, roleContext, societyId, i
   return (
     <div className="space-y-3">
       {events.map((event) => {
-        const requiresAttendance = (eventId: number) => overrides[eventId] ?? event.requiresAttendance
-        const req = requiresAttendance(event.id)
+        const req = overrides[event.id] ?? event.requiresAttendance
         const total = event.attendances.length
         const presentes = event.attendances.filter(a => a.isPresent).length
-        const pct = total > 0 ? Math.round((presentes / total) * 100) : null
+        const visitantes = event.visitors ?? 0
+        // total === 0 significa que a chamada ainda não foi feita — diferente de
+        // "chamada feita com todo mundo ausente" (aí total > 0 e presentes === 0).
+        const registrada = total > 0
+        const pct = registrada ? Math.round((presentes / total) * 100) : null
 
         return (
           <div
@@ -76,80 +81,137 @@ export default function AttendanceListClient({ events, roleContext, societyId, i
               req ? "bg-white hover:bg-gray-50" : "bg-gray-50 border-dashed"
             }`}
           >
-            <div className="flex items-center gap-3 p-4">
-              {/* Conteúdo clicável → vai para o take */}
-              <Link
-                href={req ? buildTakeUrl(event.id) : "#"}
-                className={`flex-1 min-w-0 ${!req ? "pointer-events-none" : ""}`}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className={`font-semibold text-base leading-snug ${!req ? "text-gray-400" : "text-gray-800"}`}>
-                        {event.title}
-                      </h3>
-                      {!req && (
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-200 text-gray-500 uppercase tracking-wide">
-                          Sem presença
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap gap-3 text-xs text-gray-500 mt-1.5">
-                      <span>📅 {new Date(event.date).toLocaleDateString("pt-BR")}</span>
-                      {event.startTime && (
-                        <span>
-                          🕐 {new Date(event.startTime).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                        </span>
-                      )}
-                      {event.society && <span>👥 {event.society.name}</span>}
-                    </div>
-                    {event.description && (
-                      <p className="text-xs text-gray-400 mt-1.5 line-clamp-1">{event.description}</p>
-                    )}
-                  </div>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-4">
+              {/* ── Identificação do evento ─────────────────────────────────── */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {req ? (
+                    <Link
+                      href={buildTakeUrl(event.id)}
+                      className="font-semibold text-base leading-snug text-gray-800 hover:underline underline-offset-2"
+                    >
+                      {event.title}
+                    </Link>
+                  ) : (
+                    <h3 className="font-semibold text-base leading-snug text-gray-400">{event.title}</h3>
+                  )}
 
-                  {/* Stats de presença */}
-                  {req && (
-                    <div className="flex items-center gap-3 shrink-0">
-                      {pct !== null && (
-                        <div className="text-right hidden sm:block">
-                          <div className="text-lg font-bold text-blue-600 leading-none">{pct}%</div>
-                          <div className="text-[10px] text-gray-400 mt-0.5">presença</div>
-                        </div>
-                      )}
-                      <div className="text-right">
-                        <div className="text-sm font-semibold text-blue-600">{presentes} presentes</div>
-                        <div className="text-xs text-gray-400">de {total}</div>
-                      </div>
-                      <div className="w-9 h-9 flex items-center justify-center rounded-full bg-blue-50">
-                        <Eye size={16} className="text-blue-500" />
-                      </div>
-                    </div>
+                  {!req && (
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-200 text-gray-500 uppercase tracking-wide">
+                      Sem presença
+                    </span>
                   )}
                 </div>
-              </Link>
 
-              {/* Toggle — só para admins */}
-              {isAdmin && (
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mt-1.5">
+                  <span className="inline-flex items-center gap-1">
+                    <CalendarDays size={12} /> {new Date(event.date).toLocaleDateString("pt-BR")}
+                  </span>
+                  {event.startTime && (
+                    <span className="inline-flex items-center gap-1">
+                      <Clock size={12} />
+                      {new Date(event.startTime).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  )}
+                  {event.society && (
+                    <span className="inline-flex items-center gap-1">
+                      <Users size={12} /> {event.society.name}
+                    </span>
+                  )}
+                </div>
+
+                {event.description && (
+                  <p className="text-xs text-gray-400 mt-1.5 line-clamp-1">{event.description}</p>
+                )}
+              </div>
+
+              {/* ── Resultado + ações ───────────────────────────────────────── */}
+              {req && (
+                <div className="flex items-center gap-3 shrink-0 flex-wrap">
+                  {registrada ? (
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <div className="text-sm font-semibold text-gray-800 leading-tight">
+                          {presentes}<span className="text-gray-400 font-normal"> / {total}</span>
+                        </div>
+                        <div className="text-[11px] text-gray-400">presentes</div>
+                      </div>
+
+                      {pct !== null && (
+                        <span
+                          className={`text-xs font-semibold px-2 py-1 rounded-lg ${
+                            pct >= 70
+                              ? "bg-green-600 text-white"
+                              : pct >= 40
+                              ? "bg-amber-500 text-white"
+                              : "bg-red-500 text-white"
+                          }`}
+                        >
+                          {pct}%
+                        </span>
+                      )}
+
+                      {visitantes > 0 && (
+                        <span
+                          title={`${visitantes} visitante(s) presente(s)`}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 border border-gray-200 rounded-lg px-2 py-1"
+                        >
+                          <UserRound size={12} /> {visitantes}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-gray-400 italic">Chamada não registrada</span>
+                  )}
+
+                  {/* Ação principal — explícita */}
+                  <Link
+                    href={buildTakeUrl(event.id)}
+                    className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium transition ${
+                      registrada
+                        ? "border border-gray-300 text-gray-700 hover:bg-gray-100"
+                        : "bg-blue-600 text-white hover:bg-blue-700"
+                    }`}
+                  >
+                    {registrada ? <Pencil size={14} /> : <ClipboardList size={14} />}
+                    {registrada ? "Editar chamada" : "Fazer chamada"}
+                  </Link>
+
+                  {/* Toggle — secundário, só ícone */}
+                  {isAdmin && (
+                    <button
+                      onClick={(e) => handleToggle(e, event.id)}
+                      disabled={toggling === event.id}
+                      title="Desativar a presença neste evento"
+                      className={`shrink-0 w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 transition
+                        hover:bg-gray-100 hover:text-gray-600
+                        ${toggling === event.id ? "opacity-50 cursor-not-allowed" : ""}`}
+                    >
+                      {toggling === event.id ? (
+                        <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <ClipboardX size={17} />
+                      )}
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Evento com presença desativada — só a ação de reativar */}
+              {!req && isAdmin && (
                 <button
                   onClick={(e) => handleToggle(e, event.id)}
                   disabled={toggling === event.id}
-                  title={req ? "Desativar presença neste evento" : "Reativar presença neste evento"}
-                  className={`shrink-0 flex flex-col items-center gap-1 px-3 py-2 rounded-xl border text-xs font-medium transition-all
-                    ${toggling === event.id ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
-                    ${req
-                      ? "border-green-200 bg-green-50 text-green-700 hover:bg-green-100"
-                      : "border-gray-200 bg-white text-gray-400 hover:bg-gray-100"
-                    }`}
+                  className={`shrink-0 inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-gray-300
+                    text-sm font-medium text-gray-600 transition hover:bg-gray-100
+                    ${toggling === event.id ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
                   {toggling === event.id ? (
-                    <span className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                  ) : req ? (
-                    <ClipboardCheck size={18} />
+                    <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                   ) : (
-                    <ClipboardX size={18} />
+                    <ClipboardCheck size={15} />
                   )}
-                  <span>{req ? "Ativo" : "Inativo"}</span>
+                  Reativar presença
                 </button>
               )}
             </div>

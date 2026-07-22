@@ -9,9 +9,11 @@ export type FormContainerProps = {
   data?: any;
   id?: number | string;
   relatedData?: any;
+  /** Tecla de atalho que abre o formulário de criação (ex.: "n"). */
+  shortcutKey?: string;
 }
 
-const FormContainer = async ({table, type, data, id, relatedData: passedRelatedData}: FormContainerProps) => {
+const FormContainer = async ({table, type, data, id, relatedData: passedRelatedData, shortcutKey}: FormContainerProps) => {
 
   let relatedData = passedRelatedData || {}; // ✅ Usa o relatedData passado como prop
   
@@ -53,9 +55,10 @@ const FormContainer = async ({table, type, data, id, relatedData: passedRelatedD
         table={table} 
         type={type} 
         data={data} 
-        id={id} 
+        id={id}
         relatedData={relatedData}
-      /> 
+        shortcutKey={shortcutKey}
+      />
     </div>
   )
 }

@@ -30,6 +30,15 @@ function getClientForUrl(url: string): PrismaClient {
   return client
 }
 
+/**
+ * Client de um tenant específico (por slug) — usado quando não há requisição
+ * com subdomínio, como no webhook do Clerk.
+ */
+export function prismaForTenant(slug: string): PrismaClient {
+  const url = process.env[`TENANT_DB__${slug}`] ?? process.env.DATABASE_URL ?? ""
+  return getClientForUrl(url)
+}
+
 /** Resolve o PrismaClient da requisição atual (por subdomínio), com fallback. */
 function currentClient(): PrismaClient {
   let url = ""

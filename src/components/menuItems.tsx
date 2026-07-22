@@ -5,7 +5,7 @@ import {
   Heart, Info, Image, Youtube, CalendarDays,
   ClipboardList, CalendarRange, MessageSquare,
   Camera, BarChart2, Package, CheckSquare, CalendarCheck,
-  Inbox, Cross, BookOpen,
+  Inbox, Cross, BookOpen, BookMarked, Activity,
 } from "lucide-react";
 
 const pastorRoles = ["pastor", "superadmin"];
@@ -35,6 +35,17 @@ export const menuItems = [
         label: "Diário",
         href: "/pastor/diario",
         group: "Pastor",
+        visible: pastorRoles,
+        hiddenForSociedades: false,
+        showOnlyForSociedades: false,
+        showOnlyInPastor: true,
+      },
+      {
+        icon: BookMarked,
+        label: "Meus Sermões",
+        href: "/pastor/sermoes",
+        group: "Pastor",
+        beta: true,
         visible: pastorRoles,
         hiddenForSociedades: false,
         showOnlyForSociedades: false,
@@ -86,6 +97,16 @@ export const menuItems = [
         showOnlyForSociedades: false,
       },
       {
+        icon: Activity,
+        label: "Acessos",
+        href: "/admin/acessos",
+        group: "Principal",
+        beta: true,
+        visible: ["admin", "superadmin"],
+        hiddenForSociedades: true,
+        showOnlyForSociedades: false,
+      },
+      {
         icon: Inbox,
         label: "Visitantes",
         href: "/list/visitantes",
@@ -99,6 +120,16 @@ export const menuItems = [
         icon: Users,
         label: "Membros",
         href: "/list/members",
+        group: "Principal",
+        visible: groupStaffRoles,
+        hiddenForSociedades: false,
+        showOnlyForSociedades: true,
+      },
+      {
+        // Lista de visitantes do grupo — resolve para /<role>/visitantes
+        icon: Inbox,
+        label: "Visitantes",
+        href: "/visitantes",
         group: "Principal",
         visible: groupStaffRoles,
         hiddenForSociedades: false,
@@ -271,7 +302,10 @@ export const menuItems = [
       },
 
       {
-        // Exclusivos da Diaconia — só aparecem dentro do contexto da Diaconia.
+        // Exclusivos da Diaconia — só aparecem navegando dentro de /diaconia.
+        // `visible` filtra pelo papel do usuário; `onlyForRoleContext` filtra
+        // pelo grupo que está aberto (sem ele, um admin veria estes itens
+        // também dentro de UMP, SAF, etc.).
         icon: Package,
         label: "Inventário",
         href: "/diaconia/inventario",
@@ -279,6 +313,7 @@ export const menuItems = [
         visible: ["diaconia", "admin", "superadmin"],
         hiddenForSociedades: false,
         showOnlyForSociedades: true,
+        onlyForRoleContext: ["diaconia"],
       },
       {
         icon: CheckSquare,
@@ -288,6 +323,7 @@ export const menuItems = [
         visible: ["diaconia", "admin", "superadmin"],
         hiddenForSociedades: false,
         showOnlyForSociedades: true,
+        onlyForRoleContext: ["diaconia"],
       },
       {
         icon: CalendarCheck,
@@ -297,6 +333,7 @@ export const menuItems = [
         visible: ["diaconia", "admin", "superadmin"],
         hiddenForSociedades: false,
         showOnlyForSociedades: true,
+        onlyForRoleContext: ["diaconia"],
       },
     ],
   },

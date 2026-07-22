@@ -5,7 +5,7 @@ import prisma from "@/lib/prisma"
 import PastorCoverEditor from "@/components/PastorCoverEditor"
 import {
   Users, Church, GraduationCap, Layers, Shield, HandHelping,
-  BookOpen, Cross, ChevronRight, MapPin, ClipboardList, CalendarDays, ArrowLeft, Lock,
+  BookOpen, Cross, ChevronRight, MapPin, ClipboardList, CalendarDays, ArrowLeft, Lock, BookMarked,
 } from "lucide-react"
 
 const mesesPT = [
@@ -62,6 +62,7 @@ export default async function PastorHomePage() {
   const registrosMes = monthAgg._count ?? 0
 
   const quickLinks = [
+    { label: "Meus Sermões", icon: BookMarked, href: "/pastor/sermoes" },
     { label: "Membros", icon: Users, href: "/list/members" },
     { label: "Sociedades", icon: Church, href: "/list/internalsociety" },
     { label: "EBD", icon: GraduationCap, href: "/ebd" },

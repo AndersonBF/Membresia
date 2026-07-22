@@ -45,6 +45,7 @@ const AttendanceExcelButton = ({ events }: AttendanceExcelButtonProps) => {
           Presentes: presentCount,
           Ausentes: absentCount,
           Visitas: visitors,
+          "Nomes dos Visitantes": (event.visitorNames || []).join(", ") || "-",
           "Total Participantes": totalParticipants,
           "% Presença": `${attendancePercentage}%`,
         };
@@ -58,7 +59,7 @@ const AttendanceExcelButton = ({ events }: AttendanceExcelButtonProps) => {
       ws["!cols"] = [
         { wch: 12 }, { wch: 30 }, { wch: 10 }, { wch: 20 },
         { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 10 },
-        { wch: 18 }, { wch: 12 },
+        { wch: 40 }, { wch: 18 }, { wch: 12 },
       ];
 
       XLSX.utils.book_append_sheet(wb, ws, "Relatório de Presenças");

@@ -187,7 +187,10 @@ export default clerkMiddleware(async (auth, req) => {
     }
   }
 
-  return NextResponse.next();
+  // Repassa a rota atual para o servidor (usado no registro de acessos).
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-pathname", pathname);
+  return NextResponse.next({ request: { headers: requestHeaders } });
 });
 
 export const config = {

@@ -1,12 +1,16 @@
 import Sidebar from "@/components/Sidebar";
 import Navbar from "@/components/Navbar";
 import DemoBanner from "@/components/DemoBanner";
+import { logPageview } from "@/lib/accessLog";
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Registra o acesso (silencioso — nunca quebra a página)
+  await logPageview();
+
   return (
     <div className="h-screen flex flex-col">
       <style dangerouslySetInnerHTML={{ __html: `

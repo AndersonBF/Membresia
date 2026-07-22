@@ -52,7 +52,7 @@ const AdminPage = async ({
                 return (
                   <Link
                     key={role}
-                    href={`/${role}`}
+                    href={role === "admin" ? "/admin/ferramentas" : `/${role}`}
                     className="group relative w-full h-28 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 ease-out"
                   >
                     {image.startsWith("/") ? (

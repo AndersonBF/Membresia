@@ -50,9 +50,9 @@ const initialToggles: Record<string, Toggle[]> = {
   ],
 }
 
-const sidebarItems: { id: Section; label: string; icon: React.ElementType; badge?: string }[] = [
+const sidebarItems: { id: Section; label: string; icon: React.ElementType }[] = [
   { id: "igreja",        label: "Dados da Igreja",     icon: Church },
-  { id: "notificacoes",  label: "Notificações",         icon: Bell,    badge: "5" },
+  { id: "notificacoes",  label: "Notificações",         icon: Bell },
   { id: "privacidade",   label: "Privacidade",          icon: Shield },
   { id: "membros",       label: "Membros",              icon: Users },
   { id: "aparencia",     label: "Aparência",            icon: Palette },
@@ -139,16 +139,41 @@ export default function SettingsPage() {
     fetch("/api/settings")
       .then((r) => r.json())
       .then((data) => {
-        if (data.churchName) {
-          setChurchData((prev) => ({ ...prev, name: data.churchName }))
+        setChurchData((prev) => ({
+          ...prev,
+          name:              data.churchName        ?? prev.name,
+          pastor:            data.pastor            ?? prev.pastor,
+          founded:           data.founded           ?? prev.founded,
+          city:              data.city              ?? prev.city,
+          state:             data.state             ?? prev.state,
+          address:           data.address           ?? prev.address,
+          phone:             data.phone             ?? prev.phone,
+          email:             data.email             ?? prev.email,
+          website:           data.website           ?? prev.website,
+          youtubeChannelUrl: data.youtubeChannelUrl ?? prev.youtubeChannelUrl,
+        }))
+
+        // Toggles salvos (preferences) sobrescrevem os padrões.
+        const prefs = data.preferences ?? {}
+        if (typeof prefs.valores?.itensPorPagina === "number") {
+          setMembersPerPage(prefs.valores.itensPorPagina)
         }
-        if (data.youtubeChannelUrl) {
-          setChurchData((prev) => ({ ...prev, youtubeChannelUrl: data.youtubeChannelUrl }))
-        }
+        setToggles((prev) => {
+          const next = { ...prev }
+          for (const section of Object.keys(next)) {
+            const saved = prefs[section] as Record<string, boolean> | undefined
+            if (!saved) continue
+            next[section] = next[section].map((t) =>
+              typeof saved[t.id] === "boolean" ? { ...t, value: saved[t.id] } : t
+            )
+          }
+          return next
+        })
       })
       .catch(() => {/* silencioso */})
   }, [])
 
+  const [membersPerPage, setMembersPerPage] = useState(10)
   const [accentColor, setAccentColor] = useState("green")
   const colorOptions = [
     { id: "green",  label: "Verde",   bg: "bg-green-600" },
@@ -168,14 +193,31 @@ export default function SettingsPage() {
   async function handleSave() {
     setSaving(true)
     try {
-      await fetch("/api/settings", {
+      // Serializa os toggles como { section: { id: bool } }.
+      const preferences: Record<string, any> = {}
+      for (const [section, list] of Object.entries(toggles)) {
+        preferences[section] = Object.fromEntries(list.map((t) => [t.id, t.value]))
+      }
+      preferences.valores = { itensPorPagina: membersPerPage }
+
+      const res = await fetch("/api/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          churchName: churchData.name,
+          churchName:        churchData.name,
+          pastor:            churchData.pastor,
+          founded:           churchData.founded,
+          city:              churchData.city,
+          state:             churchData.state,
+          address:           churchData.address,
+          phone:             churchData.phone,
+          email:             churchData.email,
+          website:           churchData.website,
           youtubeChannelUrl: churchData.youtubeChannelUrl,
+          preferences,
         }),
       })
+      if (!res.ok) throw new Error()
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
     } catch {
@@ -183,6 +225,22 @@ export default function SettingsPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  async function handleResetPreferences() {
+    if (!confirm("Redefinir todas as preferências (notificações, privacidade e membros) para o padrão?")) return
+    setToggles(initialToggles)
+    const preferences: Record<string, Record<string, boolean>> = {}
+    for (const [section, list] of Object.entries(initialToggles)) {
+      preferences[section] = Object.fromEntries(list.map((t) => [t.id, t.value]))
+    }
+    await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ preferences }),
+    })
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2500)
   }
 
   return (
@@ -202,6 +260,10 @@ export default function SettingsPage() {
             {sidebarItems.map((item) => {
               const Icon = item.icon
               const active = activeSection === item.id
+              // Badge dinâmico: nº de alertas ativos na aba Notificações.
+              const badge = item.id === "notificacoes"
+                ? String(toggles.notificacoes.filter((t) => t.value).length)
+                : undefined
               return (
                 <button
                   key={item.id}
@@ -214,11 +276,11 @@ export default function SettingsPage() {
                 >
                   <Icon size={17} />
                   <span className="flex-1">{item.label}</span>
-                  {item.badge && (
+                  {badge && (
                     <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${
                       active ? "bg-white/20 text-white" : "bg-gray-200 text-gray-600"
                     }`}>
-                      {item.badge}
+                      {badge}
                     </span>
                   )}
                 </button>
@@ -418,11 +480,15 @@ export default function SettingsPage() {
                     <UserCheck size={12} />
                     Itens por página na listagem
                   </p>
-                  <select className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-300 text-gray-700">
-                    <option>10</option>
-                    <option selected>20</option>
-                    <option>50</option>
-                    <option>100</option>
+                  <select
+                    value={membersPerPage}
+                    onChange={(e) => setMembersPerPage(Number(e.target.value))}
+                    className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-300 text-gray-700"
+                  >
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
                   </select>
                 </div>
               </div>
@@ -562,7 +628,7 @@ export default function SettingsPage() {
                     <p className="text-sm font-semibold text-gray-700">Redefinir configurações</p>
                     <p className="text-xs text-gray-400">Volta todas as configurações ao padrão</p>
                   </div>
-                  <button className="text-xs text-red-600 bg-red-50 hover:bg-red-100 px-3 py-2 rounded-lg font-semibold transition flex items-center gap-1.5">
+                  <button onClick={handleResetPreferences} className="text-xs text-red-600 bg-red-50 hover:bg-red-100 px-3 py-2 rounded-lg font-semibold transition flex items-center gap-1.5">
                     <RefreshCw size={13} />
                     Redefinir
                   </button>

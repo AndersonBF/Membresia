@@ -11,6 +11,13 @@ export async function GET() {
   const isAdmin = roles.includes("admin") || roles.includes("superadmin")
   if (!isAdmin) return NextResponse.json([])
 
+  // Preferências de notificação (definidas em Configurações → Notificações).
+  const settings = await prisma.churchSettings.findFirst({ select: { preferences: true } })
+  const notif = ((settings?.preferences as any)?.notificacoes ?? {}) as Record<string, boolean>
+  const wantBirthdays = notif.aniversarios ?? true
+  const wantNewMembers = notif.novos_membros ?? true
+  const wantEvents = notif.eventos_proximos ?? true
+
   const now = new Date()
   const tomorrow = new Date(now)
   tomorrow.setDate(tomorrow.getDate() + 1)
@@ -20,22 +27,28 @@ export async function GET() {
   yesterday.setDate(yesterday.getDate() - 1)
 
   const [members, events, newMembers] = await Promise.all([
-    prisma.member.findMany({
-      where: { birthDate: { not: null }, isActive: true },
-      select: { id: true, name: true, birthDate: true },
-    }),
-    prisma.event.findMany({
-      where: { date: { gte: now, lte: tomorrow } },
-      select: { id: true, title: true, date: true, startTime: true },
-      orderBy: { date: "asc" },
-      take: 5,
-    }),
-    prisma.member.findMany({
-      where: { createdAt: { gte: yesterday } },
-      select: { id: true, name: true, createdAt: true },
-      orderBy: { createdAt: "desc" },
-      take: 5,
-    }),
+    wantBirthdays
+      ? prisma.member.findMany({
+          where: { birthDate: { not: null }, isActive: true },
+          select: { id: true, name: true, birthDate: true },
+        })
+      : Promise.resolve([]),
+    wantEvents
+      ? prisma.event.findMany({
+          where: { date: { gte: now, lte: tomorrow } },
+          select: { id: true, title: true, date: true, startTime: true },
+          orderBy: { date: "asc" },
+          take: 5,
+        })
+      : Promise.resolve([]),
+    wantNewMembers
+      ? prisma.member.findMany({
+          where: { createdAt: { gte: yesterday } },
+          select: { id: true, name: true, createdAt: true },
+          orderBy: { createdAt: "desc" },
+          take: 5,
+        })
+      : Promise.resolve([]),
   ])
 
   const notifications: { id: string; type: string; title: string; message: string; time: string }[] = []

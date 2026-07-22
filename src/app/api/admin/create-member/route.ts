@@ -62,6 +62,18 @@ export async function POST(req: Request) {
       }
     }
 
+    // Regra de gênero por grupo: Diaconia/UPH → masculino, SAF → feminino.
+    const groupGender: Record<string, "M" | "F"> = { diaconia: "M", uph: "M", saf: "F" }
+    for (const r of roles) {
+      if (groupGender[r] && gender !== groupGender[r]) {
+        const label = groupGender[r] === "M" ? "masculino" : "feminino"
+        return NextResponse.json(
+          { error: `O grupo ${r.toUpperCase()} é exclusivo do gênero ${label}.` },
+          { status: 400 },
+        )
+      }
+    }
+
     const baseUsername = generateUsername(name)
     const password = generatePassword()
 

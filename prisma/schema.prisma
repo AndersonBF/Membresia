@@ -562,6 +562,7 @@ model ChurchSettings {
   pastorCoverUrl    String?  // Capa/imagem do card do Painel do Pastor
   whatsapp          String?  // Número de WhatsApp p/ o "Quero visitar" (só dígitos, com DDD)
   slug              String?  // Identificador da igreja (base do subdomínio), ex.: "ipbtoledo"
+  preferences       Json?    // Preferências gerais (toggles de notificação, privacidade, membros)
   updatedAt         DateTime @updatedAt
 }
 

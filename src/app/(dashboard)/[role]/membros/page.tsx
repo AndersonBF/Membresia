@@ -15,6 +15,7 @@ import MemberAvatar from "@/components/MemberAvatar"
 import MemberDrawerWrapper from "@/components/MemberDrawerWrapper"
 import AddExistingMemberButton from "@/components/AddExistingMemberButton"
 import { getManageableGroups } from "@/lib/permissions"
+import { getPreferences } from "@/lib/appSettings"
 
 const roleConfig: Record<string, { label: string; color: string; bg: string }> = {
   ump:        { label: "UMP",        color: "text-blue-700",   bg: "bg-blue-100" },
@@ -66,6 +67,11 @@ export default async function RoleMembrosPage({
   const { isAdmin: isGlobalAdmin, groups } = await getManageableGroups()
   const isAdmin = isGlobalAdmin || groups.has(role)
 
+  // Privacidade: membros comuns só veem telefone/e-mail se a configuração permitir.
+  const prefs = await getPreferences()
+  const showPhone = isAdmin || prefs.privacidade?.telefone_visivel === true
+  const showEmail = isAdmin || prefs.privacidade?.email_visivel === true
+
   const p = searchParams.page ? parseInt(searchParams.page) : 1
   const isSociedade = !!societyMap[role]
 
@@ -94,8 +100,8 @@ export default async function RoleMembrosPage({
     { header: "Info", accessor: "info" },
     ...(isSociedade ? [{ header: "Cargo", accessor: "cargo", className: "hidden md:table-cell" }] : []),
     { header: "Gênero", accessor: "gender", className: "hidden md:table-cell" },
-    { header: "Telefone", accessor: "phone", className: "hidden lg:table-cell" },
-    { header: "Email", accessor: "email", className: "hidden xl:table-cell" },
+    ...(showPhone ? [{ header: "Telefone", accessor: "phone", className: "hidden lg:table-cell" }] : []),
+    ...(showEmail ? [{ header: "Email", accessor: "email", className: "hidden xl:table-cell" }] : []),
     { header: "Status", accessor: "isActive", className: "hidden md:table-cell" },
     ...(isAdmin ? [{ header: "Ações", accessor: "actions" }] : []),
   ]
@@ -148,10 +154,10 @@ export default async function RoleMembrosPage({
         </td>
 
         {/* TELEFONE */}
-        <td className="hidden lg:table-cell">{item.phone || "-"}</td>
+        {showPhone && <td className="hidden lg:table-cell">{item.phone || "-"}</td>}
 
         {/* EMAIL */}
-        <td className="hidden xl:table-cell">{item.email || <span className="text-gray-400">-</span>}</td>
+        {showEmail && <td className="hidden xl:table-cell">{item.email || <span className="text-gray-400">-</span>}</td>}
 
         {/* STATUS */}
         <td className="hidden md:table-cell">

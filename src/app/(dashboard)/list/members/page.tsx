@@ -8,6 +8,7 @@ import { Prisma } from "@prisma/client"
 import Image from "next/image"
 import Link from "next/link"
 import { ITEM_PER_PAGE } from "@/lib/settings"
+import { getMembersPerPage } from "@/lib/appSettings"
 import { auth } from "@clerk/nextjs/server"
 import MemberAvatar from "@/components/MemberAvatar"
 
@@ -143,6 +144,8 @@ const MemberListPage = async ({
   const { page, ...queryParams } = searchParams
   const p = page ? parseInt(page) : 1
 
+  const perPage = await getMembersPerPage()
+
   const query: Prisma.MemberWhereInput = {}
 
   if (queryParams.search) {
@@ -152,8 +155,8 @@ const MemberListPage = async ({
   const [data, count] = await prisma.$transaction([
     prisma.member.findMany({
       where: query,
-      take: ITEM_PER_PAGE,
-      skip: ITEM_PER_PAGE * (p - 1),
+      take: perPage,
+      skip: perPage * (p - 1),
       orderBy: { name: "asc" },
       include: {
         societies: { include: { society: true } },
@@ -185,7 +188,7 @@ const MemberListPage = async ({
       </div>
 
       <Table columns={columns} renderRow={renderRow} data={data} />
-      <Pagination page={p} count={count} />
+      <Pagination page={p} count={count} perPage={perPage} />
 
       <div className="flex justify-end mt-6">
         <Link

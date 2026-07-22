@@ -74,6 +74,8 @@ const MenuContent = () => {
     || searchParams.get("diaconateId")
     || searchParams.get("classId")
 
+  const isPastorContext = pathname === "/pastor" || pathname.startsWith("/pastor/");
+
   const isSociedade = sociedades.includes(currentRole);
   const isGrupoExtra = gruposExtras.includes(currentRole);
   const isRolePage = allRoles.includes(currentRole);
@@ -122,52 +124,73 @@ const MenuContent = () => {
         </div>
       )}
 
-      {menuItems.map((section) => (
-        <div key={section.title} className="flex flex-col gap-2">
-          <span className="text-2xl hidden lg:block text-white font-light my-4">
-            {section.title}
-          </span>
-
-          {(() => {
-            const seen = new Set<string>();
-            return section.items
-              .filter((item) => {
-                if (useReducedMenu && item.hiddenForSociedades) return false;
-                if (!useReducedMenu && item.showOnlyForSociedades) return false;
-                return isSuperAdmin || item.visible.some((v) => roles.includes(v));
-              })
-              .map((item) => ({ item, href: resolveHref(item.href) }))
-              // Remove itens repetidos (mesmo rótulo + rota resolvida),
-              // ex.: superadmin veria "Membros" duas vezes numa sociedade.
-              .filter(({ item, href }) => {
-                const dedupKey = `${item.label}|${href}`;
-                if (seen.has(dedupKey)) return false;
-                seen.add(dedupKey);
-                return true;
-              })
-              .map(({ item, href }, index) => {
-            const Icon = item.icon;
-            const isActive = pathname === href.split("?")[0]
-
-            return (
-              <Link
-                key={`${item.label}-${href}-${index}`}
-                href={href}
-                className={`flex items-center justify-center lg:justify-start gap-4
-                  py-2 md:px-2 rounded-md transition
-                  ${isActive
-                    ? "bg-green-300 text-green-900"
-                    : "text-white hover:bg-green-300 hover:text-green-900"
-                  }`}
-              >
-                <Icon size={20} />
-                <span className="hidden lg:block">{item.label}</span>
-              </Link>
-            );
+      {menuItems.map((section) => {
+        const seen = new Set<string>();
+        const visibleItems = section.items
+          .filter((item) => {
+            if ((item as any).showOnlyInPastor && !isPastorContext) return false;
+            if (useReducedMenu && item.hiddenForSociedades) return false;
+            if (!useReducedMenu && item.showOnlyForSociedades) return false;
+            return isSuperAdmin || item.visible.some((v) => roles.includes(v));
+          })
+          .map((item) => ({ item, href: resolveHref(item.href) }))
+          // Remove itens repetidos (mesmo rótulo + rota resolvida),
+          // ex.: superadmin veria "Membros" duas vezes numa sociedade.
+          .filter(({ item, href }) => {
+            const dedupKey = `${item.label}|${href}`;
+            if (seen.has(dedupKey)) return false;
+            seen.add(dedupKey);
+            return true;
           });
-          })()}
-        </div>
-      ))}
+
+        if (visibleItems.length === 0) return null;
+
+        // Agrupa por categoria (item.group), preservando a ordem de aparição.
+        const cats: { label: string; entries: typeof visibleItems }[] = [];
+        for (const entry of visibleItems) {
+          const label = (entry.item as any).group ?? section.title;
+          let c = cats.find((x) => x.label === label);
+          if (!c) { c = { label, entries: [] }; cats.push(c); }
+          c.entries.push(entry);
+        }
+
+        return (
+          <div key={section.title} className="flex flex-col">
+            {cats.map((cat) => (
+              <div key={cat.label} className="flex flex-col gap-1">
+                <span className="hidden lg:block text-[11px] uppercase tracking-[0.14em] text-white/40 font-semibold mt-6 mb-2 px-2">
+                  {cat.label}
+                </span>
+                <span className="lg:hidden h-px bg-white/10 mx-2 my-3" />
+
+                {cat.entries.map(({ item, href }, index) => {
+                  const Icon = item.icon;
+                  const isActive = pathname === href.split("?")[0];
+
+                  return (
+                    <Link
+                      key={`${item.label}-${href}-${index}`}
+                      href={href}
+                      className={`group relative flex items-center justify-center lg:justify-start gap-3
+                        py-2 px-2 lg:px-3 rounded-lg transition-colors
+                        ${isActive
+                          ? "bg-white/15 text-white font-medium"
+                          : "text-white/75 hover:bg-white/10 hover:text-white"
+                        }`}
+                    >
+                      {isActive && (
+                        <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-full bg-emerald-300" />
+                      )}
+                      <Icon size={19} className={isActive ? "text-emerald-300" : "text-white/60 group-hover:text-white"} />
+                      <span className="hidden lg:block text-sm">{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -24,17 +24,23 @@ export async function POST(req: Request) {
 
     const body = await req.json()
 
+    // Campos de texto da igreja que podem ser atualizados.
+    const textFields = [
+      "churchName", "youtubeChannelUrl", "pastor", "founded", "city",
+      "state", "address", "phone", "email", "website",
+    ] as const
+
+    const data: Record<string, unknown> = {}
+    for (const f of textFields) {
+      if (body[f] !== undefined) data[f] = body[f] === "" ? null : body[f]
+    }
+    // Preferências (toggles) — objeto livre.
+    if (body.preferences !== undefined) data.preferences = body.preferences
+
     const settings = await prisma.churchSettings.upsert({
       where: { id: 1 },
-      update: {
-        churchName:        body.churchName        ?? undefined,
-        youtubeChannelUrl: body.youtubeChannelUrl ?? undefined,
-      },
-      create: {
-        id:                1,
-        churchName:        body.churchName        ?? null,
-        youtubeChannelUrl: body.youtubeChannelUrl ?? null,
-      },
+      update: data,
+      create: { id: 1, ...data },
     })
 
     return NextResponse.json(settings)

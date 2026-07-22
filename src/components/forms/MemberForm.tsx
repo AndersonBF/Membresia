@@ -25,6 +25,14 @@ const roleOptions = [
 
 const sociedades = ["ump", "upa", "uph", "saf", "ucp"]
 
+// Grupos restritos a um gênero: Diaconia (M), UPH (homens), SAF (mulheres).
+const groupGender: Record<string, "M" | "F"> = {
+  diaconia: "M",
+  uph: "M",
+  saf: "F",
+}
+const genderLabel = { M: "masculino", F: "feminino" } as const
+
 // Grupos que possuem cargos de diretoria (além das sociedades)
 const cargoRoles = [...sociedades, "diaconia", "conselho"]
 
@@ -123,11 +131,38 @@ const MemberForm = ({
 
   const gender = watch("gender")
 
+  // Gênero exigido pelos grupos selecionados (Diaconia/UPH → M, SAF → F).
+  const requiredGender = selectedRoles
+    .map((r) => groupGender[r])
+    .find((g): g is "M" | "F" => !!g) ?? null
+
+  // Se um grupo restrito estiver marcado, força o gênero correspondente.
+  useEffect(() => {
+    if (requiredGender && gender !== requiredGender) {
+      setValue("gender", requiredGender)
+    }
+  }, [requiredGender]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const toggleRole = (roleId: string) => {
+    const isSelected = selectedRoles.includes(roleId)
+
+    // Ao marcar um grupo restrito, impede conflito de gênero com outro já marcado.
+    if (!isSelected && groupGender[roleId]) {
+      const conflict = selectedRoles.find(
+        (r) => groupGender[r] && groupGender[r] !== groupGender[roleId]
+      )
+      if (conflict) {
+        const grp = roleOptions.find((o) => o.id === roleId)?.label ?? roleId.toUpperCase()
+        const other = roleOptions.find((o) => o.id === conflict)?.label ?? conflict.toUpperCase()
+        toast.error(`${grp} é exclusivo do gênero ${genderLabel[groupGender[roleId]]} e não combina com ${other}.`)
+        return
+      }
+    }
+
     setSelectedRoles((prev) =>
-      prev.includes(roleId) ? prev.filter((r) => r !== roleId) : [...prev, roleId]
+      isSelected ? prev.filter((r) => r !== roleId) : [...prev, roleId]
     )
-    if (selectedRoles.includes(roleId) && cargoRoles.includes(roleId)) {
+    if (isSelected && cargoRoles.includes(roleId)) {
       setCargos((prev) => {
         const next = { ...prev }
         delete next[roleId]
@@ -261,6 +296,14 @@ const MemberForm = ({
       <InputField label="Nome" name="name" defaultValue={data?.name} register={register} error={errors.name} />
       <InputField label="Email" name="email" defaultValue={data?.email} register={register} error={errors.email} />
       <InputField label="Telefone" name="phone" defaultValue={data?.phone} register={register} error={errors.phone} />
+      <InputField
+        label="Data de nascimento"
+        name="birthDate"
+        type="date"
+        defaultValue={data?.birthDate ? new Date(data.birthDate).toISOString().slice(0, 10) : undefined}
+        register={register}
+        error={errors.birthDate}
+      />
 
       {/* GÊNERO */}
       <div className="flex flex-col gap-1">
@@ -268,41 +311,55 @@ const MemberForm = ({
         <div className="flex gap-2">
           <button
             type="button"
+            disabled={requiredGender === "F"}
             onClick={() => setValue("gender", "M")}
-            className={`flex-1 py-2 rounded-md text-sm font-medium border transition
+            className={`flex-1 py-2 rounded-md text-sm font-medium border transition disabled:opacity-40 disabled:cursor-not-allowed
               ${gender === "M" ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-700 border-gray-300 hover:border-blue-400"}`}
           >
             Masculino
           </button>
           <button
             type="button"
+            disabled={requiredGender === "M"}
             onClick={() => setValue("gender", "F")}
-            className={`flex-1 py-2 rounded-md text-sm font-medium border transition
+            className={`flex-1 py-2 rounded-md text-sm font-medium border transition disabled:opacity-40 disabled:cursor-not-allowed
               ${gender === "F" ? "bg-pink-500 text-white border-pink-500" : "bg-white text-gray-700 border-gray-300 hover:border-pink-400"}`}
           >
             Feminino
           </button>
         </div>
+        {requiredGender && (
+          <p className="text-[11px] text-gray-400">
+            Gênero fixado em <strong>{genderLabel[requiredGender]}</strong> por causa do grupo selecionado.
+          </p>
+        )}
       </div>
 
       {/* GRUPOS */}
       <div className="flex flex-col gap-2">
         <span className="text-sm text-gray-600 font-medium">Grupos</span>
         <div className="grid grid-cols-3 gap-2">
-          {roleOptions.map((role) => (
-            <button
-              key={role.id}
-              type="button"
-              onClick={() => toggleRole(role.id)}
-              className={`py-2 px-3 rounded-md text-sm font-medium border transition
-                ${selectedRoles.includes(role.id)
-                  ? "bg-green-700 text-white border-green-700"
-                  : "bg-white text-gray-700 border-gray-300 hover:border-green-500"
-                }`}
-            >
-              {role.label}
-            </button>
-          ))}
+          {roleOptions.map((role) => {
+            const isSel = selectedRoles.includes(role.id)
+            // Desabilita grupo restrito que exige o gênero oposto ao já fixado.
+            const blocked = !isSel && !!groupGender[role.id] && !!requiredGender && groupGender[role.id] !== requiredGender
+            return (
+              <button
+                key={role.id}
+                type="button"
+                disabled={blocked}
+                title={blocked ? `Exclusivo do gênero ${genderLabel[groupGender[role.id]]}` : undefined}
+                onClick={() => toggleRole(role.id)}
+                className={`py-2 px-3 rounded-md text-sm font-medium border transition disabled:opacity-40 disabled:cursor-not-allowed
+                  ${isSel
+                    ? "bg-green-700 text-white border-green-700"
+                    : "bg-white text-gray-700 border-gray-300 hover:border-green-500"
+                  }`}
+              >
+                {role.label}
+              </button>
+            )
+          })}
         </div>
 
         {/* SUPERINTENDENTE DA EBD (papel Clerk — acesso total à EBD) */}

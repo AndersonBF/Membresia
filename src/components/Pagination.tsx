@@ -2,9 +2,10 @@
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { useRouter } from "next/navigation";
 
-const Pagination = ({page, count}:{page: number, count: number}) => {
+const Pagination = ({page, count, perPage}:{page: number, count: number, perPage?: number}) => {
 
     const router = useRouter()
+    const size = perPage && perPage > 0 ? perPage : ITEM_PER_PAGE
 
     const changePage = (newPage: number) => {
         const params = new URLSearchParams(window.location.search)
@@ -12,8 +13,8 @@ const Pagination = ({page, count}:{page: number, count: number}) => {
         router.push(`${window.location.pathname}?${params}`);
     };
 
-    const hasPrev = ITEM_PER_PAGE * (page - 1) > 0;
-    const hasNext = ITEM_PER_PAGE * (page - 1) + ITEM_PER_PAGE < count;
+    const hasPrev = size * (page - 1) > 0;
+    const hasNext = size * (page - 1) + size < count;
 
     return (
         <div className="p-4 flex items-center justify-between text-gray-500">
@@ -26,7 +27,7 @@ const Pagination = ({page, count}:{page: number, count: number}) => {
             </button>
             <div className="flex items-center gap-2">
                 {Array.from(
-                    { length: Math.ceil(count / ITEM_PER_PAGE) },
+                    { length: Math.ceil(count / size) },
                     (_, index) => {
                         const pageIndex = index + 1;
                         return (

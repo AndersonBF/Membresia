@@ -1,5 +1,4 @@
-import Menu from "@/components/Menu";
-import Link from "next/link";
+import Sidebar from "@/components/Sidebar";
 import Navbar from "@/components/Navbar";
 import DemoBanner from "@/components/DemoBanner";
 
@@ -10,15 +9,17 @@ export default function DashboardLayout({
 }) {
   return (
     <div className="h-screen flex flex-col">
+      <style dangerouslySetInnerHTML={{ __html: `
+        .sidebar-scroll { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.18) transparent; }
+        .sidebar-scroll::-webkit-scrollbar { width: 6px; }
+        .sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+        .sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 999px; }
+        .sidebar-scroll:hover::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.30); }
+      ` }} />
       <DemoBanner />
       <div className="flex flex-1 min-h-0">
-        <div className="w-[14%] md:w-[8%] lg:w-[16%] xl:w-[14%] p-4 bg-gradient-to-b from-green-900 to-emerald-950">
-          <Link href="/" className="flex items-center justify-center lg:justify-start gap-2">
-            <span className="hidden lg:block font-bold"></span>
-          </Link>
-          <Menu />
-        </div>
-        <div className="w-[86%] md:w-[92%] lg:w-[84%] xl:w-[86%] bg-[#F7F8FA] overflow-scroll">
+        <Sidebar />
+        <div className="flex-1 min-w-0 bg-[#F7F8FA] overflow-y-auto overflow-x-hidden">
           <Navbar />
           {children}
         </div>

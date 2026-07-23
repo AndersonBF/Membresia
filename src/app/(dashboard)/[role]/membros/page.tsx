@@ -120,13 +120,13 @@ export default async function RoleMembrosPage({
           ${hasCargo ? "bg-amber-50" : "even:bg-slate-50"}`}
       >
         {/* INFO */}
-        <td className="flex items-center gap-4 p-4">
+        <td className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4">
           <MemberAvatar
             name={item.name}
             profileImageUrl={(item as any).profileImageUrl}
             size={40}
           />
-          <div className="flex flex-col">
+          <div className="flex flex-col min-w-0">
             <h3 className="font-semibold">{item.name}</h3>
             <p className="text-xs text-gray-500">{item.username || `ID: ${item.id}`}</p>
           </div>
@@ -169,8 +169,8 @@ export default async function RoleMembrosPage({
 
         {/* AÇÕES */}
         {isAdmin && (
-          <td>
-            <div className="flex items-center gap-2">
+          <td className="pr-3 sm:pr-4">
+            <div className="flex items-center gap-2 whitespace-nowrap">
               {/* botão view — aciona o drawer via hidden button */}
             <button
               data-drawer={item.id}
@@ -248,16 +248,16 @@ export default async function RoleMembrosPage({
       </Link>
 
       <div className="bg-white p-4 rounded-md flex-1">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <h1 className={`text-lg font-semibold ${config.color}`}>Membros — {config.label}</h1>
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <h1 className={`text-base sm:text-lg font-semibold ${config.color}`}>Membros — {config.label}</h1>
             {isSociedade && (
               <span className="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded-full border border-amber-200">
                 🏅 Destacado = diretoria
               </span>
             )}
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4">
             <TableSearch />
             {isAdmin && (
               <AddExistingMemberButton

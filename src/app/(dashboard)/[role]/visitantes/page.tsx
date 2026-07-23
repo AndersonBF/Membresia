@@ -6,7 +6,7 @@ import prisma from "@/lib/prisma"
 import { ArrowLeft, UserRound } from "lucide-react"
 import GroupVisitorsTable, { GroupVisitor } from "@/components/GroupVisitorsTable"
 import { getManageableGroups } from "@/lib/permissions"
-import { isGroupRole, visitorWhereForScope, scopeForRole } from "@/lib/visitorScope"
+import { isGroupRole, visitorWhereForScope, scopeForRole, roleHasVisitors } from "@/lib/visitorScope"
 
 export const dynamic = "force-dynamic"
 
@@ -25,7 +25,8 @@ const roleConfig: Record<string, { label: string; color: string; accent: string 
 export default async function RoleVisitantesPage({ params }: { params: { role: string } }) {
   const { role } = params
   const config = roleConfig[role]
-  if (!config || !isGroupRole(role)) notFound()
+  // A diaconia não recebe visitantes — a rota não existe para ela.
+  if (!config || !isGroupRole(role) || !roleHasVisitors(role)) notFound()
 
   const user = await currentUser()
   const roles = (user?.publicMetadata?.roles as string[]) ?? []

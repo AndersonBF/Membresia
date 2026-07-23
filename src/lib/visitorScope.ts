@@ -16,6 +16,23 @@ export function isGroupRole(role: string): boolean {
   return !!societyMap[role] || (CATEGORY_ROLES as readonly string[]).includes(role)
 }
 
+/**
+ * Grupos que não recebem visitantes — a diaconia é um corpo de serviço da
+ * igreja, não uma sociedade que recebe visitas. Esconde a lista, o atalho,
+ * o contador e o bloco de visitantes na chamada.
+ */
+const ROLES_WITHOUT_VISITORS = ["diaconia"]
+
+export function roleHasVisitors(role: string): boolean {
+  return !ROLES_WITHOUT_VISITORS.includes(role)
+}
+
+/** O evento pertence a um grupo que não recebe visitantes? */
+export function eventHasVisitors(event: { societyId: number | null; category: string | null }): boolean {
+  if (event.societyId) return true
+  return !event.category || roleHasVisitors(event.category)
+}
+
 /** Converte um role de grupo (ump, ebd, …) no escopo de visitantes. */
 export function scopeForRole(role: string): VisitorScope {
   if (societyMap[role]) return { societyId: societyMap[role], category: null }

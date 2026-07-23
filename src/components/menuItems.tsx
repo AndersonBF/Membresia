@@ -126,7 +126,8 @@ export const menuItems = [
         showOnlyForSociedades: true,
       },
       {
-        // Lista de visitantes do grupo — resolve para /<role>/visitantes
+        // Lista de visitantes do grupo — resolve para /<role>/visitantes.
+        // A diaconia não recebe visitantes, então o item some no contexto dela.
         icon: Inbox,
         label: "Visitantes",
         href: "/visitantes",
@@ -134,6 +135,7 @@ export const menuItems = [
         visible: groupStaffRoles,
         hiddenForSociedades: false,
         showOnlyForSociedades: true,
+        hiddenForRoleContext: ["diaconia"],
       },
 
       {

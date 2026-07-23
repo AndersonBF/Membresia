@@ -1,10 +1,11 @@
 "use client"
 
-import { useState, useEffect, useTransition } from "react"
+import { useState, useEffect, useMemo, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "react-toastify"
 import { ClipboardCheck, CalendarDays } from "lucide-react"
 import { saveBibleSchoolAttendance } from "@/lib/actions"
+import AttendanceSheetScanner, { type CreatedMember } from "@/components/AttendanceSheetScanner"
 
 type MemberRef = { id: number; name: string; email: string | null }
 type ExistingRec = { memberId: number; isPresent: boolean }
@@ -13,7 +14,7 @@ export default function EbdAttendanceTaker({
   classId,
   className,
   date,
-  members,
+  members: initialMembers,
   existing,
   topic: initialTopic,
 }: {
@@ -28,23 +29,46 @@ export default function EbdAttendanceTaker({
   const [pending, startTransition] = useTransition()
   const [attendance, setAttendance] = useState<Record<number, boolean>>({})
   const [topic, setTopic] = useState(initialTopic)
+  // Membros cadastrados na hora pela leitura da folha entram na lista sem
+  // recarregar a página — recarregar perderia a chamada em andamento.
+  const [addedMembers, setAddedMembers] = useState<MemberRef[]>([])
 
+  // useMemo mantém a identidade estável: sem isso o efeito abaixo rodaria a
+  // cada renderização e zeraria a chamada.
+  const members = useMemo(
+    () => [...initialMembers, ...addedMembers],
+    [initialMembers, addedMembers],
+  )
+
+  // Depende só dos membros vindos do servidor: incluir os cadastrados na hora
+  // faria o efeito rodar de novo e apagar as marcações da leitura da folha.
   useEffect(() => {
     const map: Record<number, boolean> = {}
     if (existing.length > 0) {
       existing.forEach((r) => { map[r.memberId] = r.isPresent })
       // membros sem registro anterior entram como ausentes por padrão
-      members.forEach((m) => { if (!(m.id in map)) map[m.id] = false })
+      initialMembers.forEach((m) => { if (!(m.id in map)) map[m.id] = false })
     } else {
-      members.forEach((m) => { map[m.id] = true })
+      initialMembers.forEach((m) => { map[m.id] = true })
     }
     setAttendance(map)
-  }, [existing, members])
+  }, [existing, initialMembers])
 
   const toggle = (id: number) => setAttendance((p) => ({ ...p, [id]: !p[id] }))
   const markAll = (val: boolean) => {
     const m: Record<number, boolean> = {}
     members.forEach((mem) => { m[mem.id] = val })
+    setAttendance(m)
+  }
+
+  // Foto da folha de papel: quem foi reconhecido entra como presente, o resto
+  // como ausente — a chamada da foto é a chamada do dia.
+  const applyScan = (presentIds: number[]) => {
+    const present = new Set(presentIds)
+    const m: Record<number, boolean> = {}
+    members.forEach((mem) => { m[mem.id] = present.has(mem.id) })
+    // Membros criados agora ainda não estão em `members` nesta renderização.
+    presentIds.forEach((id) => { m[id] = true })
     setAttendance(m)
   }
 
@@ -109,17 +133,34 @@ export default function EbdAttendanceTaker({
         <p className="text-center text-gray-400 text-sm py-10">Nenhum membro ativo nesta turma.</p>
       ) : (
         <>
-          <div className="flex items-center gap-3 flex-wrap">
-            <button onClick={() => markAll(true)} className="px-3 py-2 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600">
-              ✓ Todos presentes
-            </button>
-            <button onClick={() => markAll(false)} className="px-3 py-2 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600">
-              ✗ Todos ausentes
-            </button>
-            <div className="ml-auto text-sm font-semibold flex items-center gap-3">
-              <span className="text-2xl font-bold text-amber-700">{pct}%</span>
-              <span className="text-green-600">Presentes: {presentCount}</span>
-              <span className="text-red-600">Ausentes: {members.length - presentCount}</span>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-wrap">
+            <div className="grid grid-cols-2 sm:flex gap-2 sm:gap-3">
+              <button onClick={() => markAll(true)} className="px-3 py-2 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600">
+                ✓ Todos presentes
+              </button>
+              <button onClick={() => markAll(false)} className="px-3 py-2 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600">
+                ✗ Todos ausentes
+              </button>
+            </div>
+
+            <AttendanceSheetScanner
+              candidates={members.map((m) => ({ id: m.id, name: m.name }))}
+              onApply={applyScan}
+              role="ebd"
+              classId={classId}
+              onMembersCreated={(created: CreatedMember[]) =>
+                setAddedMembers((prev) => [
+                  ...prev,
+                  ...created.map((c) => ({ id: c.id, name: c.name, email: c.email })),
+                ])
+              }
+              accentColor="#b45309"
+            />
+
+            <div className="sm:ml-auto text-sm font-semibold flex items-center gap-3 flex-wrap">
+              <span className="text-2xl font-bold text-amber-700 leading-none">{pct}%</span>
+              <span className="text-green-600 whitespace-nowrap">Presentes: {presentCount}</span>
+              <span className="text-red-600 whitespace-nowrap">Ausentes: {members.length - presentCount}</span>
             </div>
           </div>
 

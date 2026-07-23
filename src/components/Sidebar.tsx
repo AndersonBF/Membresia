@@ -10,12 +10,14 @@ export default function Sidebar() {
 
   return (
     <>
+      {/* Largura fixa enquanto recolhido: em % o trilho virava uma faixa de ~50px
+          no celular, apertando demais os ícones. */}
       {open && (
-        <div className="sidebar-scroll relative w-[14%] md:w-[8%] lg:w-[16%] xl:w-[14%] p-4 bg-gradient-to-b from-green-900 to-emerald-950 h-full overflow-y-auto flex-shrink-0">
+        <div className="sidebar-scroll relative w-[72px] md:w-20 lg:w-[16%] xl:w-[14%] p-2 lg:p-4 bg-gradient-to-b from-green-900 to-emerald-950 h-full overflow-y-auto flex-shrink-0">
           <button
             onClick={() => setOpen(false)}
             title="Ocultar menu"
-            className="absolute top-3 right-3 text-white/50 hover:text-white transition"
+            className="absolute top-2 right-2 lg:top-3 lg:right-3 text-white/50 hover:text-white transition p-1"
           >
             <PanelLeftClose size={18} />
           </button>

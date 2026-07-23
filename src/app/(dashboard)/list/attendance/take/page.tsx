@@ -3,7 +3,8 @@ import AttendanceTaker from "@/components/AttendanceTaker";
 import prisma from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { visitorWhereForEvent } from "@/lib/visitorScope";
+import { visitorWhereForEvent, eventHasVisitors } from "@/lib/visitorScope";
+import { roleForSocietyId } from "@/lib/permissions";
 
 const TakeAttendancePage = async ({
   searchParams,
@@ -73,12 +74,25 @@ const TakeAttendancePage = async ({
     where: { eventId },
   });
 
-  // Visitantes do escopo do evento (sociedade/grupo) + presenças já gravadas
-  const visitors = await prisma.visitor.findMany({
-    where: visitorWhereForEvent(selectedEvent),
-    select: { id: true, name: true, phone: true },
-    orderBy: { name: "asc" },
-  });
+  // Visitantes do escopo do evento (sociedade/grupo) + presenças já gravadas.
+  // Grupos sem visitantes (diaconia) não carregam nem exibem essa lista.
+  const showVisitors = eventHasVisitors(selectedEvent);
+
+  // Grupo do evento — define onde entram os cadastros feitos pela leitura da
+  // folha. Sem grupo definido, a leitura não oferece cadastro.
+  const scopeRole =
+    roleContext ??
+    roleForSocietyId(selectedEvent.societyId) ??
+    selectedEvent.category ??
+    null;
+
+  const visitors = showVisitors
+    ? await prisma.visitor.findMany({
+        where: visitorWhereForEvent(selectedEvent),
+        select: { id: true, name: true, phone: true },
+        orderBy: { name: "asc" },
+      })
+    : [];
 
   const existingVisitorAttendance = await prisma.visitorAttendance.findMany({
     where: { eventId },
@@ -100,6 +114,8 @@ const TakeAttendancePage = async ({
         existingAttendance={existingAttendance}
         visitors={visitors}
         existingVisitorAttendance={existingVisitorAttendance}
+        showVisitors={showVisitors}
+        scopeRole={scopeRole}
         backUrl={backUrl}
       />
     </div>

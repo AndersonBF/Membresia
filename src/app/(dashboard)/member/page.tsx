@@ -68,7 +68,7 @@ export default async function MemberPage({
                   <Link
                     key={role}
                     href={`/${role}`}
-                    className="group relative w-full h-28 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 ease-out"
+                    className="group relative w-full h-24 sm:h-28 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 ease-out"
                   >
                     {image.startsWith("/") ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -89,12 +89,15 @@ export default async function MemberPage({
                     )}
                     <div className="absolute inset-0 opacity-100 group-hover:opacity-30 transition-opacity duration-500" style={{ backgroundColor: config.bgHex }} />
                     <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent" />
-                    <div className="absolute inset-0 flex items-center px-8 gap-6">
-                      <Icon size={40} className="shrink-0 drop-shadow-lg" />
-                      <div className="w-px h-12 bg-white/40" />
-                      <div>
-                        <span className="text-white font-bold text-2xl drop-shadow-lg block">{config.label}</span>
-                        <span className="text-white/70 text-sm group-hover:text-white transition-colors">
+                    <div className="absolute inset-0 flex items-center px-4 sm:px-8 gap-3 sm:gap-6">
+                      {/* Wrapper dimensiona o ícone: os ícones customizados (UMP/UPA/…) ignoram className. */}
+                      <span className="shrink-0 drop-shadow-lg flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 [&_svg]:w-full [&_svg]:h-full [&_img]:w-full [&_img]:h-full [&_img]:object-contain">
+                        <Icon size={40} />
+                      </span>
+                      <div className="w-px h-9 sm:h-12 bg-white/40" />
+                      <div className="min-w-0">
+                        <span className="text-white font-bold text-xl sm:text-2xl drop-shadow-lg block truncate">{config.label}</span>
+                        <span className="text-white/70 text-xs sm:text-sm group-hover:text-white transition-colors">
                           Acessar grupo →
                         </span>
                       </div>

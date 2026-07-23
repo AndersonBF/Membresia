@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { createPortal } from "react-dom"
 import { X, MessageCircle, Loader2, HeartHandshake, Check } from "lucide-react"
 
 /** Normaliza um número para o formato do wa.me (só dígitos, com DDI 55 do Brasil). */
@@ -28,6 +29,10 @@ export default function VisitForm({
   const [message, setMessage] = useState("")
   const [sending, setSending] = useState(false)
   const [done, setDone] = useState(false)
+  // O modal é renderizado via portal no <body>: o hero tem `animation ... both`,
+  // que deixa um transform ativo e faria o `fixed` se prender àquela coluna.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
 
   const wa = toWaNumber(whatsapp)
 
@@ -74,9 +79,9 @@ export default function VisitForm({
         <HeartHandshake size={18} /> {triggerLabel}
       </button>
 
-      {open && (
+      {open && mounted && createPortal(
         <div
-          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4"
           style={{ fontFamily: "'DM Sans', sans-serif" }}
         >
           <div className="bg-white rounded-2xl relative w-full max-w-md p-6">
@@ -144,7 +149,8 @@ export default function VisitForm({
               </>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   )

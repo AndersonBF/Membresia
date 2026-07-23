@@ -120,8 +120,8 @@ const MenuContent = () => {
     <div className="mt-4 text-sm">
 
       {isRolePage && currentRoleConfig && (
-        <div className="flex items-center justify-center px-2 py-4 mb-2 border-b border-green-700">
-          <currentRoleConfig.icon size={56} className={currentRoleConfig.color} />
+        <div className="flex items-center justify-center px-2 py-3 lg:py-4 mb-2 border-b border-green-700">
+          <currentRoleConfig.icon size={56} className={`w-10 h-10 lg:w-14 lg:h-14 object-contain ${currentRoleConfig.color}`} />
         </div>
       )}
 
@@ -136,6 +136,9 @@ const MenuContent = () => {
             // Diaconia) não devem vazar para o menu das outras sociedades.
             const onlyFor = (item as any).onlyForRoleContext as string[] | undefined;
             if (onlyFor && !onlyFor.includes(currentRole)) return false;
+            // Itens escondidos em grupos específicos (ex.: Visitantes na Diaconia).
+            const hiddenFor = (item as any).hiddenForRoleContext as string[] | undefined;
+            if (hiddenFor && hiddenFor.includes(currentRole)) return false;
             return isSuperAdmin || item.visible.some((v) => roles.includes(v));
           })
           .map((item) => ({ item, href: resolveHref(item.href) }))
@@ -177,7 +180,7 @@ const MenuContent = () => {
                       key={`${item.label}-${href}-${index}`}
                       href={href}
                       className={`group relative flex items-center justify-center lg:justify-start gap-3
-                        py-2 px-2 lg:px-3 rounded-lg transition-colors
+                        py-2.5 lg:py-2 px-2 lg:px-3 rounded-lg transition-colors
                         ${isActive
                           ? "bg-white/15 text-white font-medium"
                           : "text-white/75 hover:bg-white/10 hover:text-white"
@@ -186,7 +189,9 @@ const MenuContent = () => {
                       {isActive && (
                         <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-full bg-emerald-300" />
                       )}
-                      <Icon size={19} className={isActive ? "text-emerald-300" : "text-white/60 group-hover:text-white"} />
+                      {/* Maior no trilho recolhido (alvo de toque no celular),
+                          menor quando o menu abre com os rótulos. */}
+                      <Icon size={24} className={`shrink-0 w-6 h-6 lg:w-[19px] lg:h-[19px] ${isActive ? "text-emerald-300" : "text-white/60 group-hover:text-white"}`} />
                       <span className="hidden lg:block text-sm">{item.label}</span>
                       {(item as any).beta && (
                         <>

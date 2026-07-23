@@ -2,11 +2,12 @@
 
 import { bulkUpdateAttendance } from "@/lib/actions";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { toast } from "react-toastify";
 import { ClipboardX, Plus, X } from "lucide-react";
 import { Document, Packer, Paragraph, Table, TableCell, TableRow, TextRun, WidthType, AlignmentType } from "docx";
 import { saveAs } from "file-saver";
+import AttendanceSheetScanner, { type CreatedMember, type CreatedVisitor } from "@/components/AttendanceSheetScanner";
 
 type VisitorOption = { id: number; name: string; phone?: string | null };
 
@@ -18,15 +19,21 @@ type AttendanceTakerProps = {
   visitors?: VisitorOption[];
   /** Presenças de visitantes já gravadas para este evento */
   existingVisitorAttendance?: { visitorId: number; isPresent: boolean }[];
+  /** Grupos sem visitantes (diaconia) escondem o bloco por completo */
+  showVisitors?: boolean;
+  /** Grupo do evento — onde entram os cadastros feitos pela leitura da folha */
+  scopeRole?: string | null;
   backUrl?: string;
 };
 
 const AttendanceTaker = ({
   event,
-  members,
+  members: initialMembers,
   existingAttendance,
-  visitors = [],
+  visitors: initialVisitors = [],
   existingVisitorAttendance = [],
+  showVisitors = true,
+  scopeRole = null,
   backUrl = "/list/attendance",
 }: AttendanceTakerProps) => {
   const router = useRouter();
@@ -40,6 +47,19 @@ const AttendanceTaker = ({
   const [visitorPhone, setVisitorPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
+  // Pessoas cadastradas na hora pela leitura da folha. Ficam em estado local
+  // para não recarregar a página e perder a chamada em andamento.
+  const [addedMembers, setAddedMembers] = useState<any[]>([]);
+  const [addedVisitors, setAddedVisitors] = useState<VisitorOption[]>([]);
+
+  const members = useMemo(
+    () => [...initialMembers, ...addedMembers],
+    [initialMembers, addedMembers],
+  );
+  const visitors = useMemo(
+    () => [...initialVisitors, ...addedVisitors],
+    [initialVisitors, addedVisitors],
+  );
 
   useEffect(() => {
     const map: { [key: number]: boolean } = {};
@@ -50,6 +70,8 @@ const AttendanceTaker = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(existingVisitorAttendance)]);
 
+  // Depende só dos membros vindos do servidor: incluir os cadastrados na hora
+  // faria o efeito rodar de novo e apagar as marcações da leitura da folha.
   useEffect(() => {
     if (existingAttendance.length > 0) {
       const attendanceMap: { [key: number]: boolean } = {};
@@ -59,12 +81,12 @@ const AttendanceTaker = ({
       setAttendance(attendanceMap);
     } else {
       const attendanceMap: { [key: number]: boolean } = {};
-      members.forEach((member) => {
+      initialMembers.forEach((member) => {
         attendanceMap[member.id] = true;
       });
       setAttendance(attendanceMap);
     }
-  }, [existingAttendance, members]);
+  }, [existingAttendance, initialMembers]);
 
   // ── Guard: evento sem presença ──────────────────────────────────────────────
   if (event.requiresAttendance === false) {
@@ -112,6 +134,19 @@ const AttendanceTaker = ({
   const markAllAbsent = () => {
     const m: { [key: number]: boolean } = {};
     members.forEach((member) => { if (!excludedMembers.has(member.id)) m[member.id] = false; });
+    setAttendance(m);
+  };
+
+  // Foto da folha de papel: reconhecidos entram como presentes, o resto como
+  // ausente. Membros excluídos da chamada não são tocados.
+  const applyScan = (presentIds: number[]) => {
+    const present = new Set(presentIds);
+    const m: { [key: number]: boolean } = {};
+    members.forEach((member) => {
+      if (!excludedMembers.has(member.id)) m[member.id] = present.has(member.id);
+    });
+    // Membros criados agora ainda não estão em `members` nesta renderização.
+    presentIds.forEach((id) => { m[id] = true });
     setAttendance(m);
   };
 
@@ -237,20 +272,20 @@ const AttendanceTaker = ({
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
       {/* Event Info */}
       <div className="bg-lamaSkyLight p-4 rounded-md">
-        <div className="flex justify-between items-start">
-          <div className="flex-1">
-            <h1 className="text-xl font-bold mb-2">{event.title}</h1>
-            <div className="flex gap-4 text-sm text-gray-600">
-              <span>📅 {new Date(event.date).toLocaleDateString("pt-BR")}</span>
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg sm:text-xl font-bold mb-2 break-words">{event.title}</h1>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600">
+              <span className="whitespace-nowrap">📅 {new Date(event.date).toLocaleDateString("pt-BR")}</span>
               {event.startTime && (
-                <span>🕐 {new Date(event.startTime).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
+                <span className="whitespace-nowrap">🕐 {new Date(event.startTime).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
               )}
-              {event.society && <span>👥 {event.society.name}</span>}
+              {event.society && <span className="whitespace-nowrap">👥 {event.society.name}</span>}
             </div>
             {event.description && <p className="mt-2 text-sm text-gray-700">{event.description}</p>}
           </div>
           <button type="button" onClick={exportToWord} disabled={exporting}
-            className="ml-4 px-4 py-2 bg-purple-500 text-white rounded-md text-sm hover:bg-purple-600 disabled:opacity-50 flex items-center gap-2">
+            className="sm:ml-4 self-start shrink-0 px-4 py-2 bg-purple-500 text-white rounded-md text-sm hover:bg-purple-600 disabled:opacity-50 flex items-center gap-2 whitespace-nowrap">
             {exporting ? "Exportando..." : "📄 Exportar Word"}
           </button>
         </div>
@@ -258,24 +293,50 @@ const AttendanceTaker = ({
 
       {members.length > 0 ? (
         <>
-          <div className="flex gap-4 items-center flex-wrap">
-            <button type="button" onClick={markAllPresent} className="px-4 py-2 bg-green-500 text-white rounded-md text-sm hover:bg-green-600">
-              ✓ Marcar Todos Presentes
-            </button>
-            <button type="button" onClick={markAllAbsent} className="px-4 py-2 bg-red-500 text-white rounded-md text-sm hover:bg-red-600">
-              ✗ Marcar Todos Ausentes
-            </button>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 flex-wrap">
+            <div className="grid grid-cols-2 sm:flex gap-2 sm:gap-4">
+              <button type="button" onClick={markAllPresent} className="px-3 sm:px-4 py-2 bg-green-500 text-white rounded-md text-sm hover:bg-green-600">
+                ✓ Todos Presentes
+              </button>
+              <button type="button" onClick={markAllAbsent} className="px-3 sm:px-4 py-2 bg-red-500 text-white rounded-md text-sm hover:bg-red-600">
+                ✗ Todos Ausentes
+              </button>
+            </div>
 
-            <div className="ml-auto flex gap-6 items-center">
-              <div className="text-right">
-                <div className="text-2xl font-bold text-blue-600">{attendancePercentage}%</div>
+            {scopeRole && (
+              <AttendanceSheetScanner
+                candidates={activeMembers.map((m) => ({ id: m.id, name: m.name }))}
+                onApply={applyScan}
+                role={scopeRole}
+                allowVisitors={showVisitors}
+                onMembersCreated={(created: CreatedMember[]) =>
+                  setAddedMembers((prev) => [...prev, ...created])
+                }
+                onVisitorsCreated={(created: CreatedVisitor[]) => {
+                  setAddedVisitors((prev) => [...prev, ...created]);
+                  // Visitante que estava na folha entra presente no evento.
+                  setVisitorAttendance((prev) => {
+                    const next = { ...prev };
+                    created.forEach((v) => { next[v.id] = true });
+                    return next;
+                  });
+                }}
+                accentColor="#7c3aed"
+              />
+            )}
+
+            <div className="sm:ml-auto flex items-center gap-4 sm:gap-6">
+              <div className="shrink-0">
+                <div className="text-2xl font-bold text-blue-600 leading-none">{attendancePercentage}%</div>
                 <div className="text-xs text-gray-500">Presença</div>
               </div>
-              <div className="text-sm font-semibold">
-                <span className="text-green-600">Presentes: {presentCount}</span>{" | "}
-                <span className="text-red-600">Ausentes: {absentCount}</span>{" | "}
-                <span className="text-blue-600">Visitas: {visitorCount}</span>{" | "}
-                <span className="text-gray-600">Total: {totalParticipants}</span>
+              {/* Contadores como itens de flex: com " | " no meio do texto eles
+                  quebravam a linha em qualquer lugar no celular. */}
+              <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm font-semibold">
+                <span className="text-green-600 whitespace-nowrap">Presentes: {presentCount}</span>
+                <span className="text-red-600 whitespace-nowrap">Ausentes: {absentCount}</span>
+                {showVisitors && <span className="text-blue-600 whitespace-nowrap">Visitas: {visitorCount}</span>}
+                <span className="text-gray-600 whitespace-nowrap">Total: {totalParticipants}</span>
               </div>
             </div>
           </div>
@@ -302,22 +363,22 @@ const AttendanceTaker = ({
             </div>
             <div className="max-h-[500px] overflow-y-auto">
               {activeMembers.map((member) => (
-                <div key={member.id} className="flex items-center justify-between p-4 border-b hover:bg-gray-50">
-                  <div className="flex items-center gap-4 flex-1">
+                <div key={member.id} className="flex items-center justify-between gap-2 sm:gap-3 p-3 sm:p-4 border-b hover:bg-gray-50">
+                  <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
                     <input type="checkbox" checked={attendance[member.id] || false}
                       onChange={() => toggleAttendance(member.id)}
-                      className="w-6 h-6 cursor-pointer accent-green-500" />
-                    <div className="flex-1">
-                      <div className="font-medium text-base">{member.name}</div>
-                      {member.email && <div className="text-xs text-gray-500">{member.email}</div>}
+                      className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 cursor-pointer accent-green-500" />
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-sm sm:text-base break-words">{member.name}</div>
+                      {member.email && <div className="text-xs text-gray-500 truncate">{member.email}</div>}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`px-4 py-2 rounded-full text-sm font-semibold ${attendance[member.id] ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
+                  <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                    <span className={`px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold whitespace-nowrap ${attendance[member.id] ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
                       {attendance[member.id] ? "✓ Presente" : "✗ Ausente"}
                     </span>
                     <button type="button" onClick={() => toggleMemberExclusion(member.id)}
-                      className="px-3 py-2 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300"
+                      className="px-2 sm:px-3 py-1.5 sm:py-2 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300"
                       title="Não era membro nesta data">🚫</button>
                   </div>
                 </div>
@@ -326,8 +387,9 @@ const AttendanceTaker = ({
           </div>
 
           {/* ── VISITANTES ─────────────────────────────────────────────────── */}
+          {showVisitors && (
           <div className="border rounded-md">
-            <div className="bg-blue-50 p-3 border-b flex items-center justify-between">
+            <div className="bg-blue-50 p-3 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
               <h2 className="font-semibold text-blue-900">👤 Visitantes ({visitorCount} presente(s))</h2>
               <span className="text-xs text-blue-700">Marque quem veio ou adicione novos pelo nome</span>
             </div>
@@ -348,7 +410,7 @@ const AttendanceTaker = ({
                 onChange={(e) => setVisitorPhone(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addNewVisitor(); } }}
                 placeholder="Telefone (opcional)"
-                className="w-[170px] px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="flex-1 min-w-[140px] sm:flex-none sm:w-[170px] px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
               <button type="button" onClick={addNewVisitor}
                 className="px-4 py-2 bg-blue-500 text-white rounded-md text-sm hover:bg-blue-600 flex items-center gap-1.5">
@@ -378,17 +440,17 @@ const AttendanceTaker = ({
             {visitors.length > 0 ? (
               <div className="max-h-[300px] overflow-y-auto">
                 {visitors.map((v) => (
-                  <div key={v.id} className="flex items-center justify-between p-4 border-b hover:bg-gray-50">
-                    <div className="flex items-center gap-4 flex-1">
+                  <div key={v.id} className="flex items-center justify-between gap-2 sm:gap-3 p-3 sm:p-4 border-b hover:bg-gray-50">
+                    <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
                       <input type="checkbox" checked={visitorAttendance[v.id] || false}
                         onChange={() => toggleVisitor(v.id)}
-                        className="w-6 h-6 cursor-pointer accent-blue-500" />
-                      <div className="flex-1">
-                        <div className="font-medium text-base">{v.name}</div>
-                        {v.phone && <div className="text-xs text-gray-500">{v.phone}</div>}
+                        className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 cursor-pointer accent-blue-500" />
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium text-sm sm:text-base break-words">{v.name}</div>
+                        {v.phone && <div className="text-xs text-gray-500 truncate">{v.phone}</div>}
                       </div>
                     </div>
-                    <span className={`px-4 py-2 rounded-full text-sm font-semibold ${visitorAttendance[v.id] ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-500"}`}>
+                    <span className={`px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold whitespace-nowrap shrink-0 ${visitorAttendance[v.id] ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-500"}`}>
                       {visitorAttendance[v.id] ? "✓ Presente" : "Ausente"}
                     </span>
                   </div>
@@ -400,14 +462,15 @@ const AttendanceTaker = ({
               </div>
             )}
           </div>
+          )}
 
-          <div className="flex gap-4 sticky bottom-0 bg-white pt-4 border-t">
+          <div className="flex gap-2 sm:gap-4 sticky bottom-0 bg-white pt-4 pb-2 border-t">
             <button type="submit" disabled={loading}
-              className="flex-1 bg-blue-500 text-white px-6 py-3 rounded-md hover:bg-blue-600 disabled:opacity-50 font-semibold">
+              className="flex-1 bg-blue-500 text-white px-4 sm:px-6 py-3 rounded-md hover:bg-blue-600 disabled:opacity-50 font-semibold whitespace-nowrap">
               {loading ? "Salvando..." : "💾 Salvar Presença"}
             </button>
             <button type="button" onClick={() => router.push(backUrl)}
-              className="bg-gray-500 text-white px-6 py-3 rounded-md hover:bg-gray-600">
+              className="bg-gray-500 text-white px-4 sm:px-6 py-3 rounded-md hover:bg-gray-600 whitespace-nowrap shrink-0">
               Cancelar
             </button>
           </div>

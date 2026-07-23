@@ -334,36 +334,40 @@ export default function EscalaPage() {
         .sched-card:hover { box-shadow: 0 6px 22px rgba(0,0,0,.08); }
         .row-btn { opacity:0; transition: opacity .15s; }
         .sched-card:hover .row-btn { opacity:1; }
+        /* Telas de toque não têm hover: editar/remover precisam ficar sempre visíveis. */
+        @media (hover: none) { .row-btn { opacity:1; } }
       ` }} />
 
       <div className="ep bg-gray-50 min-h-screen p-4 md:p-6">
 
         {/* Header */}
-        <div className="ep-in mb-6 flex items-start justify-between gap-4">
-          <div>
-            <Link href="/diaconia" className="inline-flex items-center gap-1.5 text-gray-400 hover:text-gray-600 text-xs transition mb-3">
+        <div className="ep-in mb-6 flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+          <div className="min-w-0">
+            <Link href="/diaconia" className="inline-flex items-center gap-1.5 text-gray-400 hover:text-gray-600 text-xs transition mb-2 md:mb-3">
               <ArrowLeft size={13} /> Voltar para Diaconia
             </Link>
-            <h1 className="text-2xl font-bold text-gray-900">Escala</h1>
-            <p className="text-sm text-gray-400 mt-0.5">Diáconos escalados para os cultos de domingo e eventos</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Escala</h1>
+            <p className="text-xs sm:text-sm text-gray-400 mt-0.5">Diáconos escalados para os cultos de domingo e eventos</p>
           </div>
-          <div className="flex items-center gap-2 mt-7 flex-shrink-0">
+          {/* No celular os botões viram uma grade de 2 colunas em vez de estourar a largura. */}
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap sm:items-center gap-2 lg:mt-7 lg:flex-shrink-0">
             <button onClick={exportPdf} disabled={exporting || schedules.length === 0}
-              className="inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg border border-gray-200 text-gray-600 bg-white transition hover:bg-gray-50 disabled:opacity-50">
-              <Printer size={15} /> {exporting ? "Gerando…" : "PDF"}
+              className="inline-flex items-center justify-center gap-2 text-sm font-medium px-3 sm:px-4 py-2 rounded-lg border border-gray-200 text-gray-600 bg-white transition hover:bg-gray-50 disabled:opacity-50">
+              <Printer size={15} className="flex-shrink-0" /> {exporting ? "Gerando…" : "PDF"}
             </button>
             <button onClick={() => setShowUnav(true)}
-              className="inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg border border-gray-200 text-gray-600 bg-white transition hover:bg-gray-50">
-              <CalendarX size={15} /> Indisponibilidade
+              className="inline-flex items-center justify-center gap-2 text-sm font-medium px-3 sm:px-4 py-2 rounded-lg border border-gray-200 text-gray-600 bg-white transition hover:bg-gray-50">
+              <CalendarX size={15} className="flex-shrink-0" /> <span className="truncate">Indisponibilidade</span>
             </button>
             <button onClick={openAuto}
-              className="inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg border transition hover:bg-teal-50"
+              className="inline-flex items-center justify-center gap-2 text-sm font-medium px-3 sm:px-4 py-2 rounded-lg border transition hover:bg-teal-50"
               style={{ color: AC, borderColor: "#99f6e4", background: "#f0fdfa" }}>
-              <Sparkles size={15} /> Escala automática
+              <Sparkles size={15} className="flex-shrink-0" />
+              <span className="truncate"><span className="hidden sm:inline">Escala </span>Automática</span>
             </button>
             <button onClick={openCreate} style={{ background: AC }}
-              className="inline-flex items-center gap-2 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm hover:opacity-90 transition">
-              <Plus size={15} /> Nova escala
+              className="inline-flex items-center justify-center gap-2 text-white text-sm font-medium px-3 sm:px-4 py-2 rounded-lg shadow-sm hover:opacity-90 transition">
+              <Plus size={15} className="flex-shrink-0" /> <span className="truncate">Nova escala</span>
             </button>
           </div>
         </div>
@@ -400,7 +404,7 @@ export default function EscalaPage() {
                         className="sched-card bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden min-w-0 ep-in"
                         style={{ animationDelay: `${i * 0.03}s` }}>
                   {/* Card header */}
-                  <div className="flex items-start gap-3 px-5 pt-4 pb-3 border-b border-gray-100">
+                  <div className="flex items-start gap-2.5 sm:gap-3 px-4 sm:px-5 pt-4 pb-3 border-b border-gray-100">
                     <span className="w-9 h-9 rounded-full flex items-center justify-center text-[12px] font-bold text-white shadow-sm flex-shrink-0"
                       style={{ background: isEvent ? "#7c3aed" : AC }}>
                       {dayNum(s.date)}
@@ -433,7 +437,7 @@ export default function EscalaPage() {
                   </div>
 
                   {/* Escalados */}
-                  <div className="px-5 py-3.5">
+                  <div className="px-4 sm:px-5 py-3.5">
                     <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-2">
                       <Users size={12} /> {s.members.length} diácono{s.members.length !== 1 ? "s" : ""} escalado{s.members.length !== 1 ? "s" : ""}
                     </div>
@@ -472,7 +476,7 @@ export default function EscalaPage() {
         <div className="no-print fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.4)" }}>
           <div className="ep bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col"
             style={{ animation: "ep-in 0.2s ease both" }}>
-            <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100">
+            <div className="flex items-center justify-between px-5 sm:px-6 pt-5 pb-4 border-b border-gray-100">
               <h2 className="text-base font-semibold text-gray-900">
                 {editingId ? "Editar escala" : "Nova escala"}
               </h2>
@@ -481,7 +485,7 @@ export default function EscalaPage() {
               </button>
             </div>
 
-            <form onSubmit={save} className="px-6 py-5 flex flex-col gap-4 overflow-y-auto">
+            <form onSubmit={save} className="px-5 sm:px-6 py-5 flex flex-col gap-4 overflow-y-auto">
               {/* Tipo */}
               <div>
                 <label className="text-xs font-medium text-gray-500 uppercase tracking-wide block mb-1.5">Tipo</label>
@@ -583,9 +587,9 @@ export default function EscalaPage() {
       {/* Modal — Escala automática */}
       {showAuto && (
         <div className="no-print fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.4)" }}>
-          <div className="ep bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col"
+          <div className="ep bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col"
             style={{ animation: "ep-in 0.2s ease both" }}>
-            <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100">
+            <div className="flex items-center justify-between px-5 sm:px-6 pt-5 pb-4 border-b border-gray-100">
               <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
                 <Sparkles size={17} style={{ color: AC }} /> Escala automática
               </h2>
@@ -594,7 +598,7 @@ export default function EscalaPage() {
               </button>
             </div>
 
-            <form onSubmit={runAuto} className="px-6 py-5 flex flex-col gap-4">
+            <form onSubmit={runAuto} className="px-5 sm:px-6 py-5 flex flex-col gap-4 overflow-y-auto">
               <p className="text-sm text-gray-500 -mt-1">
                 O sistema escolhe os diáconos automaticamente, distribuindo de forma equilibrada e evitando repetir a mesma pessoa em domingos seguidos.
               </p>
@@ -605,7 +609,7 @@ export default function EscalaPage() {
                   className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-teal-400 transition" />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-medium text-gray-500 uppercase tracking-wide block mb-1.5">Quantos domingos</label>
                   <input type="number" min={1} max={26} value={autoWeeks}
@@ -646,7 +650,7 @@ export default function EscalaPage() {
         <div className="no-print fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.4)" }}>
           <div className="ep bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col"
             style={{ animation: "ep-in 0.2s ease both" }}>
-            <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100">
+            <div className="flex items-center justify-between px-5 sm:px-6 pt-5 pb-4 border-b border-gray-100">
               <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
                 <CalendarX size={17} className="text-gray-500" /> Indisponibilidade
               </h2>
@@ -655,7 +659,7 @@ export default function EscalaPage() {
               </button>
             </div>
 
-            <div className="px-6 py-5 flex flex-col gap-4 overflow-y-auto">
+            <div className="px-5 sm:px-6 py-5 flex flex-col gap-4 overflow-y-auto">
               <p className="text-sm text-gray-500 -mt-1">
                 Marque quando um diácono <strong>não pode</strong> servir. A escala automática não vai escalá-lo nessas datas.
               </p>
@@ -669,7 +673,7 @@ export default function EscalaPage() {
                     {diaconos.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                   </select>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-medium text-gray-500 uppercase tracking-wide block mb-1.5">Data</label>
                     <input type="date" value={unavDate} onChange={e => setUnavDate(e.target.value)} required

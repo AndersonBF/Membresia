@@ -4,14 +4,14 @@ import Announcements from "@/components/Announcements"
 import EventCalendarContainer from "@/components/EventCalendarContainer"
 import BroadcastFeed from "@/components/BroadcastFeed"
 import prisma from "@/lib/prisma"
-import Image from "next/image"
 import Link from "next/link"
-import { Users, Calendar, FileText, ArrowLeft, Phone, ChevronRight, Clock, Cake, Camera, Package, CheckSquare, UserRound } from "lucide-react"
+import MemberAvatar from "@/components/MemberAvatar"
+import { Users, Calendar, CalendarCheck, FileText, ArrowLeft, Phone, ChevronRight, Clock, Cake, Camera, Package, CheckSquare, UserRound } from "lucide-react"
 import EbdHome from "./EbdHome"
 import { canManageGroup } from "@/lib/permissions"
 import { getGroupCover } from "@/lib/groupCovers"
 import GroupCoverEditor from "@/components/GroupCoverEditor"
-import { scopeForRole, visitorWhereForScope } from "@/lib/visitorScope"
+import { scopeForRole, visitorWhereForScope, roleHasVisitors } from "@/lib/visitorScope"
 
 const roleConfig: Record<string, {
   label: string
@@ -59,7 +59,7 @@ async function getDataForRole(role: string) {
       where: { societyId, cargo: { not: null } },
       include: {
         member: {
-          select: { id: true, name: true, phone: true, gender: true, isActive: true },
+          select: { id: true, name: true, phone: true, gender: true, isActive: true, profileImageUrl: true },
         },
       },
     })
@@ -90,7 +90,9 @@ async function getDataForRole(role: string) {
 
   const [totalMembers, totalVisitors, totalEvents, totalDocuments, recentMembers, upcomingEvents, allMembers] = await Promise.all([
     prisma.member.count({ where: memberWhere }),
-    prisma.visitor.count({ where: visitorWhereForScope(scopeForRole(role)) }),
+    roleHasVisitors(role)
+      ? prisma.visitor.count({ where: visitorWhereForScope(scopeForRole(role)) })
+      : Promise.resolve(0),
     prisma.event.count({ where: eventWhere }),
     prisma.document.count({ where: documentWhere }),
     prisma.member.findMany({ where: memberWhere, orderBy: { name: "asc" }, take: 8 }),
@@ -101,7 +103,7 @@ async function getDataForRole(role: string) {
     }),
     prisma.member.findMany({
       where: { ...memberWhere, birthDate: { not: null }, isActive: true },
-      select: { id: true, name: true, birthDate: true },
+      select: { id: true, name: true, birthDate: true, profileImageUrl: true },
     }),
   ])
 
@@ -179,6 +181,8 @@ const RolePage = async ({
         .dir-card:hover { box-shadow: 0 6px 24px rgba(0,0,0,.1); transform: translateY(-2px); }
         .dir-phone { opacity:0; transition: opacity .15s; }
         .dir-card:hover .dir-phone { opacity:1; }
+        /* Em telas de toque não existe hover: o telefone precisa ficar sempre visível. */
+        @media (hover: none) { .dir-phone { opacity:1; } }
         .ql-btn { transition: box-shadow .15s, transform .15s; }
         .ql-btn:hover { box-shadow: 0 4px 14px rgba(0,0,0,.1); transform: translateY(-1px); }
         .ev-row:hover { background: rgba(0,0,0,0.03); }
@@ -191,8 +195,8 @@ const RolePage = async ({
 
         {/* HERO */}
         <div className="rp-in d1" style={heroStyle}>
-          <div className="px-6 md:px-10 pt-6 pb-10">
-            <div className="flex items-center justify-between gap-4 mb-8">
+          <div className="px-4 sm:px-6 md:px-10 pt-6 pb-8 md:pb-10">
+            <div className="flex items-center justify-between gap-3 mb-6 md:mb-8">
               <Link href={backHref}
                 className="inline-flex items-center gap-1.5 text-white/40 hover:text-white/70 text-xs transition">
                 <ArrowLeft size={13} /> Voltar
@@ -201,23 +205,26 @@ const RolePage = async ({
             </div>
 
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-              <div>
-                <h1 className="text-white font-bold leading-[0.9]" style={{ fontSize: "clamp(3.5rem,9vw,6rem)" }}>
+              <div className="min-w-0">
+                <h1 className="text-white font-bold leading-[0.9] break-words" style={{ fontSize: "clamp(2.5rem,11vw,6rem)" }}>
                   {config.label}
                 </h1>
-                <p className="text-white/40 text-sm mt-3 font-light">{config.tagline}</p>
+                <p className="text-white/40 text-xs sm:text-sm mt-2 md:mt-3 font-light">{config.tagline}</p>
               </div>
 
-              <div className="flex divide-x divide-white/10 overflow-hidden rounded-xl" style={{ background: "rgba(255,255,255,0.06)" }}>
+              <div className={`grid divide-x divide-white/10 overflow-hidden rounded-xl w-full md:w-auto md:flex flex-shrink-0 ${
+                  roleHasVisitors(role) ? "grid-cols-4" : "grid-cols-3"
+                }`}
+                style={{ background: "rgba(255,255,255,0.06)" }}>
                 {[
                   { n: totalMembers, l: "Membros" },
-                  { n: totalVisitors, l: "Visitantes" },
+                  ...(roleHasVisitors(role) ? [{ n: totalVisitors, l: "Visitantes" }] : []),
                   { n: totalEvents, l: "Eventos" },
                   { n: totalDocuments, l: "Docs" },
                 ].map((s, i) => (
-                  <div key={i} className="px-6 py-4 text-center">
-                    <p className="text-white text-2xl font-semibold leading-none">{s.n}</p>
-                    <p className="text-white/35 text-[10px] mt-1.5 tracking-wide">{s.l}</p>
+                  <div key={i} className="px-2 sm:px-4 md:px-6 py-3 md:py-4 text-center min-w-0">
+                    <p className="text-white text-lg sm:text-2xl font-semibold leading-none">{s.n}</p>
+                    <p className="text-white/35 text-[9px] sm:text-[10px] mt-1.5 tracking-wide truncate">{s.l}</p>
                   </div>
                 ))}
               </div>
@@ -231,14 +238,17 @@ const RolePage = async ({
           <div className="w-full lg:w-2/3 flex flex-col gap-8">
 
             {/* QUICK LINKS */}
-            <div className={`grid gap-3 rp-in d2 ${role === "diaconia" ? "grid-cols-3 sm:grid-cols-7" : "grid-cols-3 sm:grid-cols-5"}`}>
+            <div className={`grid gap-2.5 sm:gap-3 rp-in d2 ${role === "diaconia" ? "grid-cols-3 sm:grid-cols-4 xl:grid-cols-8" : "grid-cols-3 sm:grid-cols-5"}`}>
               {[
                 { label: "Membros",    icon: Users,        href: `/${role}/membros` },
-                { label: "Visitantes", icon: UserRound,    href: `/${role}/visitantes` },
+                ...(roleHasVisitors(role)
+                  ? [{ label: "Visitantes", icon: UserRound, href: `/${role}/visitantes` }]
+                  : []),
                 { label: "Galeria",    icon: Camera,       href: `/${role}/galeria` },
                 { label: "Eventos",    icon: Calendar,     href: `/list/events?roleContext=${role}` },
                 { label: "Documentos", icon: FileText,     href: `/list/documents?roleContext=${role}` },
                 ...(role === "diaconia" ? [
+                  { label: "Escala",     icon: CalendarCheck, href: "/diaconia/escala" },
                   { label: "Inventário", icon: Package,     href: "/diaconia/inventario" },
                   { label: "Tarefas",    icon: CheckSquare, href: "/diaconia/tarefas" },
                 ] : []),
@@ -246,9 +256,9 @@ const RolePage = async ({
                 const Icon = item.icon
                 return (
                   <Link key={item.label} href={item.href}
-                    className="ql-btn bg-white rounded-xl py-4 flex flex-col items-center gap-2 border border-gray-100 shadow-sm">
+                    className="ql-btn bg-white rounded-xl px-1.5 py-3.5 sm:py-4 flex flex-col items-center gap-1.5 sm:gap-2 border border-gray-100 shadow-sm">
                     <Icon size={18} style={{ color: ac }} />
-                    <span className="text-xs font-medium text-gray-500">{item.label}</span>
+                    <span className="text-[11px] sm:text-xs font-medium text-gray-500 text-center leading-tight">{item.label}</span>
                   </Link>
                 )
               })}
@@ -263,12 +273,14 @@ const RolePage = async ({
                   <span className="text-xs text-gray-400 ml-1">— gestão atual</span>
                 </div>
 
-                <div className="grid grid-cols-5 gap-4">
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 sm:gap-4">
                   {directoryMembers.map((ms) => (
                     <div key={ms.id} className="dir-card flex flex-col items-center text-center gap-2">
-                      <div className="rounded-full overflow-hidden bg-gray-100" style={{ width: 56, height: 56 }}>
-                        <Image src="/profile.png" alt={ms.member.name} width={56} height={56} className="object-cover w-full h-full" />
-                      </div>
+                      <MemberAvatar
+                        name={ms.member.name}
+                        profileImageUrl={ms.member.profileImageUrl}
+                        size={56}
+                      />
                       <div className="w-full">
                         <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: ac }}>
                           {ms.cargo}
@@ -366,9 +378,12 @@ const RolePage = async ({
                         >
                           {dia}
                         </div>
-                        <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 ring-2 ring-white shadow-sm">
-                          <Image src="/profile.png" alt={m.name} width={48} height={48} className="object-cover" />
-                        </div>
+                        <MemberAvatar
+                          name={m.name}
+                          profileImageUrl={m.profileImageUrl}
+                          size={48}
+                          className="ring-2 ring-white shadow-sm"
+                        />
                         <p className="text-xs font-semibold text-gray-800 leading-snug line-clamp-2">
                           {m.name.split(" ")[0]}
                         </p>
@@ -415,9 +430,11 @@ const RolePage = async ({
                   recentMembers.map((m, i) => (
                     <div key={m.id}
                       className={`m-row flex items-center gap-3 px-5 py-3.5 transition-colors ${i < recentMembers.length - 1 ? "border-b border-gray-50" : ""}`}>
-                      <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 flex-shrink-0">
-                        <Image src="/profile.png" alt={m.name} width={32} height={32} className="object-cover" />
-                      </div>
+                      <MemberAvatar
+                        name={m.name}
+                        profileImageUrl={m.profileImageUrl}
+                        size={32}
+                      />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-800 truncate">{m.name}</p>
                         {m.phone && (

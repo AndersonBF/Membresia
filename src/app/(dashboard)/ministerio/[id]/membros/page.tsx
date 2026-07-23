@@ -158,11 +158,11 @@ export default async function MinistryMembrosPage({
       </Link>
 
       <div className="bg-white p-4 rounded-md flex-1">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-lg font-semibold text-green-700">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4">
+          <h1 className="text-base sm:text-lg font-semibold text-green-700">
             Membros — {ministry.name}
           </h1>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <TableSearch />
             {isAdmin && (
               <>

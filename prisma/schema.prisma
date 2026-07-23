@@ -46,6 +46,7 @@ model Member {
   scheduleAssignments DiaconateScheduleMember[]
   unavailabilities    DiaconateUnavailability[]
   bibleSchoolAttendances BibleSchoolAttendance[]
+  sheetAliases        SheetNameAlias[]
 }
 
 // ===============================================
@@ -281,9 +282,42 @@ model Visitor {
   category  String?
 
   attendances VisitorAttendance[]
+  sheetAliases SheetNameAlias[]
 
   @@index([societyId])
   @@index([category])
+}
+
+// ===============================================
+// APELIDOS DA FOLHA DE PRESENÇA (SheetNameAlias)
+// ===============================================
+// A mesma pessoa assina sempre do mesmo jeito, e nem sempre é o jeito que está
+// no cadastro. Quando o usuário confirma na tela quem é aquele risco, o vínculo
+// fica guardado aqui e a leitura seguinte já reconhece sozinha.
+model SheetNameAlias {
+  id Int @id @default(autoincrement())
+
+  /// Grupo onde o vínculo vale (ump, ebd, diaconia…) — dois grupos podem ter
+  /// pessoas diferentes assinando parecido.
+  role String
+  /// Nome lido, normalizado (minúsculo, sem acento) — é por ele que casamos.
+  normalized String
+  /// Grafia original da folha, para conferência.
+  readName String
+
+  memberId Int?
+  member   Member? @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  visitorId Int?
+  visitor   Visitor? @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  /// Clerk userId de quem confirmou o vínculo.
+  createdBy String?
+
+  @@unique([role, normalized])
+  @@index([memberId])
+  @@index([visitorId])
 }
 
 // ===============================================

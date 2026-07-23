@@ -306,12 +306,21 @@ const AttendanceTaker = ({
             {scopeRole && (
               <AttendanceSheetScanner
                 candidates={activeMembers.map((m) => ({ id: m.id, name: m.name }))}
+                visitorCandidates={showVisitors ? visitors.map((v) => ({ id: v.id, name: v.name })) : []}
                 onApply={applyScan}
                 role={scopeRole}
                 allowVisitors={showVisitors}
                 onMembersCreated={(created: CreatedMember[]) =>
                   setAddedMembers((prev) => [...prev, ...created])
                 }
+                onVisitorsLinked={(visitorIds: number[]) => {
+                  // Visitante já cadastrado que apareceu na folha entra presente.
+                  setVisitorAttendance((prev) => {
+                    const next = { ...prev };
+                    visitorIds.forEach((id) => { next[id] = true });
+                    return next;
+                  });
+                }}
                 onVisitorsCreated={(created: CreatedVisitor[]) => {
                   setAddedVisitors((prev) => [...prev, ...created]);
                   // Visitante que estava na folha entra presente no evento.

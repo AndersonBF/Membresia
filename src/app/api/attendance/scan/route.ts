@@ -6,8 +6,9 @@
 
 import { NextResponse } from "next/server"
 import { currentUser } from "@clerk/nextjs/server"
+import prisma from "@/lib/prisma"
 import { canManageGroup } from "@/lib/permissions"
-import { matchNames, type Candidate } from "@/lib/nameMatch"
+import { matchNames, normalize, type Candidate } from "@/lib/nameMatch"
 import {
   readSheetNames,
   ACCEPTED_MEDIA_TYPES,
@@ -40,7 +41,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Sem permissão para usar a leitura por foto." }, { status: 403 })
   }
 
-  let body: { imageBase64?: string; mediaType?: string; candidates?: Candidate[]; role?: string }
+  let body: {
+    imageBase64?: string
+    mediaType?: string
+    candidates?: Candidate[]
+    visitorCandidates?: Candidate[]
+    role?: string
+  }
   try {
     body = await req.json()
   } catch {
@@ -48,6 +55,7 @@ export async function POST(req: Request) {
   }
 
   const { imageBase64, mediaType, candidates, role } = body
+  const visitorCandidates = Array.isArray(body.visitorCandidates) ? body.visitorCandidates : []
 
   if (!imageBase64 || typeof imageBase64 !== "string") {
     return NextResponse.json({ error: "Envie a imagem da lista." }, { status: 400 })
@@ -82,10 +90,51 @@ export async function POST(req: Request) {
     )
   }
 
-  const { matches, unmatched } = matchNames(
-    readEntries.map((n) => n.name),
-    candidates,
+  // Vínculos que o usuário já ensinou neste grupo têm prioridade sobre a
+  // semelhança: ele viu a folha e disse de quem é aquele risco.
+  const readNames = readEntries.map((n) => n.name)
+  const aliasRows = role
+    ? await prisma.sheetNameAlias.findMany({
+        where: { role, normalized: { in: readNames.map(normalize).filter(Boolean) } },
+        select: { normalized: true, memberId: true, visitorId: true },
+      })
+    : []
+
+  const aliasBy = new Map(aliasRows.map((a) => [a.normalized, a]))
+  const memberById = new Map(candidates.map((c) => [c.id, c]))
+  const visitorById = new Map(visitorCandidates.map((v) => [v.id, v]))
+
+  const aliasMatches: { readName: string; memberId: number; memberName: string; score: number }[] = []
+  const visitorMatches: { readName: string; visitorId: number; visitorName: string }[] = []
+  const takenMembers = new Set<number>()
+  const takenVisitors = new Set<number>()
+  const rest: string[] = []
+
+  for (const readName of readNames) {
+    const alias = aliasBy.get(normalize(readName))
+    const member = alias?.memberId != null ? memberById.get(alias.memberId) : undefined
+    const visitor = alias?.visitorId != null ? visitorById.get(alias.visitorId) : undefined
+
+    // Pessoa ensinada mas que não está nesta lista (saiu da turma, outro grupo)
+    // volta para o caminho normal em vez de sumir.
+    if (member && !takenMembers.has(member.id)) {
+      takenMembers.add(member.id)
+      aliasMatches.push({ readName, memberId: member.id, memberName: member.name, score: 1 })
+    } else if (visitor && !takenVisitors.has(visitor.id)) {
+      takenVisitors.add(visitor.id)
+      visitorMatches.push({ readName, visitorId: visitor.id, visitorName: visitor.name })
+    } else {
+      rest.push(readName)
+    }
+  }
+
+  const fuzzy = matchNames(
+    rest,
+    candidates.filter((c) => !takenMembers.has(c.id)),
   )
+
+  const matches = [...aliasMatches, ...fuzzy.matches]
+  const unmatched = fuzzy.unmatched
 
   // Nomes que o próprio modelo marcou como ilegíveis viram aviso, mesmo quando
   // casaram com alguém — quem confere na tela decide.
@@ -97,9 +146,26 @@ export async function POST(req: Request) {
   // a tela esconde essa opção para os demais em vez de deixar dar erro.
   const canCreate = role ? await canManageGroup(role) : false
 
+  const aliased = new Set(aliasMatches.map((m) => m.readName.trim()))
+
+  // Onde cada nome está na foto, para a tela mostrar o pedaço da folha ao lado.
+  // Chaveado pelo nome lido, que é o que acompanha match/unmatched.
+  const boxes: Record<string, number[]> = {}
+  for (const entry of readEntries) {
+    const key = entry.name.trim()
+    if (entry.box && !boxes[key]) boxes[key] = entry.box
+  }
+
   return NextResponse.json({
-    matches: matches.map((m) => ({ ...m, uncertain: illegible.has(m.readName.trim()) })),
+    matches: matches.map((m) => ({
+      ...m,
+      viaAlias: aliased.has(m.readName.trim()),
+      // Um nome já ensinado não precisa de conferência, mesmo com letra ruim.
+      uncertain: !aliased.has(m.readName.trim()) && illegible.has(m.readName.trim()),
+    })),
+    visitorMatches,
     unmatched,
+    boxes,
     totalRead: readEntries.length,
     provider,
     canCreate,

@@ -4,7 +4,13 @@
 // Usa o Gemini Flash (camada gratuita do Google AI Studio), configurado por
 // GOOGLE_AI_API_KEY. O modelo pode ser trocado por GOOGLE_AI_MODEL.
 
-export type ReadName = { name: string; legible: boolean }
+/**
+ * Retângulo da linha na foto, no formato do Gemini: [ymin, xmin, ymax, xmax]
+ * em milésimos da imagem (0..1000), independente da resolução.
+ */
+export type NameBox = [number, number, number, number]
+
+export type ReadName = { name: string; legible: boolean; box?: NameBox }
 
 export type OcrProvider = "gemini"
 
@@ -22,13 +28,27 @@ Regras:
 - Transcreva o que está escrito. Não invente sobrenomes, não complete nomes e não corrija para nomes que você acha mais prováveis.
 - Nomes brasileiros: mantenha a grafia com acentos quando conseguir distingui-la.
 - Se uma linha estiver preenchida mas a letra for ilegível, devolva sua melhor tentativa com legible=false em vez de omitir a linha.
-- Não devolva linhas vazias.`
+- Não devolva linhas vazias.
+- Para cada nome, devolva em "box" o retângulo do texto manuscrito daquela linha, no formato [ymin, xmin, ymax, xmax] com valores de 0 a 1000 relativos à imagem inteira. O retângulo deve conter o nome escrito à mão por completo, sem abraçar as linhas vizinhas. Se não conseguir localizar a linha, omita "box".`
 
 const USER_PROMPT = "Extraia os nomes manuscritos desta lista de presença."
 
 /** A leitura por foto está configurada? */
 export function resolveProvider(): OcrProvider | null {
   return process.env.GOOGLE_AI_API_KEY ? "gemini" : null
+}
+
+/**
+ * O retângulo só serve se estiver dentro da imagem e não for degenerado — um
+ * box inventado atrapalharia mais do que a ausência dele.
+ */
+function cleanBox(raw: unknown): NameBox | undefined {
+  if (!Array.isArray(raw) || raw.length !== 4) return undefined
+  const v = raw.map((n) => (typeof n === "number" ? Math.round(n) : NaN))
+  if (v.some((n) => !Number.isFinite(n) || n < 0 || n > 1000)) return undefined
+  const [ymin, xmin, ymax, xmax] = v
+  if (ymax - ymin < 5 || xmax - xmin < 5) return undefined
+  return [ymin, xmin, ymax, xmax]
 }
 
 /** Descarta entradas vazias e normaliza o formato vindo do modelo. */
@@ -38,6 +58,7 @@ function cleanNames(raw: unknown): ReadName[] {
     .map((n) => ({
       name: typeof n?.name === "string" ? n.name.trim() : "",
       legible: n?.legible !== false,
+      box: cleanBox(n?.box),
     }))
     .filter((n) => n.name.length > 0)
 }
@@ -55,6 +76,12 @@ const GEMINI_SCHEMA = {
         properties: {
           name: { type: "STRING", description: "O nome como está escrito na folha." },
           legible: { type: "BOOLEAN", description: "false quando a letra é ilegível demais." },
+          box: {
+            type: "ARRAY",
+            description:
+              "Retângulo do nome manuscrito na imagem: [ymin, xmin, ymax, xmax], de 0 a 1000.",
+            items: { type: "INTEGER" },
+          },
         },
         required: ["name", "legible"],
       },

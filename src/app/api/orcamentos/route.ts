@@ -1,18 +1,8 @@
 import { auth, currentUser } from "@clerk/nextjs/server"
 import { NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
-import { getEbdAccess } from "@/lib/ebdAccess"
 import { fetchOgImage } from "@/lib/ogImage"
-
-// Acesso liberado a superintendente (canSeeAll) e professoras (com turmas).
-async function ensureAccess() {
-  const { userId } = await auth()
-  if (!userId) return { ok: false as const, status: 401, error: "Unauthorized" }
-  const access = await getEbdAccess()
-  const allowed = access.canSeeAll || access.teacherClassIds.length > 0
-  if (!allowed) return { ok: false as const, status: 403, error: "Sem permissão" }
-  return { ok: true as const, access }
-}
+import { canAccessOrcamentos, isOrcamentoContext } from "@/lib/orcamentoAccess"
 
 const URGENCIAS = ["ALTA", "MEDIA", "BAIXA"] as const
 
@@ -38,11 +28,20 @@ async function withImages(items: ReturnType<typeof sanitizeItems>) {
   )
 }
 
-export async function GET() {
-  const gate = await ensureAccess()
-  if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status })
+export async function GET(req: Request) {
+  const { userId } = await auth()
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  const context = new URL(req.url).searchParams.get("context") ?? ""
+  if (!isOrcamentoContext(context)) {
+    return NextResponse.json({ error: "Contexto inválido" }, { status: 400 })
+  }
+  if (!(await canAccessOrcamentos(context))) {
+    return NextResponse.json({ error: "Sem permissão" }, { status: 403 })
+  }
 
   const orcamentos = await prisma.orcamento.findMany({
+    where: { context },
     orderBy: { createdAt: "desc" },
     include: { items: true },
   })
@@ -50,16 +49,25 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const gate = await ensureAccess()
-  if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status })
+  const { userId } = await auth()
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const body = await req.json()
+  const context = body.context
+  if (!isOrcamentoContext(context)) {
+    return NextResponse.json({ error: "Contexto inválido" }, { status: 400 })
+  }
+  if (!(await canAccessOrcamentos(context))) {
+    return NextResponse.json({ error: "Sem permissão" }, { status: 403 })
+  }
+
   const user = await currentUser()
   const createdByName =
     [user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.username || null
 
   const orcamento = await prisma.orcamento.create({
     data: {
+      context,
       title: String(body.title ?? "").trim() || "Sem título",
       description: body.description?.trim() || null,
       urgencia: URGENCIAS.includes(body.urgencia) ? body.urgencia : "MEDIA",

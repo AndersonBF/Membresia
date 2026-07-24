@@ -1,17 +1,8 @@
 import { auth } from "@clerk/nextjs/server"
 import { NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
-import { getEbdAccess } from "@/lib/ebdAccess"
 import { fetchOgImage } from "@/lib/ogImage"
-
-async function ensureAccess() {
-  const { userId } = await auth()
-  if (!userId) return { ok: false as const, status: 401, error: "Unauthorized" }
-  const access = await getEbdAccess()
-  const allowed = access.canSeeAll || access.teacherClassIds.length > 0
-  if (!allowed) return { ok: false as const, status: 403, error: "Sem permissão" }
-  return { ok: true as const, access }
-}
+import { canAccessOrcamentos } from "@/lib/orcamentoAccess"
 
 const URGENCIAS = ["ALTA", "MEDIA", "BAIXA"] as const
 
@@ -27,7 +18,6 @@ function sanitizeItems(raw: unknown) {
     }))
 }
 
-// Para cada item com link, tenta puxar a imagem do produto (best-effort).
 async function withImages(items: ReturnType<typeof sanitizeItems>) {
   return Promise.all(
     items.map(async (it) => ({
@@ -37,26 +27,34 @@ async function withImages(items: ReturnType<typeof sanitizeItems>) {
   )
 }
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
-  const gate = await ensureAccess()
-  if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status })
+// Carrega o orçamento e confirma que o usuário pode acessá-lo (pelo contexto dele).
+async function loadAndAuthorize(id: number) {
+  const { userId } = await auth()
+  if (!userId) return { ok: false as const, status: 401, error: "Unauthorized" }
 
-  const orcamento = await prisma.orcamento.findUnique({
-    where: { id: Number(params.id) },
-    include: { items: true },
-  })
-  if (!orcamento) return NextResponse.json({ error: "Não encontrado" }, { status: 404 })
-  return NextResponse.json(orcamento)
+  const orcamento = await prisma.orcamento.findUnique({ where: { id }, include: { items: true } })
+  if (!orcamento) return { ok: false as const, status: 404, error: "Não encontrado" }
+
+  if (!(await canAccessOrcamentos(orcamento.context))) {
+    return { ok: false as const, status: 403, error: "Sem permissão" }
+  }
+  return { ok: true as const, orcamento }
+}
+
+export async function GET(_req: Request, { params }: { params: { id: string } }) {
+  const res = await loadAndAuthorize(Number(params.id))
+  if (!res.ok) return NextResponse.json({ error: res.error }, { status: res.status })
+  return NextResponse.json(res.orcamento)
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const gate = await ensureAccess()
-  if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status })
+  const id = Number(params.id)
+  const res = await loadAndAuthorize(id)
+  if (!res.ok) return NextResponse.json({ error: res.error }, { status: res.status })
 
   const body = await req.json()
-
   const orcamento = await prisma.orcamento.update({
-    where: { id: Number(params.id) },
+    where: { id },
     data: {
       title: String(body.title ?? "").trim() || "Sem título",
       description: body.description?.trim() || null,
@@ -64,7 +62,6 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       neededBy: body.neededBy ? new Date(body.neededBy) : null,
       freeShipping: !!body.freeShipping,
       shippingCost: body.freeShipping ? 0 : Number(body.shippingCost) || 0,
-      // Substitui todos os itens pelos enviados.
       items: {
         deleteMany: {},
         create: await withImages(sanitizeItems(body.items)),
@@ -76,9 +73,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 }
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
-  const gate = await ensureAccess()
-  if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status })
+  const id = Number(params.id)
+  const res = await loadAndAuthorize(id)
+  if (!res.ok) return NextResponse.json({ error: res.error }, { status: res.status })
 
-  await prisma.orcamento.delete({ where: { id: Number(params.id) } })
+  await prisma.orcamento.delete({ where: { id } })
   return NextResponse.json({ ok: true })
 }

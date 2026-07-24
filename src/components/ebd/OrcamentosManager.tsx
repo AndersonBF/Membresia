@@ -6,7 +6,13 @@ import {
   Truck, CalendarClock, Loader2, ShoppingCart,
 } from "lucide-react"
 
-const AC = "#b45309"
+// Cor de destaque por grupo dono do orçamento.
+const ACCENTS: Record<string, string> = {
+  ebd: "#b45309",       // âmbar
+  diaconia: "#0f766e",  // verde-azulado
+  conselho: "#4338ca",  // índigo
+}
+const accentFor = (context: string) => ACCENTS[context] ?? "#b45309"
 
 type Item = {
   id?: number
@@ -49,7 +55,8 @@ const fmtDate = (iso: string | null) =>
       })
     : null
 
-export default function OrcamentosManager({ initial }: { initial: Orcamento[] }) {
+export default function OrcamentosManager({ initial, context }: { initial: Orcamento[]; context: string }) {
+  const accent = accentFor(context)
   const [list, setList] = useState<Orcamento[]>(initial)
   const [detail, setDetail] = useState<Orcamento | null>(null)
   const [formOpen, setFormOpen] = useState(false)
@@ -70,7 +77,7 @@ export default function OrcamentosManager({ initial }: { initial: Orcamento[] })
 
   const handleDelete = async (id: number) => {
     if (!confirm("Apagar este orçamento? Esta ação não pode ser desfeita.")) return
-    const res = await fetch(`/api/ebd/orcamentos/${id}`, { method: "DELETE" })
+    const res = await fetch(`/api/orcamentos/${id}`, { method: "DELETE" })
     if (res.ok) {
       setList((prev) => prev.filter((o) => o.id !== id))
       setDetail(null)
@@ -83,7 +90,7 @@ export default function OrcamentosManager({ initial }: { initial: Orcamento[] })
         <button
           onClick={openCreate}
           className="flex items-center gap-2 text-sm text-white px-4 py-2.5 rounded-lg font-medium transition hover:opacity-90"
-          style={{ background: AC }}
+          style={{ background: accent }}
         >
           <Plus size={16} /> Novo orçamento
         </button>
@@ -134,7 +141,7 @@ export default function OrcamentosManager({ initial }: { initial: Orcamento[] })
                       <CalendarClock size={12} /> Para {fmtDate(o.neededBy)}
                     </p>
                   )}
-                  <p className="text-lg font-bold mt-auto pt-1" style={{ color: AC }}>
+                  <p className="text-lg font-bold mt-auto pt-1" style={{ color: accent }}>
                     {money(grandTotal(o))}
                   </p>
                 </div>
@@ -147,6 +154,7 @@ export default function OrcamentosManager({ initial }: { initial: Orcamento[] })
       {detail && (
         <DetailModal
           orcamento={detail}
+          accent={accent}
           onClose={() => setDetail(null)}
           onEdit={() => openEdit(detail)}
           onDelete={() => handleDelete(detail.id)}
@@ -156,6 +164,8 @@ export default function OrcamentosManager({ initial }: { initial: Orcamento[] })
       {formOpen && (
         <FormModal
           editing={editing}
+          context={context}
+          accent={accent}
           onClose={() => { setFormOpen(false); setEditing(null) }}
           onSaved={handleSaved}
         />
@@ -167,9 +177,10 @@ export default function OrcamentosManager({ initial }: { initial: Orcamento[] })
 /* ---------------- Detalhe ---------------- */
 
 function DetailModal({
-  orcamento, onClose, onEdit, onDelete,
+  orcamento, accent, onClose, onEdit, onDelete,
 }: {
   orcamento: Orcamento
+  accent: string
   onClose: () => void
   onEdit: () => void
   onDelete: () => void
@@ -234,7 +245,7 @@ function DetailModal({
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-xs inline-flex items-center gap-1 mt-1 font-medium hover:underline"
-                      style={{ color: AC }}
+                      style={{ color: accent }}
                     >
                       <ExternalLink size={12} /> Ver produto
                     </a>
@@ -257,7 +268,7 @@ function DetailModal({
               <span className="flex items-center gap-1.5"><Truck size={14} /> Frete</span>
               <span>{o.freeShipping ? "Grátis" : money(o.shippingCost)}</span>
             </div>
-            <div className="flex justify-between text-lg font-bold pt-1" style={{ color: AC }}>
+            <div className="flex justify-between text-lg font-bold pt-1" style={{ color: accent }}>
               <span>Total</span>
               <span>{money(grandTotal(o))}</span>
             </div>
@@ -272,7 +283,7 @@ function DetailModal({
             <button
               onClick={onEdit}
               className="flex-1 flex items-center justify-center gap-2 text-sm font-medium py-2.5 rounded-lg text-white transition hover:opacity-90"
-              style={{ background: AC }}
+              style={{ background: accent }}
             >
               <Pencil size={15} /> Editar
             </button>
@@ -296,9 +307,11 @@ type FormItem = { name: string; price: string; quantity: string; link: string }
 const emptyItem = (): FormItem => ({ name: "", price: "", quantity: "1", link: "" })
 
 function FormModal({
-  editing, onClose, onSaved,
+  editing, context, accent, onClose, onSaved,
 }: {
   editing: Orcamento | null
+  context: string
+  accent: string
   onClose: () => void
   onSaved: (o: Orcamento) => void
 }) {
@@ -341,6 +354,7 @@ function FormModal({
     setSaving(true)
     try {
       const payload = {
+        context,
         title: title.trim(),
         description: description.trim() || null,
         urgencia,
@@ -355,7 +369,7 @@ function FormModal({
         })),
       }
       const res = await fetch(
-        editing ? `/api/ebd/orcamentos/${editing.id}` : "/api/ebd/orcamentos",
+        editing ? `/api/orcamentos/${editing.id}` : "/api/orcamentos",
         {
           method: editing ? "PATCH" : "POST",
           headers: { "Content-Type": "application/json" },
@@ -439,7 +453,7 @@ function FormModal({
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <label className={label}>Produtos</label>
-              <button onClick={addItem} className="text-xs flex items-center gap-1 font-medium" style={{ color: AC }}>
+              <button onClick={addItem} className="text-xs flex items-center gap-1 font-medium" style={{ color: accent }}>
                 <Plus size={13} /> Adicionar produto
               </button>
             </div>
@@ -479,7 +493,7 @@ function FormModal({
 
           <div className="flex items-center justify-between border-t border-gray-100 pt-4">
             <span className="text-sm text-gray-500">Total estimado</span>
-            <span className="text-lg font-bold" style={{ color: AC }}>{money(previewTotal)}</span>
+            <span className="text-lg font-bold" style={{ color: accent }}>{money(previewTotal)}</span>
           </div>
 
           <div className="flex gap-2">
@@ -489,7 +503,7 @@ function FormModal({
             </button>
             <button onClick={submit} disabled={saving}
               className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-60"
-              style={{ background: AC }}>
+              style={{ background: accent }}>
               {saving ? <Loader2 size={16} className="animate-spin" /> : null}
               {editing ? "Salvar alterações" : "Criar orçamento"}
             </button>

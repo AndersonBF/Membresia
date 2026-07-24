@@ -2,24 +2,22 @@ import { notFound } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import prisma from "@/lib/prisma"
-import { getEbdAccess } from "@/lib/ebdAccess"
+import { canAccessOrcamentos, isOrcamentoContext } from "@/lib/orcamentoAccess"
 import OrcamentosManager from "@/components/ebd/OrcamentosManager"
 
 export const dynamic = "force-dynamic"
 
 export default async function OrcamentosPage({ params }: { params: { role: string } }) {
-  if (params.role !== "ebd") notFound()
-
-  const access = await getEbdAccess()
-  const allowed = access.canSeeAll || access.teacherClassIds.length > 0
-  if (!allowed) notFound()
+  const context = params.role
+  if (!isOrcamentoContext(context)) notFound()
+  if (!(await canAccessOrcamentos(context))) notFound()
 
   const orcamentos = await prisma.orcamento.findMany({
+    where: { context },
     orderBy: { createdAt: "desc" },
     include: { items: true },
   })
 
-  // Serializa datas para o componente cliente.
   const data = orcamentos.map((o) => ({
     id: o.id,
     title: o.title,
@@ -42,8 +40,8 @@ export default async function OrcamentosPage({ params }: { params: { role: strin
 
   return (
     <div className="p-4 md:p-6 flex flex-col gap-6">
-      <Link href="/ebd" className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition w-fit">
-        <ArrowLeft size={16} /> Voltar para EBD
+      <Link href={`/${context}`} className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition w-fit">
+        <ArrowLeft size={16} /> Voltar
       </Link>
 
       <div>
@@ -53,7 +51,7 @@ export default async function OrcamentosPage({ params }: { params: { role: strin
         </p>
       </div>
 
-      <OrcamentosManager initial={data} />
+      <OrcamentosManager initial={data} context={context} />
     </div>
   )
 }

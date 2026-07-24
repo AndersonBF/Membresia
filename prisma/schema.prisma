@@ -696,6 +696,7 @@ model ChurchSettings {
 // ===============================================
 model Orcamento {
   id           Int          @id @default(autoincrement())
+  context      String       @default("ebd")  // grupo dono: "ebd" | "diaconia" | "conselho"
   title        String
   description  String?
   urgencia     TaskPriority @default(MEDIA)
@@ -710,6 +711,8 @@ model Orcamento {
   updatedAt    DateTime     @updatedAt
 
   items        OrcamentoItem[]
+
+  @@index([context])
 }
 
 model OrcamentoItem {

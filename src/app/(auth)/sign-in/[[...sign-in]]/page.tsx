@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import MarketingShell from "@/components/MarketingShell";
 
 const highlights = [
@@ -13,12 +13,38 @@ const highlights = [
   "Finanças, eventos e comunicados em um só lugar",
 ];
 
+// Frases em rodízio — uma diferente a cada visita.
+const phrases = [
+  "A administração da sua igreja em um só lugar.",
+  "Deixe a parte chata da administração para nós. Seja igreja.",
+  "Cuide do seu rebanho; a organização fica com a gente.",
+  "Menos planilhas, mais tempo para o que realmente importa.",
+  "Do cadastro ao culto, tudo em um só sistema.",
+  "Membros, grupos e diretorias sempre organizados.",
+  "Controle de presença com relatórios prontos em segundos.",
+  "Finanças, dízimos e ofertas com total transparência.",
+  "Eventos, agenda e comunicados que chegam a todos.",
+  "Escalas da diaconia montadas automaticamente.",
+  "Sermões e estudos organizados para o seu ministério.",
+  "Galeria de fotos para guardar cada momento da igreja.",
+];
+
 const LoginPage = () => {
   const { isLoaded, isSignedIn, user } = useUser();
   const router = useRouter();
+  const [phraseIdx, setPhraseIdx] = useState(0);
+  const [phraseReady, setPhraseReady] = useState(false);
+
+  // Sorteia a frase no cliente e só então a exibe (sem "flash" da primeira).
+  useEffect(() => {
+    setPhraseIdx(Math.floor(Math.random() * phrases.length));
+    setPhraseReady(true);
+  }, []);
 
   useEffect(() => {
     if (isLoaded && isSignedIn && user) {
+      // Primeiro acesso: fica no próprio sign-in mostrando a troca de senha.
+      if (user.publicMetadata?.mustChangePassword === true) return;
       router.push("/admin");
     }
   }, [user, router, isLoaded, isSignedIn]);
@@ -55,9 +81,11 @@ const LoginPage = () => {
           fontWeight: 400,
           lineHeight: 1.7,
           margin: "0 0 44px 0",
+          minHeight: "2.6em",
+          opacity: phraseReady ? 1 : 0,
+          transition: "opacity 0.35s ease",
         }}>
-          Uma plataforma para igrejas que querem organizar bem seu rebanho —
-          com clareza, controle e simplicidade.
+          {phrases[phraseIdx]}
         </p>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>

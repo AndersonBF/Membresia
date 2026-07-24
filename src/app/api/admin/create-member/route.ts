@@ -98,7 +98,8 @@ export async function POST(req: Request) {
     const clerkUser = await client.users.createUser({
       username,
       password,
-      publicMetadata: { roles: ["member", ...roles], church },
+      // mustChangePassword: força a troca de senha no primeiro acesso.
+      publicMetadata: { roles: ["member", ...roles], church, mustChangePassword: true },
     })
 
     // Cria o membro no Prisma

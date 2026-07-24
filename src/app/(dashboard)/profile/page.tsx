@@ -7,6 +7,7 @@ import Link from "next/link"
 import {
   Camera, Upload, User, Phone, Mail, Calendar,
   Users, CheckCircle, XCircle, Loader2, ArrowLeft,
+  Link2, Unlink, ShieldCheck,
 } from "lucide-react"
 
 interface Member {
@@ -61,6 +62,60 @@ export default function ProfilePage() {
   const [members, setMembers] = useState<Member[]>([])
   const [loadingMembers, setLoadingMembers] = useState(false)
   const [memberSearch, setMemberSearch] = useState("")
+
+  // Vinculação de conta Google
+  const [linking, setLinking] = useState(false)
+  const [linkError, setLinkError] = useState("")
+
+  const googleAccount = user?.externalAccounts?.find(
+    (ea) => ea.provider === "google"
+  )
+
+  const handleLinkGoogle = async () => {
+    if (!user) return
+    setLinking(true)
+    setLinkError("")
+    try {
+      const externalAccount = await user.createExternalAccount({
+        strategy: "oauth_google",
+        redirectUrl: `${window.location.origin}/profile`,
+      })
+      const url = externalAccount.verification?.externalVerificationRedirectURL
+      if (url) {
+        window.location.href = url.toString()
+      } else {
+        throw new Error("Não foi possível iniciar a vinculação com o Google.")
+      }
+    } catch (err: any) {
+      setLinkError(
+        err?.errors?.[0]?.longMessage ??
+        err?.errors?.[0]?.message ??
+        err?.message ??
+        "Erro ao vincular com o Google."
+      )
+      setLinking(false)
+    }
+  }
+
+  const handleUnlinkGoogle = async () => {
+    if (!googleAccount) return
+    if (!confirm("Deseja remover o login com Google desta conta?")) return
+    setLinking(true)
+    setLinkError("")
+    try {
+      await googleAccount.destroy()
+      await user?.reload()
+    } catch (err: any) {
+      setLinkError(
+        err?.errors?.[0]?.longMessage ??
+        err?.errors?.[0]?.message ??
+        err?.message ??
+        "Erro ao desvincular o Google."
+      )
+    } finally {
+      setLinking(false)
+    }
+  }
 
   const roles = (user?.publicMetadata?.roles as string[]) ?? []
   const isAdmin = roles.includes("admin") || roles.includes("superadmin")
@@ -271,6 +326,67 @@ export default function ProfilePage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Login com Google */}
+      <div className="bg-white rounded-2xl shadow-sm p-6 flex flex-col gap-4">
+        <div className="flex items-center gap-2">
+          <ShieldCheck size={20} className="text-green-700" />
+          <h2 className="text-lg font-semibold text-gray-700">Acesso à conta</h2>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-gray-100 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-full bg-gray-50 flex items-center justify-center shrink-0">
+              <svg width="22" height="22" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1Z" />
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23Z" />
+                <path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 0 1 0-4.2V7.06H2.18a11 11 0 0 0 0 9.88l3.66-2.84Z" />
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1A11 11 0 0 0 2.18 7.06l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38Z" />
+              </svg>
+            </div>
+            <div>
+              <p className="font-semibold text-gray-800 text-sm">Login com Google</p>
+              {googleAccount ? (
+                <p className="text-xs text-green-600 flex items-center gap-1">
+                  <CheckCircle size={12} />
+                  Vinculado{googleAccount.emailAddress ? ` — ${googleAccount.emailAddress}` : ""}
+                </p>
+              ) : (
+                <p className="text-xs text-gray-400">
+                  Vincule para entrar com um clique nas próximas vezes.
+                </p>
+              )}
+            </div>
+          </div>
+
+          {googleAccount ? (
+            <button
+              onClick={handleUnlinkGoogle}
+              disabled={linking}
+              className="flex items-center justify-center gap-2 text-sm text-red-600 hover:text-red-700 border border-red-200 hover:bg-red-50 px-4 py-2 rounded-lg font-medium transition disabled:opacity-50"
+            >
+              {linking ? <Loader2 size={15} className="animate-spin" /> : <Unlink size={15} />}
+              Desvincular
+            </button>
+          ) : (
+            <button
+              onClick={handleLinkGoogle}
+              disabled={linking}
+              className="flex items-center justify-center gap-2 text-sm text-green-700 hover:text-white hover:bg-green-600 border border-green-300 px-4 py-2 rounded-lg font-medium transition disabled:opacity-50"
+            >
+              {linking ? <Loader2 size={15} className="animate-spin" /> : <Link2 size={15} />}
+              Vincular Google
+            </button>
+          )}
+        </div>
+
+        {linkError && (
+          <div className="flex items-center gap-1 text-xs text-red-500">
+            <XCircle size={14} />
+            {linkError}
+          </div>
+        )}
       </div>
 
       {/* Lista de membros — apenas para admin */}

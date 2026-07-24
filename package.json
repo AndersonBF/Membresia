@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@clerk/elements": "^0.24.6",
+    "@clerk/localizations": "^4.13.7",
     "@clerk/nextjs": "^6.36.10",
     "@hello-pangea/dnd": "^18.0.1",
     "@hookform/resolvers": "^3.9.8",

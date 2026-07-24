@@ -691,4 +691,37 @@ model ChurchSettings {
   updatedAt         DateTime @updatedAt
 }
 
+// ===============================================
+// ORÇAMENTOS DA EBD (listas de compra de materiais)
+// ===============================================
+model Orcamento {
+  id           Int          @id @default(autoincrement())
+  title        String
+  description  String?
+  urgencia     TaskPriority @default(MEDIA)
+  neededBy     DateTime?    // "para quando preciso mais ou menos"
+
+  shippingCost Float        @default(0)  // frete do orçamento inteiro
+  freeShipping Boolean      @default(false)
+
+  createdByName String?     // nome de quem criou (para exibição)
+
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  items        OrcamentoItem[]
+}
+
+model OrcamentoItem {
+  id          Int      @id @default(autoincrement())
+  name        String
+  price       Float    @default(0)
+  quantity    Int      @default(1)
+  link        String?  // link do produto (opcional)
+  imageUrl    String?  // URL da foto do produto (opcional)
+
+  orcamentoId Int
+  orcamento   Orcamento @relation(fields: [orcamentoId], references: [id], onDelete: Cascade)
+}
+
 

@@ -1,6 +1,7 @@
 import Sidebar from "@/components/Sidebar";
 import Navbar from "@/components/Navbar";
 import DemoBanner from "@/components/DemoBanner";
+import RememberGoogleAccount from "@/components/RememberGoogleAccount";
 import { logPageview } from "@/lib/accessLog";
 
 export default async function DashboardLayout({
@@ -20,6 +21,7 @@ export default async function DashboardLayout({
         .sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 999px; }
         .sidebar-scroll:hover::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.30); }
       ` }} />
+      <RememberGoogleAccount />
       <DemoBanner />
       <div className="flex flex-1 min-h-0">
         <Sidebar />

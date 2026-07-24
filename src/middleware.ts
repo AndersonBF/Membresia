@@ -103,6 +103,18 @@ export default clerkMiddleware(async (auth, req) => {
     return NextResponse.redirect(new URL("/acesso-negado", req.url));
   }
 
+  // ============================
+  // 🔥 TROCA DE SENHA NO PRIMEIRO ACESSO
+  // Membros novos entram com `mustChangePassword: true`. Enquanto a flag existir,
+  // são mandados de volta ao /sign-in, onde o próprio painel mostra a troca de senha.
+  // ============================
+  const mustChangePassword =
+    (sessionClaims?.metadata as { mustChangePassword?: boolean })?.mustChangePassword === true;
+
+  if (mustChangePassword) {
+    return NextResponse.redirect(new URL("/sign-in", req.url));
+  }
+
   const groupRoles = [
     "ump", "upa", "uph", "saf", "ucp",
     "diaconia", "conselho", "ministerio", "ebd",

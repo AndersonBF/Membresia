@@ -121,6 +121,39 @@ const SignUpPage = () => {
             </a>
           </p>
         </SignUp.Step>
+
+        <SignUp.Step
+          name="restricted"
+          className="bg-white p-10 rounded-md shadow-2xl flex flex-col items-center gap-4 w-full max-w-md text-center"
+        >
+          <div className="w-14 h-14 rounded-full bg-amber-50 flex items-center justify-center">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none"
+              stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 9v4" />
+              <path d="M12 17h.01" />
+              <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+            </svg>
+          </div>
+
+          <h2 className="text-xl font-bold text-gray-800">Conta Google não vinculada</h2>
+
+          <p className="text-sm text-gray-600 leading-relaxed">
+            Este email do Google ainda não está vinculado a nenhuma conta. Como o
+            cadastro é restrito, não é possível criar uma conta pelo Google.
+          </p>
+
+          <p className="text-sm text-gray-600 leading-relaxed">
+            Entre com seu <strong>usuário e senha</strong> e vincule sua conta Google
+            em <strong>“Meu Perfil”</strong>. Depois disso você poderá entrar com o Google.
+          </p>
+
+          <a
+            href="/sign-in"
+            className="mt-2 w-full bg-green-700 hover:bg-green-800 text-white rounded-md text-sm py-3 font-medium transition"
+          >
+            Voltar para o login
+          </a>
+        </SignUp.Step>
       </SignUp.Root>
     </div>
   );

@@ -5,7 +5,7 @@ import {
   Heart, Info, Image, Youtube, CalendarDays,
   ClipboardList, CalendarRange, MessageSquare,
   Camera, BarChart2, Package, CheckSquare, CalendarCheck,
-  Inbox, Cross, BookOpen, BookMarked, Activity,
+  Inbox, Cross, BookOpen, BookMarked, Activity, ShoppingCart,
 } from "lucide-react";
 
 const pastorRoles = ["pastor", "superadmin"];
@@ -336,6 +336,18 @@ export const menuItems = [
         hiddenForSociedades: false,
         showOnlyForSociedades: true,
         onlyForRoleContext: ["diaconia"],
+      },
+
+      {
+        // Exclusivo da EBD — só aparece navegando dentro de /ebd.
+        icon: ShoppingCart,
+        label: "Orçamentos",
+        href: "/ebd/orcamentos",
+        group: "EBD",
+        visible: ["ebd", "superintendente", "admin", "superadmin"],
+        hiddenForSociedades: false,
+        showOnlyForSociedades: true,
+        onlyForRoleContext: ["ebd"],
       },
     ],
   },

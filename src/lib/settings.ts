@@ -17,7 +17,7 @@ export const routeAccessMap: RouteAccessMap = {
   "/diaconia(.*)":   ["diaconia", "admin", "superadmin", "pastor"],
   "/conselho(.*)":   ["conselho", "admin", "superadmin", "pastor"],
   "/ministerio(.*)": ["ministerio", "admin", "superadmin", "pastor"],
-  "/ebd(.*)":        ["ebd", "admin", "superadmin", "pastor"],
+  "/ebd(.*)":        ["ebd", "admin", "superadmin", "pastor", "superintendente"],
   "/list/members":       ["admin", "superadmin", "pastor"],
   "/list/members/(.*)":  ["admin", "superadmin", "pastor"],
   "/list/position":  ["admin", "superadmin", "pastor"],

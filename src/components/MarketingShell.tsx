@@ -30,6 +30,9 @@ export default function MarketingShell({ children }: { children: React.ReactNode
           from { opacity: 0; transform: translateY(14px); }
           to   { opacity: 1; transform: translateY(0); }
         }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
         .login-input { display: block; }
         .login-input::placeholder { color: rgba(255,255,255,0.2); }
         .login-input:focus {
@@ -43,6 +46,12 @@ export default function MarketingShell({ children }: { children: React.ReactNode
           box-shadow: 0 6px 20px rgba(22,163,74,0.3) !important;
         }
         .login-btn:active { transform: scale(0.99); }
+        .login-google-btn:hover {
+          background: #f3f4f6 !important;
+          transform: translateY(-1px);
+          box-shadow: 0 6px 20px rgba(0,0,0,0.25) !important;
+        }
+        .login-google-btn:active { transform: scale(0.99); }
         .nav-link { transition: color 0.15s, background 0.15s; }
         .nav-link:hover { color: #fff !important; background: rgba(255,255,255,0.06) !important; }
         .nav-link-active { color: #4ade80 !important; }

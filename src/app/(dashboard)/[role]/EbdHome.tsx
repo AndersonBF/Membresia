@@ -6,7 +6,7 @@ import { getGroupCover } from "@/lib/groupCovers"
 import GroupCoverEditor from "@/components/GroupCoverEditor"
 import {
   ArrowLeft, Users, GraduationCap, FileText, Camera,
-  BarChart2, Settings, ClipboardCheck, ChevronRight, UserCheck,
+  BarChart2, Settings, ClipboardCheck, ChevronRight, UserCheck, ShoppingCart,
 } from "lucide-react"
 
 const AC = "#b45309"
@@ -92,6 +92,10 @@ export default async function EbdHome() {
             { label: "Documentos", icon: FileText, href: "/list/documents?roleContext=ebd" },
             { label: "Galeria", icon: Camera, href: "/ebd/galeria" },
             { label: "Relatórios", icon: BarChart2, href: "/ebd/relatorios" },
+            // Orçamentos: só superintendente e professoras.
+            ...(access.canSeeAll || access.teacherClassIds.length > 0
+              ? [{ label: "Orçamentos", icon: ShoppingCart, href: "/ebd/orcamentos" }]
+              : []),
           ].map((item) => {
             const Icon = item.icon
             return (

@@ -43,6 +43,13 @@ export function primeSnapshot(slug: string, dbUrl: string): void {
   snapshot = { ...snapshot, [slug.toLowerCase()]: dbUrl }
 }
 
+/** Remove um tenant do snapshot da instância atual imediatamente. */
+export function removeFromSnapshot(slug: string): void {
+  const next = { ...snapshot }
+  delete next[slug.toLowerCase()]
+  snapshot = next
+}
+
 /** Registro mesclado (env como base, control-plane sobrepõe). Síncrono. */
 export function getMergedRegistry(): Record<string, string> {
   return { ...getEnvRegistry(), ...snapshot }

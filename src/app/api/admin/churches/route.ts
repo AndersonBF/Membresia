@@ -13,10 +13,11 @@ import {
   listTenantsDB,
   upsertTenant,
   setTenantStatus,
+  deleteTenant,
 } from "@/lib/controlPlane"
-import { primeSnapshot } from "@/lib/tenantRegistry"
+import { primeSnapshot, removeFromSnapshot } from "@/lib/tenantRegistry"
 import { getTenantRegistry } from "@/lib/tenant"
-import { neonEnabled, createNeonDatabase } from "@/lib/neon"
+import { neonEnabled, createNeonDatabase, deleteNeonDatabase } from "@/lib/neon"
 import { applySchema, seedChurchBaseline, waitForDb } from "@/lib/churchSeed"
 
 export const dynamic = "force-dynamic"
@@ -62,6 +63,34 @@ export async function GET() {
     controlPlane: true,
     tenants: tenants.map((t) => ({ slug: t.slug, name: t.name, status: t.status })),
   })
+}
+
+export async function DELETE(req: Request) {
+  const guard = await requireSuperadmin()
+  if (!guard.ok) return guard.res
+  if (!controlPlaneEnabled()) {
+    return NextResponse.json({ error: "CONTROL_PLANE_DATABASE_URL não configurado" }, { status: 400 })
+  }
+
+  const slug = (new URL(req.url).searchParams.get("slug") ?? "").trim().toLowerCase()
+  if (!slug) return NextResponse.json({ error: "slug obrigatório" }, { status: 400 })
+
+  try {
+    // Apaga o banco no Neon (libera espaço). Não bloqueia se já não existir.
+    if (neonEnabled()) {
+      try {
+        await deleteNeonDatabase(slug)
+      } catch (e) {
+        console.error(`⚠️ Falha ao apagar banco Neon de ${slug}:`, e)
+      }
+    }
+    await deleteTenant(slug)
+    removeFromSnapshot(slug)
+    return NextResponse.json({ ok: true, slug })
+  } catch (err: any) {
+    console.error("❌ Falha ao excluir igreja:", err)
+    return NextResponse.json({ error: err?.message ?? "Erro ao excluir" }, { status: 500 })
+  }
 }
 
 export async function POST(req: Request) {

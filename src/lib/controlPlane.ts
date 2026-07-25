@@ -109,3 +109,10 @@ export async function setTenantStatus(slug: string, status: string): Promise<voi
   if (!c) throw new Error("CONTROL_PLANE_DATABASE_URL não configurado")
   await c.$executeRawUnsafe(`UPDATE "Tenant" SET status = $2 WHERE slug = $1`, slug.toLowerCase(), status)
 }
+
+/** Remove uma igreja do control-plane. */
+export async function deleteTenant(slug: string): Promise<void> {
+  const c = cp()
+  if (!c) throw new Error("CONTROL_PLANE_DATABASE_URL não configurado")
+  await c.$executeRawUnsafe(`DELETE FROM "Tenant" WHERE slug = $1`, slug.toLowerCase())
+}

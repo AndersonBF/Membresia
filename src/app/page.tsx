@@ -9,9 +9,9 @@ import ChurchPresentation from "@/components/public/ChurchPresentation"
 import VisitForm from "@/components/public/VisitForm"
 import HeroCarousel from "@/components/public/HeroCarousel"
 import MembresiaLanding from "@/components/public/MembresiaLanding"
-import { getCurrentSubdomain, } from "@/lib/tenant-server"
+import { getCurrentSubdomain, resolveTenant } from "@/lib/tenant-server"
 import { getDemoTenants } from "@/lib/tenant"
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, Church } from "lucide-react"
 
 export const dynamic = "force-dynamic"
 
@@ -73,10 +73,23 @@ export default async function RootPage() {
   }
 
   // ── Deslogado: home pública (visitante da igreja) ──
-  const settings = await prisma.churchSettings.findFirst({ select: { whatsapp: true, phone: true } })
+  const settings = await prisma.churchSettings.findFirst()
+  const churchName = settings?.churchName?.trim() || "Igreja Presbiteriana"
+  const city = settings?.city?.trim() || ""
+  const state = settings?.state?.trim() || ""
+  const founded = settings?.founded?.trim() || ""
+  const local = [city, state].filter(Boolean).join(", ")
+  const tagline = [founded ? `Desde ${founded}` : "", local].filter(Boolean).join(" · ")
+  const about =
+    settings?.about?.trim() ||
+    "Confessionais, Reformados e centrados na Bíblia Sagrada. Venha nos conhecer — você e sua família serão muito bem-vindos. 💚"
   const whatsapp = settings?.whatsapp || settings?.phone || "554530546767"
-  const slides = getCarouselSlides()
   const logo = findLogo()
+
+  // Carrossel: a igreja principal (DEFAULT_TENANT) usa as fotos de public/carrossel.
+  // Igrejas provisionadas ainda não têm fotos próprias → painel genérico.
+  const isMainChurch = resolveTenant().slug === (process.env.DEFAULT_TENANT ?? "").toLowerCase()
+  const slides = isMainChurch ? getCarouselSlides() : []
 
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif" }}>
@@ -115,23 +128,24 @@ export default async function RootPage() {
           )}
 
           <header className="relative z-10">
-            <span className="text-white font-semibold tracking-wide">IPB Toledo</span>
+            <span className="text-white font-semibold tracking-wide">{churchName}</span>
           </header>
 
           {/* centro: chamada */}
           <div className="relative z-10 flex-1 flex flex-col justify-center py-12 max-w-xl" style={{ animation: "fadeUp 0.5s ease both" }}>
-            <p className="text-green-200/70 text-xs font-semibold uppercase tracking-[2.5px] mb-4">
-              Desde 1996 · Toledo, Paraná
-            </p>
+            {tagline && (
+              <p className="text-green-200/70 text-xs font-semibold uppercase tracking-[2.5px] mb-4">
+                {tagline}
+              </p>
+            )}
             <h1
               className="text-white font-bold leading-[1.05] mb-6"
               style={{ fontFamily: "'Playfair Display', serif", fontSize: "clamp(2.4rem,5vw,4rem)" }}
             >
-              Igreja Presbiteriana<br />de Toledo
+              {churchName}
             </h1>
             <p className="text-white/60 text-base md:text-lg leading-relaxed mb-9">
-              Confessionais, Reformados e centrados na Bíblia Sagrada. Venha nos conhecer —
-              você e sua família serão muito bem-vindos. 💚
+              {about}
             </p>
             <div className="flex flex-wrap items-center gap-3">
               <VisitForm whatsapp={whatsapp} />
@@ -161,16 +175,34 @@ export default async function RootPage() {
           </a>
         </div>
 
-        {/* DIREITA: carrossel grande (full-bleed) */}
+        {/* DIREITA: carrossel grande (full-bleed) — ou painel genérico se a igreja
+            ainda não tem fotos próprias */}
         <div className="relative min-h-[55vh] lg:min-h-screen bg-green-950">
-          <HeroCarousel images={slides} />
+          {slides.length > 0 ? (
+            <HeroCarousel images={slides} />
+          ) : (
+            <div
+              className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-center px-8"
+              style={{ background: "linear-gradient(150deg,#0f3d24 0%,#14532d 55%,#0c3d22 100%)" }}
+            >
+              <Church size={64} className="text-white/25" />
+              <p className="text-white/80 text-2xl font-semibold" style={{ fontFamily: "'Playfair Display', serif" }}>
+                {churchName}
+              </p>
+              {tagline && <p className="text-white/40 text-sm">{tagline}</p>}
+            </div>
+          )}
         </div>
       </section>
 
-      {/* ── Apresentação completa da igreja (sem o versículo) ── */}
-      <div id="sobre">
-        <ChurchPresentation showHero={false} showVerse={false} />
-      </div>
+      {/* ── Apresentação completa da igreja ── */}
+      {/* Ainda hardcoded para a IPB Toledo — só a exibimos na igreja principal.
+          Para as demais, o hero acima já mostra nome/apresentação da igreja. */}
+      {isMainChurch && (
+        <div id="sobre">
+          <ChurchPresentation showHero={false} showVerse={false} />
+        </div>
+      )}
     </div>
   )
 }

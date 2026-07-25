@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { toast } from "react-toastify"
-import { Church, Plus, ExternalLink, Copy, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react"
+import { Church, Plus, ExternalLink, Copy, CheckCircle2, AlertTriangle, Loader2, Trash2 } from "lucide-react"
 
 type Tenant = { slug: string; name: string; status: string }
 
@@ -36,6 +36,7 @@ export default function IgrejasClient({ controlPlane, neon, baseDomain, tenants:
   const [adminName, setAdminName] = useState("")
   const [role, setRole] = useState<"admin" | "pastor">("admin")
   const [loading, setLoading] = useState(false)
+  const [deleting, setDeleting] = useState<string | null>(null)
   const [created, setCreated] = useState<
     | null
     | { slug: string; name: string; url: string | null; admin: { username: string; password: string } | null }
@@ -83,6 +84,25 @@ export default function IgrejasClient({ controlPlane, neon, baseDomain, tenants:
       toast.error("Erro de rede ao criar igreja")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const remove = async (t: Tenant) => {
+    if (!window.confirm(`Excluir a igreja "${t.name}"? Isso apaga o banco dela no Neon. Não dá pra desfazer.`)) return
+    setDeleting(t.slug)
+    try {
+      const res = await fetch(`/api/admin/churches?slug=${encodeURIComponent(t.slug)}`, { method: "DELETE" })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(data?.error ?? "Falha ao excluir")
+        return
+      }
+      toast.success(`"${t.name}" excluída`)
+      setTenants((prev) => prev.filter((x) => x.slug !== t.slug))
+    } catch {
+      toast.error("Erro de rede ao excluir")
+    } finally {
+      setDeleting(null)
     }
   }
 
@@ -248,6 +268,14 @@ export default function IgrejasClient({ controlPlane, neon, baseDomain, tenants:
                   </p>
                 </div>
                 <span className={`text-[10px] px-2 py-0.5 rounded-full ${st.cls}`}>{st.label}</span>
+                <button
+                  onClick={() => remove(t)}
+                  disabled={deleting === t.slug}
+                  aria-label={`Excluir ${t.name}`}
+                  className="text-gray-400 hover:text-red-600 transition disabled:opacity-40"
+                >
+                  {deleting === t.slug ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                </button>
               </div>
             )
           })

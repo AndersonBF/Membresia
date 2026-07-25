@@ -102,3 +102,17 @@ export async function createNeonDatabase(slug: string): Promise<NeonDatabase> {
   // Neon para aplicar o schema em um único round-trip. dbUrl = versão p/ Prisma.
   return { dbUrl, rawUrl: conn.uri, dbName, branchId }
 }
+
+/** Apaga o banco de uma igreja no Neon. Tolera "não existe" (já apagado). */
+export async function deleteNeonDatabase(slug: string): Promise<void> {
+  const { projectId } = cfg()
+  const branchId = await getBranchId(projectId)
+  const dbName = `church_${slug.replace(/-/g, "_")}`
+  try {
+    await neon(`/projects/${projectId}/branches/${branchId}/databases/${encodeURIComponent(dbName)}`, {
+      method: "DELETE",
+    })
+  } catch (e: any) {
+    if (!/404|not found|does not exist/i.test(String(e?.message))) throw e
+  }
+}

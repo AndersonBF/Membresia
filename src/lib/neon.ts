@@ -92,7 +92,10 @@ export async function createNeonDatabase(slug: string): Promise<NeonDatabase> {
   const conn = await neon(`/projects/${projectId}/connection_uri?${params.toString()}`)
   if (!conn?.uri) throw new Error("Neon não retornou connection_uri")
 
-  const extra = "pgbouncer=true&connect_timeout=15"
+  // pool_timeout/connect_timeout altos: o compute pode estar suspenso e leva alguns
+  // segundos para acordar no primeiro acesso. connection_limit=1 é o padrão
+  // recomendado para serverless + PgBouncer.
+  const extra = "pgbouncer=true&connect_timeout=30&pool_timeout=30&connection_limit=1"
   const dbUrl = conn.uri.includes("?") ? `${conn.uri}&${extra}` : `${conn.uri}?sslmode=require&${extra}`
 
   return { dbUrl, dbName, branchId }

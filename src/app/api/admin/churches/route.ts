@@ -17,7 +17,7 @@ import {
 import { primeSnapshot } from "@/lib/tenantRegistry"
 import { getTenantRegistry } from "@/lib/tenant"
 import { neonEnabled, createNeonDatabase } from "@/lib/neon"
-import { applyInitSql, seedChurchBaseline } from "@/lib/churchSeed"
+import { applyInitSql, seedChurchBaseline, waitForDb } from "@/lib/churchSeed"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60 // provisionamento pode levar alguns segundos
@@ -107,8 +107,9 @@ export async function POST(req: Request) {
     // 1. Banco no Neon
     const { dbUrl, dbName, branchId } = await createNeonDatabase(slug)
 
-    // 2. Schema + seed no banco novo
+    // 2. Schema + seed no banco novo (acorda o compute antes do trabalho pesado)
     churchPrisma = new PrismaClient({ datasources: { db: { url: dbUrl } } })
+    await waitForDb(churchPrisma)
     await applyInitSql(churchPrisma, INIT_SQL)
     await seedChurchBaseline(churchPrisma, { slug, name })
 

@@ -28,6 +28,20 @@ export function splitSqlStatements(sql: string): string[] {
     .filter(Boolean)
 }
 
+/** Acorda o compute do Neon antes do trabalho pesado: tenta um SELECT 1 com
+ *  retry, absorvendo o cold start (scale-to-zero) do banco recém-criado. */
+export async function waitForDb(prisma: PrismaClient, tries = 6, delayMs = 2500): Promise<void> {
+  for (let i = 0; i < tries; i++) {
+    try {
+      await prisma.$queryRawUnsafe("SELECT 1")
+      return
+    } catch (e) {
+      if (i === tries - 1) throw e
+      await new Promise((r) => setTimeout(r, delayMs))
+    }
+  }
+}
+
 /** Aplica o schema (init.sql) num banco vazio, instrução a instrução.
  *  Ignora "already exists" para ser idempotente (retry de provisionamento). */
 export async function applyInitSql(prisma: PrismaClient, initSql: string): Promise<void> {

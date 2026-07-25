@@ -26,6 +26,7 @@
     "@clerk/nextjs": "^6.36.10",
     "@hello-pangea/dnd": "^18.0.1",
     "@hookform/resolvers": "^3.9.8",
+    "@neondatabase/serverless": "^1.1.0",
     "cloudinary": "^2.9.0",
     "docx": "^9.5.1",
     "dotenv": "^17.2.3",
@@ -43,6 +44,7 @@
     "recharts": "^3.7.0",
     "svix": "^1.85.0",
     "ts-node": "^10.9.2",
+    "ws": "^8.21.1",
     "xlsx": "^0.18.5",
     "zod": "^3.23.8"
   },
@@ -52,6 +54,7 @@
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@types/ws": "^8.18.1",
     "eslint": "8.57.1",
     "eslint-config-next": "14.2.5",
     "postcss": "^8",

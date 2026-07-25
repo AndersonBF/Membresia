@@ -57,7 +57,7 @@ async function getRoleName(projectId: string, branchId: string): Promise<string>
   return roles[0].name
 }
 
-export type NeonDatabase = { dbUrl: string; dbName: string; branchId: string }
+export type NeonDatabase = { dbUrl: string; rawUrl: string; dbName: string; branchId: string }
 
 /**
  * Cria um banco novo no projeto Neon para o slug informado e devolve a connection
@@ -98,5 +98,7 @@ export async function createNeonDatabase(slug: string): Promise<NeonDatabase> {
   const extra = "pgbouncer=true&connect_timeout=30&pool_timeout=30&connection_limit=1"
   const dbUrl = conn.uri.includes("?") ? `${conn.uri}&${extra}` : `${conn.uri}?sslmode=require&${extra}`
 
-  return { dbUrl, dbName, branchId }
+  // rawUrl = string sem os parâmetros do Prisma, usada pelo driver serverless do
+  // Neon para aplicar o schema em um único round-trip. dbUrl = versão p/ Prisma.
+  return { dbUrl, rawUrl: conn.uri, dbName, branchId }
 }

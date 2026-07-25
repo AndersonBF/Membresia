@@ -17,7 +17,7 @@ import {
 import { primeSnapshot } from "@/lib/tenantRegistry"
 import { getTenantRegistry } from "@/lib/tenant"
 import { neonEnabled, createNeonDatabase } from "@/lib/neon"
-import { applyInitSql, seedChurchBaseline, waitForDb } from "@/lib/churchSeed"
+import { applySchema, seedChurchBaseline, waitForDb } from "@/lib/churchSeed"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60 // provisionamento pode levar alguns segundos
@@ -105,12 +105,12 @@ export async function POST(req: Request) {
     await upsertTenant({ slug, name, dbUrl: "", status: "provisioning" })
 
     // 1. Banco no Neon
-    const { dbUrl, dbName, branchId } = await createNeonDatabase(slug)
+    const { dbUrl, rawUrl, dbName, branchId } = await createNeonDatabase(slug)
 
-    // 2. Schema + seed no banco novo (acorda o compute antes do trabalho pesado)
+    // 2. Schema em um único round-trip (driver Neon) + seed (Prisma)
+    await applySchema(rawUrl, INIT_SQL)
     churchPrisma = new PrismaClient({ datasources: { db: { url: dbUrl } } })
     await waitForDb(churchPrisma)
-    await applyInitSql(churchPrisma, INIT_SQL)
     await seedChurchBaseline(churchPrisma, { slug, name })
 
     // 3. Admin no Clerk (+ Member correspondente no banco da igreja)

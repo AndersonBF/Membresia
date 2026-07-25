@@ -6,6 +6,11 @@
 // Usado pela Fase B (POST /api/admin/churches). O baseline é o mesmo do script
 // scripts/provision-church.mjs (sociedades com IDs fixos 3-7, singletons id=1, etc).
 import type { PrismaClient } from "@prisma/client"
+import { Pool, neonConfig } from "@neondatabase/serverless"
+import ws from "ws"
+
+// Node (runtime da Vercel) não tem WebSocket global — o driver do Neon precisa dele.
+neonConfig.webSocketConstructor = ws
 
 // Sociedades com IDs fixos (o app mapeia por eles): saf=3, uph=4, ump=5, upa=6, ucp=7
 const SOCIEDADES = [
@@ -42,16 +47,30 @@ export async function waitForDb(prisma: PrismaClient, tries = 6, delayMs = 2500)
   }
 }
 
-/** Aplica o schema (init.sql) num banco vazio, instrução a instrução.
- *  Ignora "already exists" para ser idempotente (retry de provisionamento). */
-export async function applyInitSql(prisma: PrismaClient, initSql: string): Promise<void> {
-  for (const stmt of splitSqlStatements(initSql)) {
-    try {
-      await prisma.$executeRawUnsafe(stmt)
-    } catch (e: any) {
-      if (/already exists/i.test(String(e?.message))) continue
-      throw e
+/**
+ * Aplica o schema inteiro em UM único round-trip (multi-statement), via driver
+ * serverless do Neon — rápido o bastante para caber no limite de tempo da função.
+ * O Postgres executa o lote como uma transação: ou aplica tudo, ou nada (retry
+ * seguro). Tolera cold start (retry) e "already exists" (cura banco já criado).
+ */
+export async function applySchema(rawUrl: string, initSql: string): Promise<void> {
+  const pool = new Pool({ connectionString: rawUrl })
+  try {
+    for (let i = 0; ; i++) {
+      try {
+        await pool.query(initSql)
+        return
+      } catch (e: any) {
+        const msg = String(e?.message ?? "")
+        // Schema já aplicado (retry de um banco já criado) → considera pronto.
+        if (/already exists/i.test(msg)) return
+        if (i >= 4) throw e
+        // Cold start do compute (scale-to-zero): espera e tenta de novo.
+        await new Promise((r) => setTimeout(r, 2500))
+      }
     }
+  } finally {
+    await pool.end()
   }
 }
 

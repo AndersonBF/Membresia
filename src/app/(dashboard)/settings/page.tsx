@@ -8,12 +8,14 @@ import {
   AlertTriangle, Check, Info, Mail, Phone,
   MapPin, Globe, BookOpen, Calendar,
   UserCheck, Lock, Eye, EyeOff, RefreshCw,
-  Youtube, ExternalLink,
+  Youtube, ExternalLink, Image as ImageIcon,
 } from "lucide-react"
+import HomePhotosManager from "@/components/HomePhotosManager"
 
 // ─── tipos ───────────────────────────────────────────
 type Section =
   | "igreja"
+  | "fotos"
   | "notificacoes"
   | "privacidade"
   | "membros"
@@ -52,6 +54,7 @@ const initialToggles: Record<string, Toggle[]> = {
 
 const sidebarItems: { id: Section; label: string; icon: React.ElementType }[] = [
   { id: "igreja",        label: "Dados da Igreja",     icon: Church },
+  { id: "fotos",         label: "Fotos da Home",        icon: ImageIcon },
   { id: "notificacoes",  label: "Notificações",         icon: Bell },
   { id: "privacidade",   label: "Privacidade",          icon: Shield },
   { id: "membros",       label: "Membros",              icon: Users },
@@ -385,6 +388,14 @@ export default function SettingsPage() {
               <div className="flex justify-end">
                 <SaveButton onClick={handleSave} saved={saved} saving={saving} />
               </div>
+            </>
+          )}
+
+          {/* ── FOTOS DA HOME ── */}
+          {activeSection === "fotos" && (
+            <>
+              <SectionHeader icon={ImageIcon} title="Fotos da Home" description="Imagens do carrossel na página inicial pública da igreja." />
+              <HomePhotosManager />
             </>
           )}
 

@@ -14,6 +14,7 @@
     "docker:down": "docker compose down",
     "seed:demo": "npx tsx prisma/seed-demo.ts",
     "migrate:all": "node scripts/migrate-all.mjs",
+    "migrate:tenants": "node scripts/migrate-tenants.mjs",
     "provision": "node scripts/provision-church.mjs",
     "gen:init-sql": "prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script > prisma/init.sql",
     "backfill:church": "node scripts/backfill-church.mjs",

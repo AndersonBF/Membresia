@@ -17,6 +17,16 @@ export const dynamic = "force-dynamic"
 
 const groupRoles = ["ump", "upa", "uph", "saf", "ucp", "diaconia", "conselho", "ministerio", "ebd"]
 
+// Fotos genéricas de igreja (Unsplash) — usadas quando a igreja ainda não subiu
+// fotos próprias em Configurações → Fotos da Home.
+const GENERIC_CHURCH_PHOTOS = [
+  "https://images.unsplash.com/photo-1515162305285-0293e4767cc2",
+  "https://images.unsplash.com/photo-1478147427282-58a87a120781",
+  "https://images.unsplash.com/photo-1438232992991-995b7058bbb3",
+  "https://images.unsplash.com/photo-1663321231228-2625873fbdcd",
+  "https://images.unsplash.com/photo-1645547875271-b76fa759e84f",
+].map((u) => ({ url: `${u}?auto=format&fit=crop&w=1600&q=80`, caption: null as string | null }))
+
 // Lê TODAS as imagens da pasta public/carrossel — qualquer arquivo colocado lá
 // aparece automaticamente no carrossel.
 function getCarouselSlides() {
@@ -86,10 +96,18 @@ export default async function RootPage() {
   const whatsapp = settings?.whatsapp || settings?.phone || "554530546767"
   const logo = findLogo()
 
-  // Carrossel: a igreja principal (DEFAULT_TENANT) usa as fotos de public/carrossel.
-  // Igrejas provisionadas ainda não têm fotos próprias → painel genérico.
+  // Carrossel do hero. Prioridade:
+  //   1) fotos próprias da igreja (Configurações → Fotos da Home);
+  //   2) fotos de public/carrossel (só a igreja principal / DEFAULT_TENANT);
+  //   3) fotos genéricas de igreja.
   const isMainChurch = resolveTenant().slug === (process.env.DEFAULT_TENANT ?? "").toLowerCase()
-  const slides = isMainChurch ? getCarouselSlides() : []
+  const homePhotos = ((settings?.preferences as any)?.homePhotos as string[] | undefined) ?? []
+  let slides = homePhotos.length
+    ? homePhotos.map((url) => ({ url, caption: null as string | null }))
+    : isMainChurch
+    ? getCarouselSlides()
+    : []
+  if (slides.length === 0) slides = GENERIC_CHURCH_PHOTOS
 
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif" }}>

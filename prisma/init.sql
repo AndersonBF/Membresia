@@ -94,6 +94,25 @@ CREATE TABLE "InternalSociety" (
 );
 
 -- CreateTable
+CREATE TABLE "Secretaria" (
+    "id" SERIAL NOT NULL,
+    "name" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "societyId" INTEGER NOT NULL,
+
+    CONSTRAINT "Secretaria_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "MemberSecretaria" (
+    "id" SERIAL NOT NULL,
+    "memberId" INTEGER NOT NULL,
+    "secretariaId" INTEGER NOT NULL,
+
+    CONSTRAINT "MemberSecretaria_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "MemberSociety" (
     "id" SERIAL NOT NULL,
     "memberId" INTEGER NOT NULL,
@@ -163,6 +182,7 @@ CREATE TABLE "Event" (
     "requiresAttendance" BOOLEAN NOT NULL DEFAULT true,
     "category" TEXT,
     "societyId" INTEGER,
+    "secretariaId" INTEGER,
 
     CONSTRAINT "Event_pkey" PRIMARY KEY ("id")
 );
@@ -255,6 +275,7 @@ CREATE TABLE "Document" (
     "diaconateId" INTEGER,
     "ministryId" INTEGER,
     "bibleSchoolClassId" INTEGER,
+    "secretariaId" INTEGER,
     "bibleSchoolGeneral" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "Document_pkey" PRIMARY KEY ("id")
@@ -484,6 +505,8 @@ CREATE TABLE "Orcamento" (
     "shippingCost" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "freeShipping" BOOLEAN NOT NULL DEFAULT false,
     "createdByName" TEXT,
+    "secretariaId" INTEGER,
+    "status" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -517,6 +540,15 @@ CREATE UNIQUE INDEX "MemberDiaconate_memberId_key" ON "MemberDiaconate"("memberI
 
 -- CreateIndex
 CREATE UNIQUE INDEX "MemberMinistry_memberId_ministryId_key" ON "MemberMinistry"("memberId", "ministryId");
+
+-- CreateIndex
+CREATE INDEX "Secretaria_societyId_idx" ON "Secretaria"("societyId");
+
+-- CreateIndex
+CREATE INDEX "MemberSecretaria_secretariaId_idx" ON "MemberSecretaria"("secretariaId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "MemberSecretaria_memberId_secretariaId_key" ON "MemberSecretaria"("memberId", "secretariaId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "MemberSociety_memberId_societyId_key" ON "MemberSociety"("memberId", "societyId");
@@ -590,6 +622,9 @@ CREATE INDEX "PastorDiaryEntry_authorId_date_idx" ON "PastorDiaryEntry"("authorI
 -- CreateIndex
 CREATE INDEX "Orcamento_context_idx" ON "Orcamento"("context");
 
+-- CreateIndex
+CREATE INDEX "Orcamento_secretariaId_idx" ON "Orcamento"("secretariaId");
+
 -- AddForeignKey
 ALTER TABLE "Member" ADD CONSTRAINT "Member_bibleSchoolClassId_fkey" FOREIGN KEY ("bibleSchoolClassId") REFERENCES "BibleSchoolClass"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
@@ -610,6 +645,15 @@ ALTER TABLE "MemberMinistry" ADD CONSTRAINT "MemberMinistry_memberId_fkey" FOREI
 
 -- AddForeignKey
 ALTER TABLE "MemberMinistry" ADD CONSTRAINT "MemberMinistry_ministryId_fkey" FOREIGN KEY ("ministryId") REFERENCES "Ministry"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Secretaria" ADD CONSTRAINT "Secretaria_societyId_fkey" FOREIGN KEY ("societyId") REFERENCES "InternalSociety"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "MemberSecretaria" ADD CONSTRAINT "MemberSecretaria_memberId_fkey" FOREIGN KEY ("memberId") REFERENCES "Member"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "MemberSecretaria" ADD CONSTRAINT "MemberSecretaria_secretariaId_fkey" FOREIGN KEY ("secretariaId") REFERENCES "Secretaria"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "MemberSociety" ADD CONSTRAINT "MemberSociety_memberId_fkey" FOREIGN KEY ("memberId") REFERENCES "Member"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -637,6 +681,9 @@ ALTER TABLE "ClassTeacher" ADD CONSTRAINT "ClassTeacher_classId_fkey" FOREIGN KE
 
 -- AddForeignKey
 ALTER TABLE "Event" ADD CONSTRAINT "Event_societyId_fkey" FOREIGN KEY ("societyId") REFERENCES "InternalSociety"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Event" ADD CONSTRAINT "Event_secretariaId_fkey" FOREIGN KEY ("secretariaId") REFERENCES "Secretaria"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Attendance" ADD CONSTRAINT "Attendance_memberId_fkey" FOREIGN KEY ("memberId") REFERENCES "Member"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -681,6 +728,9 @@ ALTER TABLE "Document" ADD CONSTRAINT "Document_ministryId_fkey" FOREIGN KEY ("m
 ALTER TABLE "Document" ADD CONSTRAINT "Document_bibleSchoolClassId_fkey" FOREIGN KEY ("bibleSchoolClassId") REFERENCES "BibleSchoolClass"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "Document" ADD CONSTRAINT "Document_secretariaId_fkey" FOREIGN KEY ("secretariaId") REFERENCES "Secretaria"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Broadcast" ADD CONSTRAINT "Broadcast_societyId_fkey" FOREIGN KEY ("societyId") REFERENCES "InternalSociety"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -721,6 +771,9 @@ ALTER TABLE "DiaconateScheduleMember" ADD CONSTRAINT "DiaconateScheduleMember_me
 
 -- AddForeignKey
 ALTER TABLE "DiaconateUnavailability" ADD CONSTRAINT "DiaconateUnavailability_memberId_fkey" FOREIGN KEY ("memberId") REFERENCES "Member"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Orcamento" ADD CONSTRAINT "Orcamento_secretariaId_fkey" FOREIGN KEY ("secretariaId") REFERENCES "Secretaria"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "OrcamentoItem" ADD CONSTRAINT "OrcamentoItem_orcamentoId_fkey" FOREIGN KEY ("orcamentoId") REFERENCES "Orcamento"("id") ON DELETE CASCADE ON UPDATE CASCADE;

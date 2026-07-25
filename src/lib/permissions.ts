@@ -99,6 +99,34 @@ export async function canManageGroup(role: string): Promise<boolean> {
   return isAdmin || groups.has(role)
 }
 
+/** Conveniência: o usuário logado pode gerir esta sociedade (é diretoria/admin)? */
+export async function canManageSociety(societyId: number): Promise<boolean> {
+  const role = roleForSocietyId(societyId)
+  if (!role) return false
+  return canManageGroup(role)
+}
+
+/**
+ * Secretarias (ids) a que o membro logado pertence — via MemberSecretaria.
+ * Usado para liberar ações de membro-de-secretaria (ex.: subir documentos).
+ */
+export async function getMySecretarias(): Promise<Set<number>> {
+  const user = await currentUser()
+  if (!user) return new Set()
+
+  const or: any[] = []
+  if (user.username) or.push({ username: user.username })
+  const email = user.emailAddresses?.[0]?.emailAddress
+  if (email) or.push({ email })
+  if (or.length === 0) return new Set()
+
+  const member = await prisma.member.findFirst({
+    where: { OR: or },
+    select: { secretarias: { select: { secretariaId: true } } },
+  })
+  return new Set((member?.secretarias ?? []).map((s) => s.secretariaId))
+}
+
 export interface MyMembership {
   memberId: number | null
   societyIds: number[]

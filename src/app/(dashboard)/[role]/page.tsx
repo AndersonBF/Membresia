@@ -7,7 +7,7 @@ import prisma from "@/lib/prisma"
 import { spParts } from "@/lib/tz"
 import Link from "next/link"
 import MemberAvatar from "@/components/MemberAvatar"
-import { Users, Calendar, CalendarCheck, FileText, ArrowLeft, Phone, ChevronRight, Clock, Cake, Camera, Package, CheckSquare, UserRound } from "lucide-react"
+import { Users, Calendar, CalendarCheck, FileText, ArrowLeft, Phone, ChevronRight, Clock, Cake, Camera, Package, CheckSquare, UserRound, Landmark } from "lucide-react"
 import EbdHome from "./EbdHome"
 import { canManageGroup } from "@/lib/permissions"
 import { getGroupCover } from "@/lib/groupCovers"
@@ -248,6 +248,9 @@ const RolePage = async ({
                 { label: "Galeria",    icon: Camera,       href: `/${role}/galeria` },
                 { label: "Eventos",    icon: Calendar,     href: `/list/events?roleContext=${role}` },
                 { label: "Documentos", icon: FileText,     href: `/list/documents?roleContext=${role}` },
+                ...(societyMap[role] ? [
+                  { label: "Secretarias", icon: Landmark, href: `/${role}/secretarias` },
+                ] : []),
                 ...(role === "diaconia" ? [
                   { label: "Escala",     icon: CalendarCheck, href: "/diaconia/escala" },
                   { label: "Inventário", icon: Package,     href: "/diaconia/inventario" },

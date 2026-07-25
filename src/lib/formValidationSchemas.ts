@@ -54,6 +54,20 @@ export type SubjectSchema = z.infer<typeof subjectSchema>;
 
 /* ===================== EVENT ===================== */
 
+// O <input type="datetime-local"> devolve a hora "de parede" sem fuso
+// ("2026-02-02T18:00"). Se deixarmos o z.coerce.date() rodar, o navegador (fuso
+// de SP) interpreta como local e salva 21:00Z — errado. Aqui interpretamos a
+// hora de parede como UTC (convenção do projeto: event.startTime/endTime em UTC),
+// então 18:00 vira 18:00Z e as telas (que formatam em UTC) mostram 18:00.
+const wallClockUtc = z.preprocess((v) => {
+  if (typeof v === "string") {
+    if (v.trim() === "") return undefined
+    const m = v.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(:\d{2})?$/)
+    if (m) return new Date(`${m[1]}T${m[2]}${m[3] ?? ":00"}Z`)
+  }
+  return v
+}, z.date().optional())
+
 export const eventSchema = z.object({
   id: z.coerce.number().optional(),
 
@@ -63,9 +77,9 @@ export const eventSchema = z.object({
 
   date: z.coerce.date({ message: "Date is required!" }),
 
-  startTime: z.coerce.date().optional(),
+  startTime: wallClockUtc,
 
-  endTime: z.coerce.date().optional(),
+  endTime: wallClockUtc,
 
   isPublic: z.coerce.boolean(),
 

@@ -20,6 +20,35 @@ export default function LoginPanel() {
     } catch {}
   }, []);
 
+  // Brilho especular no(s) botão(ões) "Entrar" (.login-btn): faixa de luz na borda
+  // apontando para o cursor + glow interno que segue o mouse, por proximidade.
+  useEffect(() => {
+    let raf = 0;
+    const onMove = (e: MouseEvent) => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        document.querySelectorAll<HTMLElement>(".login-btn").forEach((el) => {
+          const r = el.getBoundingClientRect();
+          if (r.width === 0) return;
+          const dx = e.clientX - (r.left + r.width / 2);
+          const dy = e.clientY - (r.top + r.height / 2);
+          const edge = Math.max(0, Math.hypot(dx, dy) - Math.max(r.width, r.height) / 2);
+          const prox = Math.max(0, Math.min(1, 1 - edge / 250));
+          const angle = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
+          el.style.setProperty("--prox", String(prox));
+          el.style.setProperty("--angle", `${angle}deg`);
+          el.style.setProperty("--mx", `${((e.clientX - r.left) / r.width) * 100}%`);
+          el.style.setProperty("--my", `${((e.clientY - r.top) / r.height) * 100}%`);
+        });
+      });
+    };
+    window.addEventListener("mousemove", onMove);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      cancelAnimationFrame(raf);
+    };
+  }, []);
+
   const handleGoogle = async (loginHint?: string) => {
     if (!isLoaded || !signIn) return;
     try {
@@ -267,7 +296,7 @@ export default function LoginPanel() {
             transition: "background 0.2s, transform 0.15s, box-shadow 0.2s",
             letterSpacing: "0.3px",
           }}>
-            Entrar
+            <span className="lb-label">Entrar</span>
           </SignIn.Action>
 
           <p style={{
@@ -411,9 +440,58 @@ function NewPasswordForm({
           transition: "background 0.2s, transform 0.15s, box-shadow 0.2s",
           letterSpacing: "0.3px", opacity: loading ? 0.7 : 1,
         }}>
-          {loading ? "Salvando..." : "Salvar e continuar"}
+          <span className="lb-label">{loading ? "Salvando..." : "Salvar e continuar"}</span>
         </button>
       </form>
+
+      <style jsx global>{`
+        .login-btn {
+          position: relative;
+          overflow: hidden;
+          isolation: isolate;
+          --prox: 0;
+          --angle: 0deg;
+          --mx: 50%;
+          --my: 50%;
+        }
+        .login-btn .lb-label {
+          position: relative;
+          z-index: 2;
+        }
+        /* Faixa de luz na borda, apontando para o cursor. */
+        .login-btn::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          border-radius: inherit;
+          padding: 1.5px;
+          background: conic-gradient(
+            from var(--angle),
+            transparent 0deg,
+            rgba(255, 255, 255, calc(0.9 * var(--prox))) 20deg,
+            transparent 42deg
+          );
+          -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          -webkit-mask-composite: xor;
+          mask-composite: exclude;
+          pointer-events: none;
+          z-index: 1;
+        }
+        /* Glow interno que segue o mouse. */
+        .login-btn::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          border-radius: inherit;
+          background: radial-gradient(
+            160px circle at var(--mx) var(--my),
+            rgba(255, 255, 255, calc(0.22 * var(--prox))),
+            transparent 60%
+          );
+          pointer-events: none;
+          z-index: 0;
+        }
+      `}</style>
     </div>
   );
 }

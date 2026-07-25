@@ -34,8 +34,13 @@ export async function POST(req: Request) {
     for (const f of textFields) {
       if (body[f] !== undefined) data[f] = body[f] === "" ? null : body[f]
     }
-    // Preferências (toggles) — objeto livre.
-    if (body.preferences !== undefined) data.preferences = body.preferences
+    // Preferências (toggles) — objeto livre. Faz MERGE para não apagar chaves que
+    // outros fluxos gravam no mesmo objeto (ex.: homePhotos, do uploader da home).
+    if (body.preferences !== undefined) {
+      const current = ((await prisma.churchSettings.findFirst({ select: { preferences: true } }))
+        ?.preferences as Record<string, unknown> | null) ?? {}
+      data.preferences = { ...current, ...body.preferences }
+    }
 
     const settings = await prisma.churchSettings.upsert({
       where: { id: 1 },

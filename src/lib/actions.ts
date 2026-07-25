@@ -15,7 +15,7 @@ import {
   BibleSchoolAttendanceSchema,
 } from "./formValidationSchemas";
 import { getEbdAccess, canAccessClass } from "./ebdAccess";
-import { getManageableGroups, roleForSocietyId } from "./permissions";
+import { getManageableGroups, roleForSocietyId, canManageSociety, getMySecretarias } from "./permissions";
 import { scopeForEvent } from "./visitorScope";
 import { currentUser } from "@clerk/nextjs/server";
 import { writeFile, mkdir } from "fs/promises";
@@ -405,6 +405,293 @@ export const deleteDocument = async (
     return { success: false, error: true };
   }
 };
+
+// ===================== SECRETARIAS =====================
+// Diretoria (canManageSociety) cria/edita/exclui Secretarias e vincula membros.
+// Membro vinculado (getMySecretarias) pode anexar/remover documentos da sua.
+
+type Res = { ok: boolean; error?: string; id?: number };
+
+async function secretariaSociety(secretariaId: number): Promise<number | null> {
+  const s = await prisma.secretaria.findUnique({
+    where: { id: secretariaId },
+    select: { societyId: true },
+  });
+  return s?.societyId ?? null;
+}
+
+const revalSecretarias = (societyId: number) => {
+  const role = roleForSocietyId(societyId);
+  if (role) revalidatePath(`/${role}/secretarias`);
+};
+
+export async function createSecretaria(societyId: number, name: string): Promise<Res> {
+  try {
+    const nome = (name ?? "").trim();
+    if (!nome) return { ok: false, error: "Informe um nome" };
+    if (!(await canManageSociety(societyId))) return { ok: false, error: "Sem permissão" };
+    const s = await prisma.secretaria.create({ data: { name: nome, societyId } });
+    revalSecretarias(societyId);
+    return { ok: true, id: s.id };
+  } catch (e) {
+    console.error(e);
+    return { ok: false, error: "Erro ao criar" };
+  }
+}
+
+export async function renameSecretaria(secretariaId: number, name: string): Promise<Res> {
+  try {
+    const nome = (name ?? "").trim();
+    if (!nome) return { ok: false, error: "Informe um nome" };
+    const societyId = await secretariaSociety(secretariaId);
+    if (!societyId || !(await canManageSociety(societyId))) return { ok: false, error: "Sem permissão" };
+    await prisma.secretaria.update({ where: { id: secretariaId }, data: { name: nome } });
+    revalSecretarias(societyId);
+    return { ok: true };
+  } catch (e) {
+    console.error(e);
+    return { ok: false, error: "Erro" };
+  }
+}
+
+export async function deleteSecretaria(secretariaId: number): Promise<Res> {
+  try {
+    const societyId = await secretariaSociety(secretariaId);
+    if (!societyId || !(await canManageSociety(societyId))) return { ok: false, error: "Sem permissão" };
+    await prisma.secretaria.delete({ where: { id: secretariaId } });
+    revalSecretarias(societyId);
+    return { ok: true };
+  } catch (e) {
+    console.error(e);
+    return { ok: false, error: "Erro" };
+  }
+}
+
+export async function addMemberToSecretaria(secretariaId: number, memberId: number): Promise<Res> {
+  try {
+    const societyId = await secretariaSociety(secretariaId);
+    if (!societyId || !(await canManageSociety(societyId))) return { ok: false, error: "Sem permissão" };
+    await prisma.memberSecretaria.upsert({
+      where: { memberId_secretariaId: { memberId, secretariaId } },
+      update: {},
+      create: { memberId, secretariaId },
+    });
+    revalSecretarias(societyId);
+    return { ok: true };
+  } catch (e) {
+    console.error(e);
+    return { ok: false, error: "Erro" };
+  }
+}
+
+export async function removeMemberFromSecretaria(secretariaId: number, memberId: number): Promise<Res> {
+  try {
+    const societyId = await secretariaSociety(secretariaId);
+    if (!societyId || !(await canManageSociety(societyId))) return { ok: false, error: "Sem permissão" };
+    await prisma.memberSecretaria.deleteMany({ where: { memberId, secretariaId } });
+    revalSecretarias(societyId);
+    return { ok: true };
+  } catch (e) {
+    console.error(e);
+    return { ok: false, error: "Erro" };
+  }
+}
+
+export async function createSecretariaDocument(
+  secretariaId: number,
+  title: string,
+  fileUrl: string
+): Promise<Res> {
+  try {
+    const t = (title ?? "").trim();
+    if (!t || !fileUrl) return { ok: false, error: "Título e arquivo obrigatórios" };
+    const societyId = await secretariaSociety(secretariaId);
+    if (!societyId) return { ok: false, error: "Secretaria inexistente" };
+    // Diretoria OU membro da própria secretaria pode anexar.
+    const allowed = (await canManageSociety(societyId)) || (await getMySecretarias()).has(secretariaId);
+    if (!allowed) return { ok: false, error: "Sem permissão" };
+    await prisma.document.create({ data: { title: t, fileUrl, secretariaId } });
+    revalSecretarias(societyId);
+    return { ok: true };
+  } catch (e) {
+    console.error(e);
+    return { ok: false, error: "Erro" };
+  }
+}
+
+export async function deleteSecretariaDocument(documentId: number): Promise<Res> {
+  try {
+    const doc = await prisma.document.findUnique({
+      where: { id: documentId },
+      select: { secretariaId: true, secretaria: { select: { societyId: true } } },
+    });
+    if (!doc?.secretariaId || !doc.secretaria) return { ok: false, error: "Documento inválido" };
+    const allowed =
+      (await canManageSociety(doc.secretaria.societyId)) || (await getMySecretarias()).has(doc.secretariaId);
+    if (!allowed) return { ok: false, error: "Sem permissão" };
+    await prisma.document.delete({ where: { id: documentId } });
+    revalSecretarias(doc.secretaria.societyId);
+    return { ok: true };
+  } catch (e) {
+    console.error(e);
+    return { ok: false, error: "Erro" };
+  }
+}
+
+// ── Programações (Fase 2) ──
+// Evento de uma secretaria: guarda societyId (aparece nos eventos da sociedade)
+// + secretariaId (escopo da secretaria). Fuso: hora de parede gravada como UTC.
+export async function createSecretariaEvent(
+  secretariaId: number,
+  input: { title: string; date: string; startTime?: string; description?: string }
+): Promise<Res> {
+  try {
+    const title = (input.title ?? "").trim();
+    const dateStr = (input.date ?? "").trim();
+    if (!title || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return { ok: false, error: "Título e data obrigatórios" };
+    const societyId = await secretariaSociety(secretariaId);
+    if (!societyId) return { ok: false, error: "Secretaria inexistente" };
+    const allowed = (await canManageSociety(societyId)) || (await getMySecretarias()).has(secretariaId);
+    if (!allowed) return { ok: false, error: "Sem permissão" };
+
+    const date = new Date(`${dateStr}T00:00:00Z`);
+    const startTime =
+      input.startTime && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(input.startTime)
+        ? new Date(`${input.startTime.slice(0, 16)}:00Z`)
+        : null;
+
+    await prisma.event.create({
+      data: {
+        title,
+        description: (input.description ?? "").trim() || null,
+        date,
+        startTime,
+        societyId,
+        secretariaId,
+        isPublic: false,
+        requiresAttendance: false,
+      },
+    });
+    revalSecretarias(societyId);
+    return { ok: true };
+  } catch (e) {
+    console.error(e);
+    return { ok: false, error: "Erro" };
+  }
+}
+
+export async function deleteSecretariaEvent(eventId: number): Promise<Res> {
+  try {
+    const ev = await prisma.event.findUnique({
+      where: { id: eventId },
+      select: { secretariaId: true, secretaria: { select: { societyId: true } } },
+    });
+    if (!ev?.secretariaId || !ev.secretaria) return { ok: false, error: "Programação inválida" };
+    const allowed =
+      (await canManageSociety(ev.secretaria.societyId)) || (await getMySecretarias()).has(ev.secretariaId);
+    if (!allowed) return { ok: false, error: "Sem permissão" };
+    await prisma.event.delete({ where: { id: eventId } });
+    revalSecretarias(ev.secretaria.societyId);
+    return { ok: true };
+  } catch (e) {
+    console.error(e);
+    return { ok: false, error: "Erro" };
+  }
+}
+
+// ── Orçamentos (Fase 3): solicitação + aprovação ──
+// Membro da secretaria (ou diretoria) solicita → status "solicitado".
+// Só a diretoria (canManageSociety) aprova/rejeita.
+type OrcItemInput = { name: string; quantity?: number | string; price?: number | string };
+
+export async function createSecretariaOrcamento(
+  secretariaId: number,
+  input: { title: string; description?: string; urgencia?: string; items: OrcItemInput[] }
+): Promise<Res> {
+  try {
+    const title = (input.title ?? "").trim();
+    if (!title) return { ok: false, error: "Informe um título" };
+    const societyId = await secretariaSociety(secretariaId);
+    if (!societyId) return { ok: false, error: "Secretaria inexistente" };
+    const allowed = (await canManageSociety(societyId)) || (await getMySecretarias()).has(secretariaId);
+    if (!allowed) return { ok: false, error: "Sem permissão" };
+
+    const urg = (["ALTA", "MEDIA", "BAIXA"] as const).includes(input.urgencia as any)
+      ? (input.urgencia as "ALTA" | "MEDIA" | "BAIXA")
+      : "MEDIA";
+    const items = (Array.isArray(input.items) ? input.items : [])
+      .filter((it) => String(it.name ?? "").trim())
+      .map((it) => ({
+        name: String(it.name).trim(),
+        price: Number(it.price) || 0,
+        quantity: Math.max(1, parseInt(String(it.quantity)) || 1),
+      }));
+    if (items.length === 0) return { ok: false, error: "Adicione ao menos um item" };
+
+    const user = await currentUser();
+    const createdByName =
+      [user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.username || null;
+
+    await prisma.orcamento.create({
+      data: {
+        context: "secretaria",
+        secretariaId,
+        status: "solicitado",
+        title,
+        description: (input.description ?? "").trim() || null,
+        urgencia: urg,
+        createdByName,
+        items: { create: items },
+      },
+    });
+    revalSecretarias(societyId);
+    return { ok: true };
+  } catch (e) {
+    console.error(e);
+    return { ok: false, error: "Erro" };
+  }
+}
+
+export async function setSecretariaOrcamentoStatus(
+  orcamentoId: number,
+  status: "aprovado" | "rejeitado"
+): Promise<Res> {
+  try {
+    if (status !== "aprovado" && status !== "rejeitado") return { ok: false, error: "Status inválido" };
+    const orc = await prisma.orcamento.findUnique({
+      where: { id: orcamentoId },
+      select: { secretariaId: true, secretaria: { select: { societyId: true } } },
+    });
+    if (!orc?.secretariaId || !orc.secretaria) return { ok: false, error: "Orçamento inválido" };
+    if (!(await canManageSociety(orc.secretaria.societyId)))
+      return { ok: false, error: "Só a diretoria aprova/rejeita" };
+    await prisma.orcamento.update({ where: { id: orcamentoId }, data: { status } });
+    revalSecretarias(orc.secretaria.societyId);
+    return { ok: true };
+  } catch (e) {
+    console.error(e);
+    return { ok: false, error: "Erro" };
+  }
+}
+
+export async function deleteSecretariaOrcamento(orcamentoId: number): Promise<Res> {
+  try {
+    const orc = await prisma.orcamento.findUnique({
+      where: { id: orcamentoId },
+      select: { secretariaId: true, secretaria: { select: { societyId: true } } },
+    });
+    if (!orc?.secretariaId || !orc.secretaria) return { ok: false, error: "Orçamento inválido" };
+    const allowed =
+      (await canManageSociety(orc.secretaria.societyId)) || (await getMySecretarias()).has(orc.secretariaId);
+    if (!allowed) return { ok: false, error: "Sem permissão" };
+    await prisma.orcamento.delete({ where: { id: orcamentoId } });
+    revalSecretarias(orc.secretaria.societyId);
+    return { ok: true };
+  } catch (e) {
+    console.error(e);
+    return { ok: false, error: "Erro" };
+  }
+}
 
 // ===================== ATTENDANCE =====================
 

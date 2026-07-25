@@ -47,6 +47,7 @@ model Member {
   unavailabilities    DiaconateUnavailability[]
   bibleSchoolAttendances BibleSchoolAttendance[]
   sheetAliases        SheetNameAlias[]
+  secretarias         MemberSecretaria[]
 }
 
 // ===============================================
@@ -137,6 +138,43 @@ model InternalSociety {
   broadcasts Broadcast[]
   documents  Document[]
   albums     GalleryAlbum[]
+  secretarias Secretaria[]
+}
+
+// ===============================================
+// SECRETARIAS (subdepartamentos de uma Sociedade Interna)
+// A diretoria de cada sociedade cria suas Secretarias (ex.: "Secretaria de
+// Música" da UMP) e vincula membros a elas. Secretarias fazem programações
+// (Event), solicitam orçamentos (Orcamento) e mantêm documentos (Document).
+// ===============================================
+model Secretaria {
+  id        Int      @id @default(autoincrement())
+  name      String
+  createdAt DateTime @default(now())
+
+  societyId Int
+  society   InternalSociety @relation(fields: [societyId], references: [id], onDelete: Cascade)
+
+  members    MemberSecretaria[]
+  documents  Document[]
+  events     Event[]
+  orcamentos Orcamento[]
+
+  @@index([societyId])
+}
+
+// Vínculo membro ↔ Secretaria (muitos-para-muitos). Ter um vínculo = ocupar o
+// "cargo Secretaria de {nome}".
+model MemberSecretaria {
+  id           Int @id @default(autoincrement())
+  memberId     Int
+  secretariaId Int
+
+  member     Member     @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  secretaria Secretaria @relation(fields: [secretariaId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, secretariaId])
+  @@index([secretariaId])
 }
 
 model MemberSociety {
@@ -241,6 +279,10 @@ model Event {
 
   societyId Int?
   society   InternalSociety? @relation(fields: [societyId], references: [id], onDelete: SetNull)
+
+  // Programação de uma Secretaria (Fase 2). Null = evento normal da sociedade/grupo.
+  secretariaId Int?
+  secretaria   Secretaria? @relation(fields: [secretariaId], references: [id], onDelete: SetNull)
 
   attendances Attendance[]
   visitorAttendances VisitorAttendance[]
@@ -395,6 +437,10 @@ model Document {
 
   bibleSchoolClassId Int?
   bibleSchoolClass   BibleSchoolClass? @relation(fields: [bibleSchoolClassId], references: [id], onDelete: Cascade)
+
+  // Documento de uma Secretaria (visível à diretoria da sociedade).
+  secretariaId Int?
+  secretaria   Secretaria? @relation(fields: [secretariaId], references: [id], onDelete: Cascade)
 
   // Documento "EBD geral": aparece para todas as turmas da Escola Bíblica
   bibleSchoolGeneral Boolean @default(false)
@@ -707,12 +753,19 @@ model Orcamento {
 
   createdByName String?     // nome de quem criou (para exibição)
 
+  // Orçamento solicitado por uma Secretaria (Fase 3). status: null (comportamento
+  // atual) | "solicitado" | "aprovado" | "rejeitado".
+  secretariaId Int?
+  secretaria   Secretaria? @relation(fields: [secretariaId], references: [id], onDelete: Cascade)
+  status       String?
+
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
   items        OrcamentoItem[]
 
   @@index([context])
+  @@index([secretariaId])
 }
 
 model OrcamentoItem {

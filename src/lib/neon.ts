@@ -69,19 +69,31 @@ export async function createNeonDatabase(slug: string): Promise<NeonDatabase> {
   const roleName = await getRoleName(projectId, branchId)
   const dbName = `church_${slug.replace(/-/g, "_")}`
 
-  await neon(`/projects/${projectId}/branches/${branchId}/databases`, {
-    method: "POST",
-    body: JSON.stringify({ database: { name: dbName, owner_name: roleName } }),
-  })
+  // Cria o banco. Tolera "já existe" para permitir retry de um provisionamento
+  // que falhou depois de criar o banco mas antes de aplicar o schema.
+  try {
+    await neon(`/projects/${projectId}/branches/${branchId}/databases`, {
+      method: "POST",
+      body: JSON.stringify({ database: { name: dbName, owner_name: roleName } }),
+    })
+  } catch (e: any) {
+    if (!/already exists|409/i.test(String(e?.message))) throw e
+  }
 
+  // Conexão POOLED (endpoint "-pooler"): recomendada para serverless (Vercel).
+  // O pooler acorda o compute suspenso e é tolerante a cold start — a conexão
+  // direta (5432) falha nesse cenário. O Prisma exige pgbouncer=true no pooler.
   const params = new URLSearchParams({
     branch_id: branchId,
     database_name: dbName,
     role_name: roleName,
-    pooled: "false", // conexão direta: confiável para aplicar schema (DDL) e para o Prisma
+    pooled: "true",
   })
   const conn = await neon(`/projects/${projectId}/connection_uri?${params.toString()}`)
   if (!conn?.uri) throw new Error("Neon não retornou connection_uri")
 
-  return { dbUrl: conn.uri, dbName, branchId }
+  const extra = "pgbouncer=true&connect_timeout=15"
+  const dbUrl = conn.uri.includes("?") ? `${conn.uri}&${extra}` : `${conn.uri}?sslmode=require&${extra}`
+
+  return { dbUrl, dbName, branchId }
 }

@@ -28,10 +28,16 @@ export function splitSqlStatements(sql: string): string[] {
     .filter(Boolean)
 }
 
-/** Aplica o schema (init.sql) num banco vazio, instrução a instrução. */
+/** Aplica o schema (init.sql) num banco vazio, instrução a instrução.
+ *  Ignora "already exists" para ser idempotente (retry de provisionamento). */
 export async function applyInitSql(prisma: PrismaClient, initSql: string): Promise<void> {
   for (const stmt of splitSqlStatements(initSql)) {
-    await prisma.$executeRawUnsafe(stmt)
+    try {
+      await prisma.$executeRawUnsafe(stmt)
+    } catch (e: any) {
+      if (/already exists/i.test(String(e?.message))) continue
+      throw e
+    }
   }
 }
 

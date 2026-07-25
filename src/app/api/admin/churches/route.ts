@@ -91,7 +91,10 @@ export async function POST(req: Request) {
   // Unicidade: env (TENANT_DB__*) + control-plane.
   const envRegistry = getTenantRegistry()
   const existing = await listTenantsDB()
-  if (envRegistry[slug] || existing.some((t) => t.slug === slug)) {
+  const prior = existing.find((t) => t.slug === slug)
+  // Bloqueia se o slug existe em env ou como igreja já ATIVA/suspensa. Um registro
+  // 'provisioning' é de uma tentativa que falhou — permite reprovisionar por cima.
+  if (envRegistry[slug] || (prior && prior.status !== "provisioning")) {
     return NextResponse.json({ error: `Slug "${slug}" já existe` }, { status: 409 })
   }
 

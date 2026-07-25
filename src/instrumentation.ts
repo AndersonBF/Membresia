@@ -7,6 +7,8 @@
 // está configurado — sem CONTROL_PLANE_DATABASE_URL, é no-op.
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return
+  // Não conectar durante o build (next build) — só em runtime.
+  if (process.env.NEXT_PHASE === "phase-production-build") return
 
   const { controlPlaneEnabled, ensureTenantTable } = await import("./lib/controlPlane")
   if (!controlPlaneEnabled()) return

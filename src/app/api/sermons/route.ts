@@ -2,6 +2,9 @@
 import { NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
 
+// Endpoint de dados: nunca pré-renderizar no build (evita bater no banco durante o build).
+export const dynamic = "force-dynamic"
+
 async function resolveChannelId(channelUrl: string): Promise<string | null> {
   try {
     const directMatch = channelUrl.match(/youtube\.com\/channel\/(UC[\w-]+)/)

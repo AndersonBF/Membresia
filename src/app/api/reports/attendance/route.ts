@@ -1,6 +1,9 @@
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
+// Endpoint de dados: nunca pré-renderizar no build (evita bater no banco durante o build).
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const events = await prisma.event.findMany({
     include: {

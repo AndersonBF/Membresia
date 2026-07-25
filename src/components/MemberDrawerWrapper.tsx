@@ -207,7 +207,7 @@ function MemberDrawer({
                     <div className="flex items-center gap-2.5">
                       <Calendar size={15} style={{ color: accentColor }} className="shrink-0" />
                       <span>
-                        {new Date(data.birthDate).toLocaleDateString("pt-BR")}
+                        {new Date(data.birthDate).toLocaleDateString("pt-BR", { timeZone: "UTC" })}
                         {age !== null && <span className="text-gray-400 ml-1">({age} anos)</span>}
                       </span>
                     </div>

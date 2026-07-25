@@ -1,9 +1,11 @@
 import prisma from "@/lib/prisma"
+import { spParts, TZ } from "@/lib/tz"
 import { Cake } from "lucide-react"
 
 const Aniversariantes = async () => {
   const hoje = new Date()
-  const mes = hoje.getMonth() + 1
+  const hojeSP = spParts(hoje)          // dia-calendário atual em Brasília
+  const mes = hojeSP.month
 
   const membros = await prisma.member.findMany({
     where: {
@@ -20,11 +22,12 @@ const Aniversariantes = async () => {
   const aniversariantes = membros
     .filter((m) => {
       if (!m.birthDate) return false
-      return new Date(m.birthDate).getMonth() + 1 === mes
+      // birthDate é data-only em UTC; getUTC* preserva o dia do calendário.
+      return new Date(m.birthDate).getUTCMonth() + 1 === mes
     })
     .sort((a, b) => {
-      const diaA = new Date(a.birthDate!).getDate()
-      const diaB = new Date(b.birthDate!).getDate()
+      const diaA = new Date(a.birthDate!).getUTCDate()
+      const diaB = new Date(b.birthDate!).getUTCDate()
       return diaA - diaB
     })
 
@@ -35,14 +38,14 @@ const Aniversariantes = async () => {
       <div className="flex items-center gap-2 mb-4">
         <Cake size={20} className="text-pink-500" />
         <h2 className="text-lg font-semibold text-gray-700">
-          Aniversariantes de {hoje.toLocaleString("pt-BR", { month: "long" })}
+          Aniversariantes de {hoje.toLocaleString("pt-BR", { month: "long", timeZone: TZ })}
         </h2>
       </div>
 
       <div className="flex flex-col gap-2">
         {aniversariantes.map((m) => {
-          const dia = new Date(m.birthDate!).getDate()
-          const isHoje = dia === hoje.getDate()
+          const dia = new Date(m.birthDate!).getUTCDate()
+          const isHoje = dia === hojeSP.day
           return (
             <div
               key={m.id}

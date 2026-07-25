@@ -11,6 +11,13 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: '10mb',
     },
+    // Habilita src/instrumentation.ts (warm-up do control-plane) no Next 14.
+    instrumentationHook: true,
+    // Garante que prisma/init.sql seja incluído no bundle da rota de
+    // provisionamento (lido em runtime para aplicar o schema em bancos novos).
+    outputFileTracingIncludes: {
+      "/api/admin/churches": ["./prisma/init.sql"],
+    },
   },
   images: {
     remotePatterns: [

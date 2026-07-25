@@ -102,7 +102,7 @@ const MemberListPage = async ({
       <td className="hidden lg:table-cell">
         {item.birthDate ? (
           <div className="flex flex-col">
-            <span>{new Date(item.birthDate).toLocaleDateString("pt-BR")}</span>
+            <span>{new Date(item.birthDate).toLocaleDateString("pt-BR", { timeZone: "UTC" })}</span>
             <span className="text-xs text-gray-500">
               {Math.floor((Date.now() - new Date(item.birthDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000))} anos
             </span>

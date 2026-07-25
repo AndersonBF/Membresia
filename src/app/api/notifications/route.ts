@@ -2,6 +2,7 @@
 import { currentUser } from "@clerk/nextjs/server"
 import { NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
+import { startOfDaySP, addDays, spParts } from "@/lib/tz"
 
 export async function GET() {
   const user = await currentUser()
@@ -19,12 +20,15 @@ export async function GET() {
   const wantEvents = notif.eventos_proximos ?? true
 
   const now = new Date()
-  const tomorrow = new Date(now)
-  tomorrow.setDate(tomorrow.getDate() + 1)
-  tomorrow.setHours(23, 59, 59, 999)
+  const hojeSP = spParts(now)                             // dia-calendário no fuso do Brasil
 
-  const yesterday = new Date(now)
-  yesterday.setDate(yesterday.getDate() - 1)
+  // Eventos: o campo `date` é um marcador de dia em UTC (00:00Z), então a janela
+  // "hoje..amanhã" precisa ser alinhada em UTC-midnight a partir do dia do Brasil.
+  const eventStart = new Date(Date.UTC(hojeSP.year, hojeSP.month - 1, hojeSP.day))
+  const eventEnd = new Date(Date.UTC(hojeSP.year, hojeSP.month - 1, hojeSP.day + 2) - 1)
+
+  // Novos membros: createdAt é instante real → desde o início de ontem (Brasil).
+  const yesterday = addDays(startOfDaySP(now), -1)
 
   const [members, events, newMembers] = await Promise.all([
     wantBirthdays
@@ -35,7 +39,7 @@ export async function GET() {
       : Promise.resolve([]),
     wantEvents
       ? prisma.event.findMany({
-          where: { date: { gte: now, lte: tomorrow } },
+          where: { date: { gte: eventStart, lte: eventEnd } },
           select: { id: true, title: true, date: true, startTime: true },
           orderBy: { date: "asc" },
           take: 5,
@@ -55,7 +59,9 @@ export async function GET() {
 
   members.forEach((m) => {
     const bd = new Date(m.birthDate!)
-    if (bd.getDate() === now.getDate() && bd.getMonth() === now.getMonth()) {
+    // birthDate é uma data-only (meia-noite UTC); usar getUTC* preserva o dia
+    // do calendário e comparamos com o dia/mês de hoje no fuso do Brasil.
+    if (bd.getUTCDate() === hojeSP.day && bd.getUTCMonth() + 1 === hojeSP.month) {
       notifications.push({
         id: `bday-${m.id}`,
         type: "birthday",
@@ -68,7 +74,7 @@ export async function GET() {
 
   events.forEach((ev) => {
     const hora = ev.startTime
-      ? new Date(ev.startTime).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+      ? new Date(ev.startTime).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })
       : null
     notifications.push({
       id: `event-${ev.id}`,

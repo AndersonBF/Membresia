@@ -2,7 +2,8 @@
 // Funções de tenant que dependem de headers() (server-only). Separadas de
 // tenant.ts para que o middleware (Edge) não importe next/headers.
 import { headers } from "next/headers"
-import { getSubdomainFromHost, resolveTenantFromHost, type Tenant } from "./tenant"
+import { getSubdomainFromHost, type Tenant } from "./tenant"
+import { resolveDbUrlForHost } from "./tenantRegistry"
 
 /** Subdomínio (igreja) da requisição atual, ou null. */
 export function getCurrentSubdomain(): string | null {
@@ -13,11 +14,14 @@ export function getCurrentSubdomain(): string | null {
   }
 }
 
-/** Resolve o tenant da requisição atual → { slug, dbUrl }. */
+/**
+ * Resolve o tenant da requisição atual → { slug, dbUrl }, usando o registro
+ * mesclado (env + control-plane). Continua síncrono (lê o snapshot em memória).
+ */
 export function resolveTenant(): Tenant {
   try {
-    return resolveTenantFromHost(headers().get("host"))
+    return resolveDbUrlForHost(headers().get("host"))
   } catch {
-    return resolveTenantFromHost(null)
+    return resolveDbUrlForHost(null)
   }
 }

@@ -5,6 +5,9 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { ptBR } from "@clerk/localizations";
 import { ToastContainer } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
+import { controlPlaneEnabled } from "@/lib/controlPlane";
+import { shouldShowComingSoon } from "@/lib/tenantRegistry";
+import EmBrevePage from "./em-breve/page";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -13,11 +16,22 @@ export const metadata: Metadata = {
   description: "Church Management System",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Com control-plane ativo, subdomínio desconhecido → "em breve" (decidido aqui,
+  // no Node, pois o Edge não enxerga os tenants do banco). Sem control-plane, não
+  // lemos headers() e o comportamento é idêntico ao anterior.
+  let content: React.ReactNode = children;
+  if (controlPlaneEnabled()) {
+    const { headers } = await import("next/headers");
+    if (shouldShowComingSoon(headers().get("host"))) {
+      content = <EmBrevePage />;
+    }
+  }
+
   return (
     <ClerkProvider localization={ptBR}>
 
@@ -30,7 +44,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={inter.className}>{children} <ToastContainer position="bottom-right" theme="dark"/></body>
+      <body className={inter.className}>{content} <ToastContainer position="bottom-right" theme="dark"/></body>
     </html>
     </ClerkProvider>
   );

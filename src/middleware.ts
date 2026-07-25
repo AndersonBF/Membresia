@@ -24,11 +24,17 @@ export default clerkMiddleware(async (auth, req) => {
   const host = req.headers.get("host");
   const sub = getSubdomainFromHost(host);
   const tenantsConfigured = listTenants().length > 0;
+  // Control-plane ativo → o registro de tenants vive no banco (não em env). O Edge
+  // não enxerga esses tenants, então a decisão de "em breve" passa para o lado Node
+  // (src/app/layout.tsx via shouldShowComingSoon). Sem control-plane, nada muda.
+  const controlPlaneActive = !!process.env.CONTROL_PLANE_DATABASE_URL;
+  const multiTenant = tenantsConfigured || controlPlaneActive;
 
   // Subdomínio não cadastrado → página "em breve".
-  // (Só entra em ação quando há tenants configurados; sem env, comporta-se como antes.)
+  // (Só no modo puro-env; com control-plane, o Node cuida disso.)
   if (
     tenantsConfigured &&
+    !controlPlaneActive &&
     sub &&
     !isKnownTenant(sub) &&
     !getDemoTenants().includes(sub) &&
@@ -91,10 +97,12 @@ export default clerkMiddleware(async (auth, req) => {
   // Usuários sem `church` (ainda não marcados) não são bloqueados (compatibilidade).
   // ============================
   const userChurch = (sessionClaims?.metadata as { church?: string })?.church;
+  // Compara o church do usuário com o subdomínio atual. Não depende do registro
+  // (funciona para tenants em env e no control-plane): se há um subdomínio real e
+  // ele difere do church do usuário, bloqueia. Superadmin é isento.
   if (
-    tenantsConfigured &&
+    multiTenant &&
     sub &&
-    isKnownTenant(sub) &&
     userChurch &&
     userChurch !== sub &&
     !roles.includes("superadmin") &&

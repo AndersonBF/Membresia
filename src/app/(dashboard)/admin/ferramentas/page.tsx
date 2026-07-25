@@ -1,7 +1,7 @@
 import { currentUser } from "@clerk/nextjs/server"
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Activity, Users, Inbox, Key, Settings, DollarSign, UserCircle } from "lucide-react"
+import { ArrowLeft, Activity, Users, Inbox, Key, Settings, DollarSign, UserCircle, Church } from "lucide-react"
 
 export const dynamic = "force-dynamic"
 
@@ -14,10 +14,19 @@ const FERRAMENTAS = [
   { label: "Configurações", sub: "Dados e ajustes da igreja",       icon: Settings,   href: "/settings" },
 ]
 
+// Card exclusivo do superadmin: provisionamento de novas igrejas.
+const SUPERADMIN_FERRAMENTAS = [
+  { label: "Igrejas", sub: "Criar e gerenciar igrejas", icon: Church, href: "/admin/igrejas", destaque: false },
+]
+
 export default async function AdminFerramentasPage() {
   const user = await currentUser()
   const roles = (user?.publicMetadata?.roles as string[]) ?? []
   if (!user || !(roles.includes("admin") || roles.includes("superadmin"))) notFound()
+
+  const ferramentas = roles.includes("superadmin")
+    ? [...FERRAMENTAS, ...SUPERADMIN_FERRAMENTAS]
+    : FERRAMENTAS
 
   return (
     <div className="bg-gray-50 min-h-screen">
@@ -46,7 +55,7 @@ export default async function AdminFerramentasPage() {
 
       <div className="p-4 md:p-6 max-w-5xl mx-auto">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {FERRAMENTAS.map((item) => {
+          {ferramentas.map((item) => {
             const Icon = item.icon
             return (
               <Link

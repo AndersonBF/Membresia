@@ -2,15 +2,12 @@ import { currentUser } from "@clerk/nextjs/server"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import prisma from "@/lib/prisma"
+import { TZ, startOfDaySP, addDays } from "@/lib/tz"
 import { ArrowLeft, Activity, LogIn, Users, Eye, Clock } from "lucide-react"
 
 export const dynamic = "force-dynamic"
 
 const AC = "#0f766e"
-
-function inicioDoDia(d: Date) {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate())
-}
 
 export default async function AcessosPage() {
   const user = await currentUser()
@@ -19,9 +16,9 @@ export default async function AcessosPage() {
   if (!user || !allowed) notFound()
 
   const agora = new Date()
-  const hoje = inicioDoDia(agora)
-  const d7 = new Date(hoje); d7.setDate(hoje.getDate() - 6)   // últimos 7 dias (com hoje)
-  const d30 = new Date(hoje); d30.setDate(hoje.getDate() - 29)
+  const hoje = startOfDaySP(agora)          // meia-noite de hoje no fuso do Brasil
+  const d7 = addDays(hoje, -6)              // últimos 7 dias (com hoje)
+  const d30 = addDays(hoje, -29)
 
   const [logsRecentes, logins30, todos30] = await Promise.all([
     prisma.accessLog.findMany({ orderBy: { createdAt: "desc" }, take: 60 }),
@@ -50,11 +47,11 @@ export default async function AcessosPage() {
 
   // ── Série por dia (14 dias) ──
   const dias = Array.from({ length: 14 }, (_, i) => {
-    const d = new Date(hoje); d.setDate(hoje.getDate() - (13 - i))
-    const fim = new Date(d); fim.setDate(d.getDate() + 1)
+    const d = addDays(hoje, -(13 - i))
+    const fim = addDays(d, 1)
     const doDiaX = todos30.filter((l) => l.createdAt >= d && l.createdAt < fim)
     return {
-      label: d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
+      label: d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: TZ }),
       pessoas: distintos(doDiaX),
       visitas: doDiaX.filter((l) => l.event === "pageview").length,
     }
@@ -138,7 +135,7 @@ export default async function AcessosPage() {
                     )}
                   </div>
                   <span className="text-[11px] text-gray-400 flex-shrink-0">
-                    {l.createdAt.toLocaleDateString("pt-BR")} {l.createdAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                    {l.createdAt.toLocaleDateString("pt-BR", { timeZone: TZ })} {l.createdAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: TZ })}
                   </span>
                 </div>
               ))}
@@ -166,7 +163,7 @@ export default async function AcessosPage() {
                     l.event === "login" ? "bg-teal-50 text-teal-700" : "bg-gray-100 text-gray-500"
                   }`}>{l.event === "login" ? "login" : "página"}</span>
                   <span className="text-[11px] text-gray-400 flex-shrink-0">
-                    {l.createdAt.toLocaleDateString("pt-BR")} {l.createdAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                    {l.createdAt.toLocaleDateString("pt-BR", { timeZone: TZ })} {l.createdAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: TZ })}
                   </span>
                 </div>
               ))}

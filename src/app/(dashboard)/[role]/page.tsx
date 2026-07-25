@@ -4,6 +4,7 @@ import Announcements from "@/components/Announcements"
 import EventCalendarContainer from "@/components/EventCalendarContainer"
 import BroadcastFeed from "@/components/BroadcastFeed"
 import prisma from "@/lib/prisma"
+import { spParts } from "@/lib/tz"
 import Link from "next/link"
 import MemberAvatar from "@/components/MemberAvatar"
 import { Users, Calendar, CalendarCheck, FileText, ArrowLeft, Phone, ChevronRight, Clock, Cake, Camera, Package, CheckSquare, UserRound } from "lucide-react"
@@ -107,12 +108,12 @@ async function getDataForRole(role: string) {
     }),
   ])
 
+  // birthDate é uma data-only gravada como meia-noite UTC; ler com getUTC* mantém
+  // o dia do calendário e o mês é comparado com o mês atual em Brasília.
+  const mesBrasil = spParts(now).month - 1
   const birthdaysThisMonth = allMembers
-    .filter((m) => {
-      const bd = new Date(m.birthDate!)
-      return bd.getMonth() === now.getMonth()
-    })
-    .sort((a, b) => new Date(a.birthDate!).getDate() - new Date(b.birthDate!).getDate())
+    .filter((m) => new Date(m.birthDate!).getUTCMonth() === mesBrasil)
+    .sort((a, b) => new Date(a.birthDate!).getUTCDate() - new Date(b.birthDate!).getUTCDate())
 
   return { totalMembers, totalVisitors, totalEvents, totalDocuments, recentMembers, directoryMembers, upcomingEvents, birthdaysThisMonth }
 }
@@ -166,8 +167,8 @@ const RolePage = async ({
       }
     : { background: ad }
 
-  const hoje = new Date()
-  const mesAtual = mesesPT[hoje.getMonth()]
+  const hojeSP = spParts(new Date())   // dia-calendário atual em Brasília
+  const mesAtual = mesesPT[hojeSP.month - 1]
 
   return (
     <>
@@ -319,8 +320,8 @@ const RolePage = async ({
                 <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
                   {upcomingEvents.map((event, i) => {
                     const d = new Date(event.date)
-                    const day = d.getDate().toString().padStart(2, "0")
-                    const month = d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "").toUpperCase()
+                    const day = d.getUTCDate().toString().padStart(2, "0")
+                    const month = d.toLocaleDateString("pt-BR", { month: "short", timeZone: "UTC" }).replace(".", "").toUpperCase()
                     return (
                       <div key={event.id}
                         className={`ev-row flex items-center gap-4 px-5 py-4 transition-colors ${i < upcomingEvents.length - 1 ? "border-b border-gray-50" : ""}`}>
@@ -334,7 +335,7 @@ const RolePage = async ({
                           {event.startTime && (
                             <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
                               <Clock size={9} />
-                              {new Date(event.startTime).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                              {new Date(event.startTime).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })}
                             </p>
                           )}
                         </div>
@@ -357,8 +358,8 @@ const RolePage = async ({
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                   {birthdaysThisMonth.map((m) => {
                     const bd = new Date(m.birthDate!)
-                    const dia = bd.getDate()
-                    const isHoje = bd.getDate() === hoje.getDate() && bd.getMonth() === hoje.getMonth()
+                    const dia = bd.getUTCDate()
+                    const isHoje = bd.getUTCDate() === hojeSP.day && bd.getUTCMonth() === hojeSP.month - 1
 
                     return (
                       <div

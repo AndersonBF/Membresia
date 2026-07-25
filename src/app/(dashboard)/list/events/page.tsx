@@ -74,12 +74,12 @@ const EventListPage = async ({
       <td className="hidden lg:table-cell">
         {item.description ? <span className="truncate max-w-xs block">{item.description}</span> : <span className="text-gray-400">-</span>}
       </td>
-      <td className="hidden md:table-cell">{new Intl.DateTimeFormat("pt-BR").format(item.date)}</td>
+      <td className="hidden md:table-cell">{new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(item.date)}</td>
       <td className="hidden md:table-cell">
-        {item.startTime ? item.startTime.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", hour12: false }) : "-"}
+        {item.startTime ? item.startTime.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "UTC" }) : "-"}
       </td>
       <td className="hidden md:table-cell">
-        {item.endTime ? item.endTime.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", hour12: false }) : "-"}
+        {item.endTime ? item.endTime.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "UTC" }) : "-"}
       </td>
       <td className="hidden lg:table-cell">
         {item.society?.name

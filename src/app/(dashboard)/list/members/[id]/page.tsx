@@ -207,7 +207,7 @@ export default function MemberDetailPage({ params }: { params: { id: string } })
               <div className="flex items-center gap-2">
                 <Calendar size={15} className="text-green-600 shrink-0" />
                 <span>
-                  {new Date(member.birthDate).toLocaleDateString("pt-BR")}
+                  {new Date(member.birthDate).toLocaleDateString("pt-BR", { timeZone: "UTC" })}
                   {age !== null && <span className="text-gray-400 ml-1">({age} anos)</span>}
                 </span>
               </div>

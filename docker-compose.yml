@@ -27,6 +27,8 @@ services:
       - .:/app
       - /app/node_modules
     environment:
+      # Mantido em UTC (como o Vercel/producao). O fuso é tratado no codigo:
+      # instantes reais exibidos em America/Sao_Paulo; horarios de evento em UTC.
       # Banco local do proprio compose. Nunca aponte para producao aqui.
       - DATABASE_URL=postgresql://anderson:anderson123456@postgres:5432/church
       - WATCHPACK_POLLING=true

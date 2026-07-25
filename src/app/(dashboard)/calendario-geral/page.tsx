@@ -42,9 +42,11 @@ function getColor(societyName?: string | null) {
 
 function formatTime(iso: string | null) {
   if (!iso) return null;
+  // startTime/endTime são "hora de parede" gravadas em UTC (ex.: 09:00 → 09:00Z);
+  // formatar em UTC devolve o horário digitado, independente do fuso do servidor.
   return new Date(iso).toLocaleTimeString("pt-BR", {
     hour: "2-digit", minute: "2-digit", hour12: false,
-    timeZone: "America/Sao_Paulo",
+    timeZone: "UTC",
   });
 }
 

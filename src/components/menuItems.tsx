@@ -5,7 +5,7 @@ import {
   Heart, Info, Image, Youtube, CalendarDays,
   ClipboardList, CalendarRange, MessageSquare,
   Camera, BarChart2, Package, CheckSquare, CalendarCheck,
-  Inbox, Cross, BookOpen, BookMarked, Activity, ShoppingCart,
+  Inbox, Cross, BookOpen, BookMarked, Activity, ShoppingCart, Landmark,
 } from "lucide-react";
 
 const pastorRoles = ["pastor", "superadmin"];
@@ -292,6 +292,17 @@ export const menuItems = [
         visible: staffRoles,
         hiddenForSociedades: false,
         showOnlyForSociedades: true,
+      },
+      {
+        // Secretarias — só nas sociedades (que têm societyId), no contexto do grupo.
+        icon: Landmark,
+        label: "Secretarias",
+        href: "/secretarias",
+        group: "Gestão",
+        visible: ["ump", "upa", "uph", "saf", "ucp", "admin", "superadmin", "pastor"],
+        hiddenForSociedades: false,
+        showOnlyForSociedades: true,
+        onlyForRoleContext: ["ump", "upa", "uph", "saf", "ucp"],
       },
       {
         icon: Key,

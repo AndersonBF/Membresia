@@ -5,7 +5,7 @@ import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { menuItems } from "./menuItems";
-import { Shield, HandHelping, Layers, Baby, UserCircle, GraduationCap } from "lucide-react";
+import { Shield, HandHelping, Layers, Baby, UserCircle, GraduationCap, Users, CalendarDays, FileText, Wallet, ArrowLeft, Landmark } from "lucide-react";
 import { Suspense } from "react";
 
 const sociedades = ["ump", "upa", "uph", "saf", "ucp"];
@@ -97,6 +97,7 @@ const MenuContent = () => {
     if (href === "/visitantes") return `/${currentRole}/visitantes`
     if (href === "/galeria")    return `/${currentRole}/galeria`
     if (href === "/relatorios") return `/${currentRole}/relatorios`
+    if (href === "/secretarias") return `/${currentRole}/secretarias`
 
     if (roleRouteMap[href] !== undefined) {
       const societyId = societyMap[currentRole]
@@ -114,6 +115,55 @@ const MenuContent = () => {
     }
 
     return href
+  }
+
+  // ── Dentro de uma Secretaria: a sidebar global vira a navegação dela ──
+  const secretariaMatch = pathname.match(/^\/([a-z]+)\/secretarias\/(\d+)/)
+  if (secretariaMatch) {
+    const secRole = secretariaMatch[1]
+    const secId = secretariaMatch[2]
+    const base = `/${secRole}/secretarias/${secId}`
+    const tab = searchParams.get("tab") || "membros"
+    const secItems = [
+      { id: "membros", label: "Membros", icon: Users },
+      { id: "programacoes", label: "Programações", icon: CalendarDays },
+      { id: "documentos", label: "Documentos", icon: FileText },
+      { id: "orcamentos", label: "Orçamentos", icon: Wallet },
+    ]
+    const linkCls = (active: boolean) =>
+      `group relative flex items-center justify-center lg:justify-start gap-3 py-2.5 lg:py-2 px-2 lg:px-3 rounded-lg transition-colors ${
+        active ? "bg-white/15 text-white font-medium" : "text-white/75 hover:bg-white/10 hover:text-white"
+      }`
+
+    return (
+      <div className="mt-4 text-sm">
+        <div className="flex items-center justify-center px-2 py-3 lg:py-4 mb-2 border-b border-green-700">
+          <Landmark size={40} className="w-9 h-9 lg:w-11 lg:h-11 text-white" />
+        </div>
+
+        <Link href={`/${secRole}/secretarias`} className={linkCls(false)}>
+          <ArrowLeft size={24} className="shrink-0 w-6 h-6 lg:w-[19px] lg:h-[19px] text-white/60 group-hover:text-white" />
+          <span className="hidden lg:block text-sm">Secretarias</span>
+        </Link>
+
+        <span className="hidden lg:block text-[11px] uppercase tracking-[0.14em] text-white/40 font-semibold mt-6 mb-2 px-2">
+          Secretaria
+        </span>
+        <span className="lg:hidden h-px bg-white/10 mx-2 my-3" />
+
+        {secItems.map((it) => {
+          const Icon = it.icon
+          const active = tab === it.id
+          return (
+            <Link key={it.id} href={`${base}?tab=${it.id}`} className={linkCls(active)}>
+              {active && <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-full bg-emerald-300" />}
+              <Icon size={24} className={`shrink-0 w-6 h-6 lg:w-[19px] lg:h-[19px] ${active ? "text-emerald-300" : "text-white/60 group-hover:text-white"}`} />
+              <span className="hidden lg:block text-sm">{it.label}</span>
+            </Link>
+          )
+        })}
+      </div>
+    )
   }
 
   return (

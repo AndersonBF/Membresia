@@ -433,9 +433,9 @@ export async function createSecretaria(societyId: number, name: string): Promise
     const s = await prisma.secretaria.create({ data: { name: nome, societyId } });
     revalSecretarias(societyId);
     return { ok: true, id: s.id };
-  } catch (e) {
-    console.error(e);
-    return { ok: false, error: "Erro ao criar" };
+  } catch (e: any) {
+    console.error("createSecretaria:", e);
+    return { ok: false, error: e?.message ? `Erro ao criar: ${e.message}` : "Erro ao criar" };
   }
 }
 

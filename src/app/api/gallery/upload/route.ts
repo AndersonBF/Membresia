@@ -39,11 +39,19 @@ export async function POST(req: NextRequest) {
     const file = formData.get("file") as File | null
     if (!file) return NextResponse.json({ error: "Nenhum arquivo enviado" }, { status: 400 })
 
+    // Tipo de recurso Cloudinary. Padrão "image" (galerias/capas).
+    // Documentos não-imagem (PDF, docx…) precisam de "raw" para serem entregues
+    // corretamente — Cloudinary bloqueia a entrega de PDF enviado como "image".
+    const rt = (formData.get("resourceType") as string) || "image"
+    const resourceType = (["image", "raw", "auto", "video"] as const).includes(rt as any)
+      ? (rt as "image" | "raw" | "auto" | "video")
+      : "image"
+
     const buffer = Buffer.from(await file.arrayBuffer())
 
     const result = await new Promise<any>((resolve, reject) => {
       cloudinary.uploader.upload_stream(
-        { folder: "gallery", resource_type: "image" },
+        { folder: "gallery", resource_type: resourceType },
         (error, result) => { if (error) reject(error); else resolve(result) }
       ).end(buffer)
     })

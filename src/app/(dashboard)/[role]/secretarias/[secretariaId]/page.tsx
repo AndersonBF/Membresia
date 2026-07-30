@@ -37,7 +37,7 @@ export default async function SecretariaPage({
         members: { select: { member: { select: { id: true, name: true } } } },
         documents: { select: { id: true, title: true, fileUrl: true }, orderBy: { createdAt: "desc" } },
         events: {
-          select: { id: true, title: true, date: true, startTime: true },
+          select: { id: true, title: true, description: true, date: true, startTime: true, endTime: true, isPublic: true },
           orderBy: { date: "desc" },
           take: 30,
         },
@@ -75,8 +75,11 @@ export default async function SecretariaPage({
     events: secretaria.events.map((e) => ({
       id: e.id,
       title: e.title,
+      description: e.description,
       date: e.date.toISOString(),
       startTime: e.startTime ? e.startTime.toISOString() : null,
+      endTime: e.endTime ? e.endTime.toISOString() : null,
+      isPublic: e.isPublic,
     })),
     orcamentos: secretaria.orcamentos.map((o) => ({
       id: o.id,
